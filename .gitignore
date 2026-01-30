@@ -1,58 +1,105 @@
-# Prerequisites
-*.d
+##################################
+# Global / OS
+##################################
+
+.DS_Store
+Thumbs.db
+
+##################################
+# Logs & JVM crash reports
+##################################
+
+*.log
+hs_err_pid*
+
+##################################
+# Java / Maven
+##################################
+
+# Maven build output
+target/
+
+# Compiled Java classes
+*.class
+
+# Maven backup files
+pom.xml.tag
+pom.xml.releaseBackup
+pom.xml.versionsBackup
+pom.xml.next
+dependency-reduced-pom.xml
+buildNumber.properties
+.mvn/timing.properties
+
+##################################
+# JavaFX / JOGL runtime caches
+##################################
+
+.javafx/
+.jogl/
+
+##################################
+# Native / JNI (C)
+##################################
 
 # Object files
 *.o
-*.ko
 *.obj
-*.elf
 
-# Linker output
-*.ilk
-*.map
-*.exp
-
-# Precompiled Headers
-*.gch
-*.pch
-
-# Libraries
-*.lib
+# Static & shared libraries
 *.a
-*.la
-*.lo
-
-# Shared objects (inc. Windows DLLs)
-*.dll
+*.lib
 *.so
 *.so.*
+*.dll
 *.dylib
 
+# Native build outputs
+graph-native/out/
+graph-ui/out/
+
+##################################
 # Executables
+##################################
+
 *.exe
 *.out
 *.app
-*.i*86
-*.x86_64
-*.hex
-**/out/
-**/*.class
 
-# Debug files
-*.dSYM/
-*.su
-*.idb
-*.pdb
+##################################
+# IDE / Editors
+##################################
 
-# Kernel Module Compile Results
-*.mod*
-*.cmd
-*.class
-.tmp_versions/
-modules.order
-Module.symvers
-Mkfile.old
-dkms.conf
-/.metadata/
-/graph-application/graph-ui/windows/com/mongraphe/graphui/.class
-/graph-application/graph-ui/linux/com/mongraphe/graphui/.class
+# VS Code
+.vscode/
+
+# IntelliJ IDEA
+.idea/
+*.iml
+
+# Eclipse
+.project
+.classpath
+.settings/
+
+# Vim
+*.swp
+*.swo
+
+##################################
+# Local tools
+##################################
+
+# Local Maven distribution
+tools/apache-maven-*/
+
+##################################
+# Generated / local files
+##################################
+
+# JNI generated headers
+*.h
+
+# User-specific helper files
+cmd.txt
+
