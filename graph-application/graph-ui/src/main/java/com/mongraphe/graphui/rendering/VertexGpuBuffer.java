@@ -18,7 +18,6 @@ public class VertexGpuBuffer {
 
     public void updateCpu(GraphScene scene) {
         vertexCount = scene.vertices().size();
-        // remplir tableaux ici
     }
 
     public void upload(GL4 gl) {
