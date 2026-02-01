@@ -82,6 +82,10 @@ public class Vertex {
         return isVisible;
     }
 
+    public void setVisible(boolean visible) {
+        this.isVisible = visible;
+    }
+
     /**
      * Marque le sommet comme supprimé
      */

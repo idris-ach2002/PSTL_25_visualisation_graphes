@@ -4,7 +4,6 @@ import java.nio.FloatBuffer;
 
 import com.jogamp.opengl.GL4;
 import com.mongraphe.graphui.Edge;
-import com.mongraphe.graphui.rendering.GraphScene;
 
 public class EdgeGpuBuffer {
 
@@ -29,7 +28,7 @@ public class EdgeGpuBuffer {
         visVbo = b[3];
     }
 
-    public void updateCpu(GraphScene scene) {
+    public void update(GraphScene scene) {
 
         int edgeCount = scene.edges().size();
         vertexCount = edgeCount * 2;
@@ -67,7 +66,7 @@ public class EdgeGpuBuffer {
             colors[c++] = bcol;
 
             // sizes
-            float w = e.getWidth();
+            float w = (float) e.getWeight();
             sizes[s++] = w;
             sizes[s++] = w;
 
@@ -92,8 +91,6 @@ public class EdgeGpuBuffer {
                 FloatBuffer.wrap(data),
                 GL4.GL_DYNAMIC_DRAW);
     }
-
-    // ================= DRAW =================
 
     public void draw(GL4 gl) {
 

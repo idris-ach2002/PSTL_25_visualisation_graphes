@@ -1,7 +1,7 @@
 package com.mongraphe.interfaces;
 
 import com.jogamp.opengl.GL4;
-import com.mongraphe.graphui.rendering.GraphRender;
+import com.mongraphe.graphui.rendering.GraphRenderer;
 
 public interface GraphExportI {
     /**
@@ -12,7 +12,7 @@ public interface GraphExportI {
      * @param path the file path where the PNG will be saved
      */
     public void exportToPng(GL4 gl,
-            GraphRender renderer,
+            GraphRenderer renderer,
             int width,
             int height,
             String path);

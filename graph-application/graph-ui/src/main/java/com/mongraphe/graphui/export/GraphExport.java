@@ -3,7 +3,8 @@ package com.mongraphe.graphui.export;
 import com.jogamp.opengl.GL4;
 import com.jogamp.opengl.GLAutoDrawable;
 import com.jogamp.opengl.GLRunnable;
-import com.mongraphe.graphui.rendering.GraphRender;
+import com.jogamp.newt.opengl.GLWindow;
+import com.mongraphe.graphui.rendering.GraphRenderer;
 
 import javax.imageio.ImageIO;
 import java.awt.image.BufferedImage;
@@ -11,13 +12,35 @@ import java.io.File;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 
-public class GraphExport implements com.mongraphe.interfaces.GraphExportI {
+public class GraphExport {
 
-    public void exportToPng(GL4 gl,
-            GraphRender renderer,
-            int width,
-            int height,
-            String path) {
+    private final GLWindow window;
+    private final GraphRenderer renderer;
+
+    public GraphExport(GLWindow window, GraphRenderer renderer) {
+        this.window = window;
+        this.renderer = renderer;
+    }
+
+    public void scheduleExport(String path) {
+        scheduleExport(path, window.getWidth(), window.getHeight());
+    }
+
+    public void scheduleExport(String path, int width, int height) {
+
+        new File("capture").mkdirs();
+
+        window.invoke(true, new GLRunnable() {
+            @Override
+            public boolean run(GLAutoDrawable drawable) {
+                GL4 gl = drawable.getGL().getGL4();
+                exportToPng(gl, width, height, path);
+                return true;
+            }
+        });
+    }
+
+    private void exportToPng(GL4 gl, int width, int height, String path) {
 
         int[] viewport = new int[4];
         gl.glGetIntegerv(GL4.GL_VIEWPORT, viewport, 0);
@@ -26,54 +49,28 @@ public class GraphExport implements com.mongraphe.interfaces.GraphExportI {
         gl.glGetIntegerv(GL4.GL_FRAMEBUFFER_BINDING, previousFbo, 0);
 
         int[] fbo = new int[1];
-        int[] texture = new int[1];
+        int[] tex = new int[1];
         int[] rbo = new int[1];
 
         try {
-            setupFramebuffer(gl, width, height, fbo, texture, rbo);
+            setupFramebuffer(gl, width, height, fbo, tex, rbo);
 
             gl.glViewport(0, 0, width, height);
+            gl.glClear(GL4.GL_COLOR_BUFFER_BIT | GL4.GL_DEPTH_BUFFER_BIT);
 
             renderer.render(gl);
 
-            BufferedImage image = readPixels(gl, width, height);
-            ImageIO.write(image, "png", new File(path));
+            BufferedImage img = readPixels(gl, width, height);
+            ImageIO.write(img, "png", new File(path));
 
-            System.out.println("Export PNG OK → " + path);
+            System.out.println("PNG export OK → " + path);
 
         } catch (Exception e) {
             e.printStackTrace();
         } finally {
-            cleanup(gl, fbo, texture, rbo);
+            cleanup(gl, fbo, tex, rbo);
             gl.glBindFramebuffer(GL4.GL_FRAMEBUFFER, previousFbo[0]);
             gl.glViewport(viewport[0], viewport[1], viewport[2], viewport[3]);
-        }
-    }
-
-    /**
-     * Schedule the export to happen in the OpenGL thread
-     * This ensures the GL context is valid when we do the export
-     */
-    private void scheduleExportToPng(final String filename) {
-        // Create a directory for the captures if it doesn't exist
-        File captureDir = new File("capture");
-        if (!captureDir.exists()) {
-            captureDir.mkdir();
-        }
-
-        // Ensure we're on the OpenGL thread
-        if (animator != null) {
-            // Request a one-time rendering action that will run the export
-            glWindow.invoke(true, new GLRunnable() {
-                @Override
-                public boolean run(GLAutoDrawable drawable) {
-                    System.out.println("Executing export on OpenGL thread");
-                    exportToPng(drawable.getGL().getGL4(), filename);
-                    return true;
-                }
-            });
-        } else {
-            System.err.println("Animation is not active, cannot export");
         }
     }
 
@@ -84,7 +81,6 @@ public class GraphExport implements com.mongraphe.interfaces.GraphExportI {
 
         gl.glGenTextures(1, tex, 0);
         gl.glBindTexture(GL4.GL_TEXTURE_2D, tex[0]);
-
         gl.glTexImage2D(GL4.GL_TEXTURE_2D, 0, GL4.GL_RGBA8, w, h, 0,
                 GL4.GL_RGBA, GL4.GL_UNSIGNED_BYTE, null);
 

@@ -21,7 +21,9 @@ public class EdgeRender {
     private int edgeSizeBuffer;
     private int edgeVisibilityBuffer;
 
-    private void prepareEdgeRenderData() {
+    private static final double CORRELATION_THRESHOLD = 0.1;
+
+    public void prepareEdgeRenderData() {
         for (int i = 0; i < edges.size(); i++) {
             Edge currentEdge = edges.get(i);
 

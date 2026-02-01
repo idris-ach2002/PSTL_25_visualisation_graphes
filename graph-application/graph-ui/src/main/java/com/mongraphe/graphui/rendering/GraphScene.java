@@ -1,28 +1,60 @@
 package com.mongraphe.graphui.rendering;
 
-import java.util.ArrayList;
-
 import com.mongraphe.graphui.Edge;
+import com.mongraphe.graphui.EdgeC;
 import com.mongraphe.graphui.Vertex;
 
-public class GraphScene {
-    ArrayList<Vertex> vertices = new ArrayList<>();
-    ArrayList<Edge> edges = new ArrayList<>();
+import java.util.ArrayList;
+import java.util.List;
 
-    public GraphScene() {
+public class GraphScene {
+
+    private final List<Vertex> vertices = new ArrayList<>();
+    private final List<Edge> edges = new ArrayList<>();
+
+    private int visibleVertexCount;
+    private int visibleEdgeCount;
+
+    public void buildFromData(Vertex[] verticesArray, EdgeC[] edgesArray) {
+        clear();
+
+        for (Vertex v : verticesArray) {
+            addVertex(v);
+        }
+
+        for (EdgeC ec : edgesArray) {
+            Vertex start = vertices.get(ec.getStart());
+            Vertex end = vertices.get(ec.getEnd());
+            Edge e = new Edge(start, end, ec.getWeight());
+            addEdge(e);
+        }
+
+        computeVisibilityStats();
     }
 
-    public ArrayList<Vertex> vertices() {
+    public void updateVertexPositions(Vertex[] verticesArray) {
+        for (int i = 0; i < vertices.size(); i++) {
+            Vertex v = vertices.get(i);
+            Vertex newV = verticesArray[i];
+            v.updatePosition(newV.getX(), newV.getY());
+        }
+        computeVisibilityStats();
+    }
+
+    public List<Vertex> vertices() {
         return vertices;
     }
 
-    public ArrayList<Edge> edges() {
+    public List<Edge> edges() {
         return edges;
     }
 
-    public void clear() {
-        vertices.clear();
-        edges.clear();
+    public int vertexCount() {
+        return vertices.size();
+    }
+
+    public int edgeCount() {
+        return edges.size();
     }
 
     public void addVertex(Vertex v) {
@@ -33,12 +65,36 @@ public class GraphScene {
         edges.add(e);
     }
 
-    public int getVertexCount() {
-        return vertices.size();
+    public void removeVertex(Vertex v) {
+        vertices.remove(v);
+        edges.removeIf(e -> e.getStart() == v || e.getEnd() == v);
     }
 
-    public int getEdgeCount() {
-        return edges.size();
+    public void clear() {
+        vertices.clear();
+        edges.clear();
     }
 
+    public void computeVisibilityStats() {
+        visibleVertexCount = 0;
+        visibleEdgeCount = 0;
+
+        for (Vertex v : vertices) {
+            if (!v.isDeleted() && v.isVisible())
+                visibleVertexCount++;
+        }
+
+        for (Edge e : edges) {
+            if (e.isVisible())
+                visibleEdgeCount++;
+        }
+    }
+
+    public int getVisibleVertexCount() {
+        return visibleVertexCount;
+    }
+
+    public int getVisibleEdgeCount() {
+        return visibleEdgeCount;
+    }
 }
