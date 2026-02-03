@@ -40,20 +40,9 @@ public class Graph implements GLEventListener, GraphSettings {
     }
 
     static {
-        String os = System.getProperty("os.name").toLowerCase();
-        String libPath;
-
-        if (os.contains("win")) {
-            libPath = System.getProperty("user.dir") + "/out/windows/libnative.dll";
-        } else if (os.contains("mac")) {
-            libPath = System.getProperty("user.dir") + "/out/macos/libnative.dylib";
-        } else { // Linux
-            libPath = System.getProperty("user.dir") + "/out/linux/libnative.so";
-        }
-
-        System.load(libPath);
-    }
-
+        System.loadLibrary("native");
+   }
+   
     // Méthodes JNI
     public native double[][] startsProgram(String filename);
 
