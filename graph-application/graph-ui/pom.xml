@@ -1,9 +1,15 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project xmlns="http://maven.apache.org/POM/4.0.0"
          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-         xsi:schemaLocation="
-           http://maven.apache.org/POM/4.0.0
-           https://maven.apache.org/xsd/maven-4.0.0.xsd">
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0
+         https://maven.apache.org/xsd/maven-4.0.0.xsd">
+
+    <repositories>
+    <repository>
+        <id>jogamp</id>
+        <url>https://jogamp.org/deployment/maven</url>
+    </repository>
+    </repositories>
 
     <modelVersion>4.0.0</modelVersion>
 
@@ -12,108 +18,42 @@
     <version>0.0.1-SNAPSHOT</version>
     <packaging>jar</packaging>
 
-    <!-- ================================================= -->
-    <!-- Repositories (JOGL n'est PAS sur Maven Central) -->
-    <!-- ================================================= -->
-    <repositories>
-        <repository>
-            <id>jogamp</id>
-            <url>https://jogamp.org/deployment/maven</url>
-        </repository>
-    </repositories>
-
-    <!-- ================================================= -->
-    <!-- Propriétés globales -->
-    <!-- ================================================= -->
     <properties>
         <java.version>21</java.version>
+        <javafx.version>21</javafx.version>
         <jogamp.version>2.4.0</jogamp.version>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     </properties>
 
-    <!-- ================================================= -->
-    <!-- Profils OS -->
-    <!-- ================================================= -->
-    <profiles>
-        <profile>
-            <id>linux</id>
-            <activation>
-                <os>
-                    <family>unix</family>
-                </os>
-            </activation>
-            <properties>
-                <jogamp.classifier>natives-linux-amd64</jogamp.classifier>
-                <native.dir>../graph-native/out/linux</native.dir>
-            </properties>
-        </profile>
-
-        <profile>
-            <id>windows</id>
-            <activation>
-                <os>
-                    <family>windows</family>
-                </os>
-            </activation>
-            <properties>
-                <jogamp.classifier>natives-windows-amd64</jogamp.classifier>
-                <native.dir>../graph-native/out/windows</native.dir>
-            </properties>
-        </profile>
-    </profiles>
-
-    <!-- ================================================= -->
-    <!-- Dépendances -->
-    <!-- ================================================= -->
     <dependencies>
-
-        <!-- JavaFX -->
+        <!-- JavaFX modules sans classifier -->
         <dependency>
             <groupId>org.openjfx</groupId>
             <artifactId>javafx-controls</artifactId>
-            <version>21</version>
+            <version>${javafx.version}</version>
         </dependency>
         <dependency>
             <groupId>org.openjfx</groupId>
             <artifactId>javafx-fxml</artifactId>
-            <version>21</version>
+            <version>${javafx.version}</version>
         </dependency>
 
-        <!-- JOGL / GlueGen -->
+        <!-- JOGL -->
         <dependency>
             <groupId>org.jogamp.jogl</groupId>
-            <artifactId>jogl-all</artifactId>
+            <artifactId>jogl-all-main</artifactId>
             <version>${jogamp.version}</version>
         </dependency>
         <dependency>
             <groupId>org.jogamp.gluegen</groupId>
-            <artifactId>gluegen-rt</artifactId>
+            <artifactId>gluegen-rt-main</artifactId>
             <version>${jogamp.version}</version>
         </dependency>
-
-        <!-- Natives JOGL -->
-        <dependency>
-            <groupId>org.jogamp.jogl</groupId>
-            <artifactId>jogl-all</artifactId>
-            <version>${jogamp.version}</version>
-            <classifier>${jogamp.classifier}</classifier>
-        </dependency>
-        <dependency>
-            <groupId>org.jogamp.gluegen</groupId>
-            <artifactId>gluegen-rt</artifactId>
-            <version>${jogamp.version}</version>
-            <classifier>${jogamp.classifier}</classifier>
-        </dependency>
-
     </dependencies>
 
-    <!-- ================================================= -->
-    <!-- Build -->
-    <!-- ================================================= -->
     <build>
         <plugins>
-
-            <!-- Compilation Java -->
+            <!-- Compilation -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-compiler-plugin</artifactId>
@@ -123,23 +63,23 @@
                 </configuration>
             </plugin>
 
-            <!-- JavaFX + JOGL Runtime -->
+            <!-- JavaFX runtime -->
             <plugin>
                 <groupId>org.openjfx</groupId>
                 <artifactId>javafx-maven-plugin</artifactId>
                 <version>0.0.8</version>
                 <configuration>
                     <mainClass>com.mongraphe.graphui.MainApp</mainClass>
-
                     <options>
                         <!-- JNI -->
-                        <option>-Djava.library.path=${native.dir}</option>
+                        <option>-Djava.library.path=${project.basedir}/../graph-native/out</option>
 
-                        <!-- Stabilise Prism / Quantum -->
-                        <option>-Dprism.order=sw</option>
+                        <!-- Debug rendu -->
+                        <option>-Dprism.verbose=true</option>
+                        <!-- Force utilisation GPU pour JavaFX-->
                         <option>-Dprism.forceGPU=true</option>
 
-                        <!-- JavaFX internals required by JOGL -->
+                        <!-- Accès internes requis par JOGL -->
                         <option>--add-opens</option>
                         <option>javafx.graphics/com.sun.javafx.tk=ALL-UNNAMED</option>
 
@@ -155,18 +95,16 @@
                         <option>--add-opens</option>
                         <option>javafx.graphics/javafx.stage=ALL-UNNAMED</option>
 
-                        <!-- Exports (symbol access) -->
+                        <!-- Exports -->
                         <option>--add-exports</option>
                         <option>javafx.graphics/com.sun.javafx.tk=ALL-UNNAMED</option>
-
                         <option>--add-exports</option>
                         <option>javafx.graphics/com.sun.javafx.tk.quantum=ALL-UNNAMED</option>
+                        <option>--add-exports</option>
+                        <option>javafx.graphics/com.sun.javafx.stage=ALL-UNNAMED</option>
                     </options>
-
                 </configuration>
             </plugin>
-
         </plugins>
     </build>
-
 </project>

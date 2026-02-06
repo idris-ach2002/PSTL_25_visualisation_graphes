@@ -558,7 +558,7 @@ Vect parse_stmt_list(
         case '"':
             next_token(file, buffer, &size, 1);
             break;
-        case '[':
+        case '[': {
             double w = 1.0;
             char * label = NULL;
             parse_attr(file, buffer, &w, &label);
@@ -572,7 +572,8 @@ Vect parse_stmt_list(
                 node_names[node_list1.content[last_list1]] = label;
             }
 
-            break;
+            break; 
+        }
         case '=':
             ignore = 1;
             break;
@@ -623,10 +624,11 @@ void parse_dot_file(const char* filename) {
     }
 
     switch(c) {
-        case '{':
+        case '{': {
             Vect res = parse_stmt_list(file, buf, &map, &capacity);
             freeVect(res);
             break;
+        }
         default:
             break;    
     }

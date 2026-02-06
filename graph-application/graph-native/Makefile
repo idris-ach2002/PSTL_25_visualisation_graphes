@@ -1,37 +1,42 @@
-# =========================
-# Configuration générale
-# =========================
-
-CC      := gcc
+CC := gcc
+CSTD := -std=c11
 UNAME_S := $(shell uname -s)
 
-# Détection OS (ici Linux only, simple et robuste)
+# Extension selon OS (pour simplifier le chargement de la librairie en Java)
 ifeq ($(UNAME_S),Linux)
-    OS      := linux
-    EXT     := so
-    JNI_OS  := linux
+    EXT := so
+    JNI_OS := linux
 else ifeq ($(UNAME_S),Darwin)
-    OS      := macos
-    EXT     := dylib
-    JNI_OS  := darwin
+    EXT := dylib
+    JNI_OS := darwin
 else
-    OS      := windows
-    EXT     := dll
-    JNI_OS  := win32
+    EXT := dll
+    JNI_OS := win32
 endif
 
-# JAVA_HOME obligatoire pour JNI
-JAVA_HOME ?= $(shell readlink -f /usr/bin/java | sed "s:/bin/java::")
+ifeq ($(OS),Windows_NT)
+    # Windows : on prend JAVA_HOME s'il est défini
+    ifndef JAVA_HOME
+        $(error "Please set JAVA_HOME environment variable on Windows")
+    endif
+else
+    # Linux / macOS : on peut détecter java dans le PATH
+    ifndef JAVA_HOME
+        JAVA_BIN := $(shell which java)
+        ifeq ($(JAVA_BIN),)
+            $(error "java not found in PATH, please set JAVA_HOME")
+        endif
+        JAVA_HOME := $(shell readlink -f $(JAVA_BIN) | sed "s:/bin/java::")
+    endif
+endif
 
-JNI_INC := \
-    -I$(JAVA_HOME)/include \
-    -I$(JAVA_HOME)/include/$(JNI_OS)
+JNI_INC := -I$(JAVA_HOME)/include -I$(JAVA_HOME)/include/$(JNI_OS)
 
-# Dossiers
+JNI_INC := -I$(JAVA_HOME)/include -I$(JAVA_HOME)/include/$(JNI_OS)
+
 SRC_DIR := c
-OUT_DIR := out/$(OS)
+OUT_DIR := out
 
-# Sources C (récursif)
 SRC := \
     $(wildcard $(SRC_DIR)/c_graph/*.c) \
     $(wildcard $(SRC_DIR)/concurrent/*.c) \
@@ -43,21 +48,17 @@ OBJ := $(patsubst $(SRC_DIR)/%.c,$(OUT_DIR)/%.o,$(SRC))
 
 LIB := $(OUT_DIR)/libnative.$(EXT)
 
-CFLAGS := -Wall -Wextra -O2 -fPIC $(JNI_INC)
-
-# =========================
-# Règles
-# =========================
+CFLAGS := -Wall -Wextra -O2 -fPIC $(CSTD) $(COMPILER_FLAGS) $(JNI_INC)
 
 all: $(LIB)
 
 $(LIB): $(OBJ)
-	@echo "🔗 Linking JNI library: $@"
+	@echo "🔗 Linking $@"
 	@mkdir -p $(dir $@)
 	$(CC) -shared $^ -o $@
 
 $(OUT_DIR)/%.o: $(SRC_DIR)/%.c
-	@echo "⚙️  Compiling $<"
+	@echo "⚙️  $<"
 	@mkdir -p $(dir $@)
 	$(CC) $(CFLAGS) -c $< -o $@
 

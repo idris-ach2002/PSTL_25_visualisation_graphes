@@ -55,25 +55,4 @@ public class MainApp extends Application {
 			e.printStackTrace();
 		}
 	}
-
-	public static void main(String[] args) {
-		runMake("./");
-		// Détecter le système d'exploitation
-		String os = System.getProperty("os.name").toLowerCase();
-		String libPath;
-
-		if (os.contains("win")) {
-			libPath = new File(System.getProperty("user.dir")).getParent() + "/graph-ui/out/windows/libnative.dll";
-		} else if (os.contains("mac")) {
-			libPath = new File(System.getProperty("user.dir")).getParent() + "/graph-ui/out/macos/libnative.dylib";
-		} else { // Linux
-			libPath = new File(System.getProperty("user.dir")).getParent() + "/graph-ui/out/linux/libnative.so";
-		}
-
-		// Charger la bibliothèque native
-		System.load(libPath);
-		System.out.println("Chemin de la bibliothèque native : " + libPath);
-
-		launch(args);
-	}
 }
