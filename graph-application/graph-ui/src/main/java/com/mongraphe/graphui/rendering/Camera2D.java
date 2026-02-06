@@ -2,21 +2,56 @@ package com.mongraphe.graphui.rendering;
 
 import java.nio.FloatBuffer;
 
-public class Camera2D {
+public final class Camera2D {
 
     private float zoom = 1f;
-    private float offsetX = 0;
-    private float offsetY = 0;
-    private FloatBuffer projection;
+    private float offsetX;
+    private float offsetY;
+
+    private int width = 1;
+    private int height = 1;
+
+    private final FloatBuffer projection = FloatBuffer.allocate(16);
 
     public void resize(int w, int h) {
-        float hw = w / 2f;
-        float hh = h / 2f;
+        width = Math.max(1, w);
+        height = Math.max(1, h);
+        updateProjection();
+    }
 
-        float left = -hw / zoom + offsetX;
-        float right = hw / zoom + offsetX;
-        float bottom = -hh / zoom + offsetY;
-        float top = hh / zoom + offsetY;
+    public void zoomAt(float amount) {
+        zoom *= (amount > 0) ? 1.1f : 0.9f;
+        updateProjection();
+    }
+
+    public void zoomAt(float screenX, float screenY, float amount) {
+
+        float worldX = screenToWorldX(screenX);
+        float worldY = screenToWorldY(screenY);
+
+        zoom *= (amount > 0) ? 1.1f : 0.9f;
+
+        offsetX = worldX - (screenX - width / 2f) / zoom;
+        offsetY = worldY - (height / 2f - screenY) / zoom;
+
+        updateProjection();
+    }
+
+    public void pan(float dx, float dy) {
+        offsetX -= dx / zoom;
+        offsetY += dy / zoom;
+        updateProjection();
+    }
+
+    private void updateProjection() {
+
+        float hw = width / 2f / zoom;
+        float hh = height / 2f / zoom;
+
+        float left = -hw + offsetX;
+        float right = hw + offsetX;
+        float bottom = -hh + offsetY;
+        float top = hh + offsetY;
 
         float[] ortho = {
                 2f / (right - left), 0, 0, 0,
@@ -26,27 +61,20 @@ public class Camera2D {
                 -(top + bottom) / (top - bottom),
                 0, 1
         };
-        projection = FloatBuffer.wrap(ortho);
-    }
 
-    public void zoomAt(int mx, int my, float amount) {
-        zoom *= (amount > 0) ? 1.1f : 0.9f;
-    }
-
-    public void panFromDrag(int dx, int dy) {
-        offsetX -= dx / zoom;
-        offsetY += dy / zoom;
-    }
-
-    public double screenToWorldX(int x) {
-        return x / zoom + offsetX;
-    }
-
-    public double screenToWorldY(int y) {
-        return y / zoom + offsetY;
+        projection.clear();
+        projection.put(ortho).flip();
     }
 
     public FloatBuffer getProjection() {
         return projection;
+    }
+
+    public float screenToWorldX(float screenX) {
+        return (screenX - width / 2f) / zoom + offsetX;
+    }
+
+    public float screenToWorldY(float screenY) {
+        return (height / 2f - screenY) / zoom + offsetY;
     }
 }

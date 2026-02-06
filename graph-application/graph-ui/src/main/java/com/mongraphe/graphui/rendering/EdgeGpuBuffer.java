@@ -4,6 +4,7 @@ import java.nio.FloatBuffer;
 
 import com.jogamp.opengl.GL4;
 import com.mongraphe.graphui.Edge;
+import com.mongraphe.graphui.model.GraphModel;
 
 public class EdgeGpuBuffer {
 
@@ -28,9 +29,9 @@ public class EdgeGpuBuffer {
         visVbo = b[3];
     }
 
-    public void update(GraphScene scene) {
+    public void update(GraphModel model) {
 
-        int edgeCount = scene.edges().size();
+        int edgeCount = model.edges().size();
         vertexCount = edgeCount * 2;
 
         positions = new float[edgeCount * 4];
@@ -40,7 +41,7 @@ public class EdgeGpuBuffer {
 
         int p = 0, c = 0, s = 0, v = 0;
 
-        for (Edge e : scene.edges()) {
+        for (Edge e : model.edges()) {
 
             float x1 = (float) e.getStart().getX();
             float y1 = (float) e.getStart().getY();

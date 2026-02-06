@@ -1,4 +1,4 @@
-package com.mongraphe.interfaces;
+package com.mongraphe.graphui.interfaces;
 
 import com.jogamp.opengl.GL4;
 import com.mongraphe.graphui.rendering.GraphRenderer;

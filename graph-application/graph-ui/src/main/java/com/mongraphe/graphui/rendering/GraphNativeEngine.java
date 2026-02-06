@@ -14,6 +14,10 @@ public class GraphNativeEngine {
     private Metadata metadata;        // Metadata du graphe courant
     private Metadata init_metadata;   // Metadata après le calcul des seuils
 
+    static {
+        System.loadLibrary("native"); // Charger la bibliothèque native "libnative"
+    }
+
     public double[][] initGraph(String path, GraphData.SimilitudeMode sim, GraphData.NodeCommunity community) {
         if (path == null || path.isEmpty())
             throw new RuntimeException("initGraph : Chemin du fichier non spécifié.");
@@ -94,21 +98,13 @@ public class GraphNativeEngine {
     }
 
     public native Metadata initializeDot(String filepath, int md);
-
     public native Metadata computeThreshold(int modeSimilitude, int edge_factor);
-
     public native Metadata initializeGraph(int modeCommunity, double threshold, double anti_threshold);
-
     public native double[][] startsProgram(String filename);
-
     public native boolean updatePositions();
-
     public native Vertex[] getPositions();
     public native EdgeC[] getEdges();
-
     public native void setNodePosition(int id, double x, double y);
-
     public native void deleteNode(int id);
     public native void restoreNode(int id);
-
 }

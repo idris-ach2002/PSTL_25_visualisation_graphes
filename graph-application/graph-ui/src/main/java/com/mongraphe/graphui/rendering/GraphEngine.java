@@ -1,48 +1,48 @@
 package com.mongraphe.graphui.rendering;
 
 import com.mongraphe.graphui.GraphData;
-import com.mongraphe.graphui.Metadata;
+import com.mongraphe.graphui.model.GraphModel;
 
-public class GraphEngine {
+public final class GraphEngine {
 
     private final GraphNativeEngine nativeEngine;
-    private final GraphScene scene;
-    private final GraphVisibilityFilter visibilityFilter;
+    private final GraphModel model;
+    private final GraphSimulation simulation;
+    private final GraphVisibilityFilter visibility;
 
     public GraphEngine(GraphNativeEngine nativeEngine) {
         this.nativeEngine = nativeEngine;
-        this.scene = new GraphScene();
-        this.visibilityFilter = new GraphVisibilityFilter();
+        this.model = new GraphModel();
+        this.simulation = new GraphSimulation(nativeEngine);
+        this.visibility = new GraphVisibilityFilter();
     }
 
-    public void initCsv(String path, GraphData.SimilitudeMode sim, GraphData.NodeCommunity community) {
-        if (path == null || path.isEmpty())
-            throw new RuntimeException("Chemin du fichier non spécifié.");
+    public void loadCsv(String path,
+            GraphData.SimilitudeMode sim,
+            GraphData.NodeCommunity community) {
 
-        nativeEngine.startsProgram(path);
+        if (path == null || path.isBlank())
+            throw new IllegalArgumentException("CSV path missing");
 
-        int modeSimilitude = nativeEngine.getModeSimilitude(sim);
-        Metadata thresholds = nativeEngine.computeThreshold(modeSimilitude, 50);
-        if (thresholds == null)
-            throw new RuntimeException("Erreur lors du calcul des seuils.");
+        nativeEngine.initGraphCsv(path, sim, community);
 
-        int modeCommunity = nativeEngine.getModeCommunity(community);
-        nativeEngine.initializeGraph(modeCommunity, thresholds.getEdgeThreshold(), thresholds.getAntiThreshold());
+        model.buildFromData(
+                nativeEngine.getPositions(),
+                nativeEngine.getEdges());
 
-        scene.buildFromData(nativeEngine.getPositions(), nativeEngine.getEdges());
-
-        System.out.println("Graphe chargé : " + nativeEngine.getPositions().length + " sommets, "
-                + nativeEngine.getEdges().length + " arêtes.");
+        visibility.apply(model);
     }
 
     public void update() {
-        if (nativeEngine.updatePositions()) {
-            scene.updateVertexPositions(nativeEngine.getPositions());
-        }
-        visibilityFilter.apply(scene);
+        simulation.update(model);
+        visibility.apply(model);
     }
 
-    public GraphScene getScene() {
-        return scene;
+    public GraphModel model() {
+        return model;
+    }
+
+    public GraphVisibilityFilter visibility() {
+        return visibility;
     }
 }

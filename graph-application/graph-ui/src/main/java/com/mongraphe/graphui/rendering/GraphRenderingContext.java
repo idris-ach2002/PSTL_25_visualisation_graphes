@@ -1,4 +1,4 @@
-package com.mongraphe.graphui.randerer;
+package com.mongraphe.graphui.rendering;
 
 import com.jogamp.newt.javafx.NewtCanvasJFX;
 import com.jogamp.newt.opengl.GLWindow;

@@ -1,8 +1,6 @@
 package com.mongraphe.graphui.export;
 
 import com.jogamp.opengl.GL4;
-import com.jogamp.opengl.GLAutoDrawable;
-import com.jogamp.opengl.GLRunnable;
 import com.jogamp.newt.opengl.GLWindow;
 import com.mongraphe.graphui.rendering.GraphRenderer;
 
@@ -15,32 +13,30 @@ import java.nio.ByteOrder;
 public class GraphExport {
 
     private final GLWindow window;
-    private final GraphRenderer renderer;
 
-    public GraphExport(GLWindow window, GraphRenderer renderer) {
+    public GraphExport(GLWindow window) {
         this.window = window;
-        this.renderer = renderer;
     }
 
-    public void scheduleExport(String path) {
-        scheduleExport(path, window.getWidth(), window.getHeight());
-    }
-
-    public void scheduleExport(String path, int width, int height) {
+    public void export(String path,
+            int width,
+            int height,
+            GraphRenderer renderer) {
 
         new File("capture").mkdirs();
 
-        window.invoke(true, new GLRunnable() {
-            @Override
-            public boolean run(GLAutoDrawable drawable) {
-                GL4 gl = drawable.getGL().getGL4();
-                exportToPng(gl, width, height, path);
-                return true;
-            }
+        window.invoke(true, drawable -> {
+            exportToPng(
+                    drawable.getGL().getGL4(),
+                    width,
+                    height,
+                    path,
+                    renderer);
+            return true;
         });
     }
 
-    private void exportToPng(GL4 gl, int width, int height, String path) {
+    private void exportToPng(GL4 gl, int width, int height, String path, GraphRenderer renderer) {
 
         int[] viewport = new int[4];
         gl.glGetIntegerv(GL4.GL_VIEWPORT, viewport, 0);

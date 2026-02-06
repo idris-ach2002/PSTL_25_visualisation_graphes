@@ -1,13 +1,19 @@
-package com.mongraphe.graphui;
+package com.mongraphe.graphui.view;
 
 import java.io.File;
 
 import com.jogamp.newt.javafx.NewtCanvasJFX;
+import com.mongraphe.graphui.Edge;
+import com.mongraphe.graphui.Graph;
+import com.mongraphe.graphui.GraphData;
+import com.mongraphe.graphui.Vertex;
+import com.mongraphe.graphui.GraphData.GraphMode;
 import com.mongraphe.graphui.GraphData.NodeCommunity;
+import com.mongraphe.graphui.GraphData.RepulsionMode;
 import com.mongraphe.graphui.GraphData.SimilitudeMode;
 import com.mongraphe.graphui.data.GraphDataInitializer;
 import com.mongraphe.graphui.interaction.GraphInteractionController;
-import com.mongraphe.graphui.randerer.GraphRenderingContext;
+import com.mongraphe.graphui.rendering.GraphRenderingContext;
 
 import javafx.application.Platform;
 import javafx.beans.property.DoubleProperty;
@@ -51,7 +57,7 @@ import javafx.scene.paint.Color;
  * - la gestion des interactions bas niveau,
  * - les calculs lourds (JNI).
  */
-public class GraphVue {
+public class GraphView {
 
     /* ============================
        === FXML : vues & layout ===

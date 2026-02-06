@@ -2,8 +2,8 @@ package com.mongraphe.graphui.interaction;
 
 import com.mongraphe.graphui.Graph;
 import com.mongraphe.graphui.GraphData;
-import com.mongraphe.graphui.GraphVue;
 import com.mongraphe.graphui.Vertex;
+import com.mongraphe.graphui.view.GraphView;
 
 /**
  * GraphInteractionController
@@ -15,7 +15,7 @@ import com.mongraphe.graphui.Vertex;
  * - communication entre le moteur du graphe et l'interface utilisateur.
  *
  * Objectif :
- * Découpler la logique d'interaction du contrôleur JavaFX (GraphVue)
+ * Découpler la logique d'interaction du contrôleur JavaFX (GraphView)
  * afin d'améliorer la lisibilité, la maintenabilité et la compréhension pédagogique.
  *
  * Cette classe ne gère PAS :
@@ -26,17 +26,17 @@ import com.mongraphe.graphui.Vertex;
 public class GraphInteractionController {
 
     private final Graph graph;
-    private final GraphVue graphVue;
+    private final GraphView graphView;
 
     /**
      * Crée un contrôleur d'interaction pour un graphe donné.
      *
      * @param graph    le graphe métier
-     * @param graphVue la vue à notifier (survol, infos UI)
+     * @param graphView la vue à notifier (survol, infos UI)
      */
-    public GraphInteractionController(Graph graph, GraphVue graphVue) {
+    public GraphInteractionController(Graph graph, GraphView graphView) {
         this.graph = graph;
-        this.graphVue = graphVue;
+        this.graphView = graphView;
     }
 
     /**
@@ -58,7 +58,7 @@ public class GraphInteractionController {
      * @param vertex sommet survolé, ou null si aucun
      */
     public void onVertexHovered(Vertex vertex) {
-        graphVue.setHoveredVertex(vertex);
+        graphView.setHoveredVertex(vertex);
     }
 
     /**

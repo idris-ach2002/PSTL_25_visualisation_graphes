@@ -3,6 +3,7 @@ package com.mongraphe.graphui.rendering;
 import java.nio.FloatBuffer;
 import com.jogamp.opengl.GL4;
 import com.mongraphe.graphui.Vertex;
+import com.mongraphe.graphui.model.GraphModel;
 
 public class VertexGpuBuffer {
 
@@ -19,15 +20,15 @@ public class VertexGpuBuffer {
         visVbo = b[3];
     }
 
-    public void update(GraphScene scene) {
-        count = scene.vertices().size();
+    public void update(GraphModel model) {
+        count = model.vertices().size();
         pos = new float[count * 2];
         col = new float[count * 3];
         size = new float[count];
         vis = new float[count];
 
         for (int i = 0; i < count; i++) {
-            Vertex v = scene.vertices().get(i);
+            Vertex v = model.vertices().get(i);
             pos[i * 2] = (float) v.getX();
             pos[i * 2 + 1] = (float) v.getY();
             col[i * 3] = v.getCommunity().getR();

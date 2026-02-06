@@ -23,6 +23,7 @@ import com.jogamp.opengl.GLRunnable;
 
 import com.jogamp.opengl.awt.GLJPanel;
 import com.jogamp.opengl.util.FPSAnimator;
+import com.mongraphe.graphui.view.GraphView;
 
 import javafx.animation.Timeline;
 import javafx.application.Platform;
@@ -31,9 +32,9 @@ import javafx.scene.Scene;
 import javafx.scene.layout.Pane;
 
 public class Graph implements GLEventListener, GraphSettings {
-    private GraphVue graphVue;
+    private GraphView graphVue;
 
-    public Graph(GraphVue graphVue, double graphWidth, double graphHeight) {
+    public Graph(GraphView graphVue, double graphWidth, double graphHeight) {
         this.graphWidth = graphWidth;
         this.graphHeight = graphHeight;
         this.graphVue = graphVue;

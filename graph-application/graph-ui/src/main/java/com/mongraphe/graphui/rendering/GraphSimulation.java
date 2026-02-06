@@ -1,37 +1,25 @@
 package com.mongraphe.graphui.rendering;
 
-import com.mongraphe.graphui.Vertex;
-import java.util.List;
+import com.mongraphe.graphui.model.GraphModel;
+public final class GraphSimulation {
 
-public class GraphSimulation {
-
-    private final GraphNativeEngine nativeGraph;
+    private final GraphNativeEngine nativeEngine;
     private boolean running = true;
 
-    public GraphSimulation(GraphNativeEngine nativeGraph) {
-        this.nativeGraph = nativeGraph;
+    public GraphSimulation(GraphNativeEngine nativeEngine) {
+        this.nativeEngine = nativeEngine;
     }
 
-    public void update(GraphScene scene) {
+    public void update(GraphModel model) {
 
         if (!running)
             return;
 
-        boolean stillMoving = nativeGraph.updatePositions();
-
-        Vertex[] updated = nativeGraph.getPositions();
-        List<Vertex> sceneVertices = scene.vertices();
-
-        for (int i = 0; i < sceneVertices.size(); i++) {
-            Vertex v = sceneVertices.get(i);
-            Vertex nv = updated[i];
-
-            v.updatePosition(nv.getX(), nv.getY());
-        }
-
-        if (!stillMoving) {
+        if (!nativeEngine.updatePositions()) {
             running = false;
         }
+
+        model.updateVertexPositions(nativeEngine.getPositions());
     }
 
     public void start() {
@@ -40,9 +28,5 @@ public class GraphSimulation {
 
     public void stop() {
         running = false;
-    }
-
-    public boolean isRunning() {
-        return running;
     }
 }

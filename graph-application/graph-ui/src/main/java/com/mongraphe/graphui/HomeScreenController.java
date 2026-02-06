@@ -3,6 +3,8 @@ package com.mongraphe.graphui;
 import java.io.File;
 import java.io.IOException;
 
+import com.mongraphe.graphui.view.GraphView;
+
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
 import javafx.geometry.Rectangle2D;
@@ -24,7 +26,7 @@ public class HomeScreenController {
     private void handleNewProject() {
         try {
             // Créer une instance de la classe Graph
-            GraphVue graph = new GraphVue();
+            GraphView graph = new GraphView();
 
             // Définir le fichier à utiliser
             File file = new File(System.getProperty("user.dir") + "/samples/iris.csv");

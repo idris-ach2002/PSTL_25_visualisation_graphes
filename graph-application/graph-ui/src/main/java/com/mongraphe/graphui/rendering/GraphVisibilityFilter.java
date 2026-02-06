@@ -2,6 +2,7 @@ package com.mongraphe.graphui.rendering;
 
 import com.mongraphe.graphui.Edge;
 import com.mongraphe.graphui.Vertex;
+import com.mongraphe.graphui.model.GraphModel;
 
 public class GraphVisibilityFilter {
 
@@ -23,7 +24,7 @@ public class GraphVisibilityFilter {
         this.edgeWeightThreshold = threshold;
     }
 
-    public void apply(GraphScene scene) {
+    public void apply(GraphModel model) {
 
         visibleVertices = 0;
         hiddenVertices = 0;
@@ -31,7 +32,7 @@ public class GraphVisibilityFilter {
         visibleEdges = 0;
         hiddenEdges = 0;
 
-        for (Vertex v : scene.vertices()) {
+        for (Vertex v : model.vertices()) {
             if (v.isDeleted()) {
                 deletedVertices++;
                 v.setVisible(false);
@@ -44,7 +45,7 @@ public class GraphVisibilityFilter {
             }
         }
 
-        for (Edge e : scene.edges()) {
+        for (Edge e : model.edges()) {
             boolean visible = e.getStart().isVisible() && e.getEnd().isVisible()
                     && e.getWeight() >= edgeWeightThreshold;
             e.setVisible(visible);
@@ -54,7 +55,7 @@ public class GraphVisibilityFilter {
                 hiddenEdges++;
         }
 
-        scene.computeVisibilityStats();
+        model.computeVisibilityStats();
     }
 
     public int getVisibleVertices() {

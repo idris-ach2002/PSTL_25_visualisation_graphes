@@ -1,4 +1,4 @@
-package com.mongraphe.interfaces;
+package com.mongraphe.graphui.interfaces;
 
 import com.mongraphe.graphui.Vertex;
 
