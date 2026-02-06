@@ -1,4 +1,5 @@
 CC := gcc
+CSTD := -std=c11
 UNAME_S := $(shell uname -s)
 
 # Extension selon OS (pour simplifier le chargement de la librairie en Java)
@@ -47,7 +48,7 @@ OBJ := $(patsubst $(SRC_DIR)/%.c,$(OUT_DIR)/%.o,$(SRC))
 
 LIB := $(OUT_DIR)/libnative.$(EXT)
 
-CFLAGS := -Wall -Wextra -O2 -fPIC $(JNI_INC)
+CFLAGS := -Wall -Wextra -O2 -fPIC $(CSTD) $(COMPILER_FLAGS) $(JNI_INC)
 
 all: $(LIB)
 
