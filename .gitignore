@@ -70,6 +70,8 @@ graph-ui/out/
 # IDE / Editors
 ##################################
 
+*.clangd
+
 # VS Code
 .vscode/
 
