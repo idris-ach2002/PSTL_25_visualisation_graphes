@@ -14,7 +14,7 @@
 <?import javafx.collections.FXCollections?>
 
 <GridPane xmlns="http://javafx.com/javafx/8" xmlns:fx="http://javafx.com/fxml/1"
-          fx:controller="com.mongraphe.graphui.GraphVue"
+          fx:controller="com.mongraphe.graphui.view.GraphView"
           stylesheets="@../css/visualisation.css">
     
     <!-- Configuration des colonnes et lignes révisée -->

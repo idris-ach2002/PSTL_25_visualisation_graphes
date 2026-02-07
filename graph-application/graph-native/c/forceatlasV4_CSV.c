@@ -43,7 +43,7 @@ short pause_updates = 0;
  * 
  */
 
-JNIEXPORT jboolean JNICALL Java_com_mongraphe_graphui_Graph_updatePositions
+JNIEXPORT jboolean JNICALL Java_com_mongraphe_graphui_rendering_GraphNativeEngine_updatePositions
  (JNIEnv * env, jobject obj)
 {
   double FMaxX = Lx/(friction*1000);
@@ -87,14 +87,14 @@ JNIEXPORT jboolean JNICALL Java_com_mongraphe_graphui_Graph_updatePositions
   return 1;
 }
 
-JNIEXPORT jintArray JNICALL Java_com_mongraphe_graphui_Graph_getCommunities(JNIEnv *env, jobject obj) {
+JNIEXPORT jintArray JNICALL Java_com_mongraphe_graphui_rendering_GraphNativeEngine_getCommunities(JNIEnv *env, jobject obj) {
     jintArray result = (*env)->NewIntArray(env, MAX_NODES);
     (*env)->SetIntArrayRegion(env, result, 0, MAX_NODES,(const jint *) communities);
 
     return result;
 }
 
-JNIEXPORT jobjectArray JNICALL Java_com_mongraphe_graphui_Graph_getClusterColors
+JNIEXPORT jobjectArray JNICALL Java_com_mongraphe_graphui_rendering_GraphNativeEngine_getClusterColors
   (JNIEnv * env, jobject obj)
 {
     jclass obj_class = (*env)->FindClass(env, "[F");
@@ -111,7 +111,7 @@ JNIEXPORT jobjectArray JNICALL Java_com_mongraphe_graphui_Graph_getClusterColors
     return result;
 }
 
-JNIEXPORT jobjectArray JNICALL Java_com_mongraphe_graphui_Graph_getEdges
+JNIEXPORT jobjectArray JNICALL Java_com_mongraphe_graphui_rendering_GraphNativeEngine_getEdges
   (JNIEnv * env, jobject obj)
 {
     // remplacer "backendinterface/Edge" par "[packageName]/[nomClasse]"
@@ -134,7 +134,7 @@ JNIEXPORT jobjectArray JNICALL Java_com_mongraphe_graphui_Graph_getEdges
     return result;
 }
 
-JNIEXPORT jobjectArray JNICALL Java_com_mongraphe_graphui_Graph_getPositions
+JNIEXPORT jobjectArray JNICALL Java_com_mongraphe_graphui_rendering_GraphNativeEngine_getPositions
   (JNIEnv * env, jobject obj)
 {
   jclass obj_class = (*env)->FindClass(env, "Lcom/mongraphe/graphui/Vertex;");
@@ -156,7 +156,7 @@ JNIEXPORT jobjectArray JNICALL Java_com_mongraphe_graphui_Graph_getPositions
   return result;
 }
 
-JNIEXPORT jobject JNICALL Java_com_mongraphe_graphui_Graph_startsProgram
+JNIEXPORT jobject JNICALL Java_com_mongraphe_graphui_rendering_GraphNativeEngine_startsProgram
   (JNIEnv * env, jobject obj, jstring filepath)
 {
     srand(time(NULL));
@@ -185,7 +185,7 @@ JNIEXPORT jobject JNICALL Java_com_mongraphe_graphui_Graph_startsProgram
 
 }
 
-JNIEXPORT jobject JNICALL Java_com_mongraphe_graphui_Graph_computeThreshold
+JNIEXPORT jobject JNICALL Java_com_mongraphe_graphui_rendering_GraphNativeEngine_computeThreshold
   (JNIEnv * env, jobject obj, jint modeSimilitude, jint edge_factor)
 {
 
@@ -222,7 +222,7 @@ JNIEXPORT jobject JNICALL Java_com_mongraphe_graphui_Graph_computeThreshold
 }
 
 
-JNIEXPORT jobject JNICALL Java_com_mongraphe_graphui_Graph_initializeGraph
+JNIEXPORT jobject JNICALL Java_com_mongraphe_graphui_rendering_GraphNativeEngine_initializeGraph
   (JNIEnv *env, jobject obj, jint md, jdouble thresh, jdouble anti_thresh)
 {
 
@@ -283,7 +283,7 @@ JNIEXPORT jobject JNICALL Java_com_mongraphe_graphui_Graph_initializeGraph
 
 }
 
-JNIEXPORT jobject JNICALL Java_graph_Graph_initializeDot
+JNIEXPORT jobject JNICALL Java_graph_graphui_rendering_GraphNativeEngine_initializeDot
   (JNIEnv *env, jobject obj, jstring filepath, jint md)
 {
 
@@ -347,7 +347,7 @@ JNIEXPORT jobject JNICALL Java_graph_Graph_initializeDot
   return res;
 }
 
-JNIEXPORT void JNICALL Java_com_mongraphe_graphui_Graph_freeAllocatedMemory
+JNIEXPORT void JNICALL Java_com_mongraphe_graphui_rendering_GraphNativeEngine_freeAllocatedMemory
   (JNIEnv * env, jobject obj)
 {
 
@@ -378,7 +378,7 @@ JNIEXPORT void JNICALL Java_com_mongraphe_graphui_Graph_freeAllocatedMemory
     num_antiedges = 0;
 }
 
-JNIEXPORT void JNICALL Java_com_mongraphe_graphui_Graph_freeProgramMemory
+JNIEXPORT void JNICALL Java_com_mongraphe_graphui_rendering_GraphNativeEngine_freeProgramMemory
   (JNIEnv * env, jobject obj)
 {
 
@@ -416,76 +416,76 @@ JNIEXPORT void JNICALL Java_com_mongraphe_graphui_Graph_freeProgramMemory
     num_antiedges = 0;
 }
 
-JNIEXPORT void JNICALL Java_com_mongraphe_graphui_Graph_setSaut
+JNIEXPORT void JNICALL Java_com_mongraphe_graphui_rendering_GraphNativeEngine_setSaut
   (JNIEnv * env, jobject obj, jint s)
 {
     saut = s;
     espacement = 1;
 }
 
-JNIEXPORT void JNICALL Java_com_mongraphe_graphui_Graph_setThresholdS
+JNIEXPORT void JNICALL Java_com_mongraphe_graphui_rendering_GraphNativeEngine_setThresholdS
   (JNIEnv * env, jobject obj, jdouble thresh)
 {
     thresholdS = thresh;
 }
 
-JNIEXPORT void JNICALL Java_com_mongraphe_graphui_Graph_setFriction
+JNIEXPORT void JNICALL Java_com_mongraphe_graphui_rendering_GraphNativeEngine_setFriction
   (JNIEnv * env, jobject obj, jdouble f)
 {
     friction = f;
 }
 
-JNIEXPORT void JNICALL Java_com_mongraphe_graphui_Graph_setModeRepulsion
+JNIEXPORT void JNICALL Java_com_mongraphe_graphui_rendering_GraphNativeEngine_setModeRepulsion
   (JNIEnv * env, jobject obj, jint modeRepulsion)
 {
     mode = modeRepulsion;
 }
 
-JNIEXPORT void JNICALL Java_com_mongraphe_graphui_Graph_setAntiRepulsion
+JNIEXPORT void JNICALL Java_com_mongraphe_graphui_rendering_GraphNativeEngine_setAntiRepulsion
   (JNIEnv * env, jobject obj, jdouble repulsion)
 {
     coeff_antiarete = repulsion;
 }
 
-JNIEXPORT void JNICALL Java_com_mongraphe_graphui_Graph_setAttractionCoeff
+JNIEXPORT void JNICALL Java_com_mongraphe_graphui_rendering_GraphNativeEngine_setAttractionCoeff
   (JNIEnv * env, jobject obj, jdouble coeff)
 {
     attraction_coeff = coeff;
 }
 
-JNIEXPORT void JNICALL Java_com_mongraphe_graphui_Graph_setThresholdA
+JNIEXPORT void JNICALL Java_com_mongraphe_graphui_rendering_GraphNativeEngine_setThresholdA
   (JNIEnv * env, jobject obj, jdouble thresh)
 {
     thresholdA = thresh;
 }
 
-JNIEXPORT void JNICALL Java_com_mongraphe_graphui_Graph_setSeuilRep
+JNIEXPORT void JNICALL Java_com_mongraphe_graphui_rendering_GraphNativeEngine_setSeuilRep
   (JNIEnv * env, jobject obj, jdouble seuil)
 {
     seuilrep = seuil;
 }
 
-JNIEXPORT void JNICALL Java_com_mongraphe_graphui_Graph_setDimension
+JNIEXPORT void JNICALL Java_com_mongraphe_graphui_rendering_GraphNativeEngine_setDimension
   (JNIEnv * env, jobject obj, jdouble width, jdouble height)
 {
     Lx = width;
     Ly = height;
 }
 
-JNIEXPORT void JNICALL Java_com_mongraphe_graphui_Graph_setAmortissement
+JNIEXPORT void JNICALL Java_com_mongraphe_graphui_rendering_GraphNativeEngine_setAmortissement
   (JNIEnv * env, jobject obj, jdouble amort)
 {
     amortissement = amort;
 }
 
-JNIEXPORT void JNICALL Java_com_mongraphe_graphui_Graph_setNodePosition
+JNIEXPORT void JNICALL Java_com_mongraphe_graphui_rendering_GraphNativeEngine_setNodePosition
   (JNIEnv * env, jobject obj, jint index, jdouble x, jdouble y)
 {
     vertices[index].x = x;
     vertices[index].y = y;
 }
 
-JNIEXPORT void JNICALL Java_com_mongraphe_graphui_Graph_unpauseGraph
+JNIEXPORT void JNICALL Java_com_mongraphe_graphui_rendering_GraphNativeEngine_unpauseGraph
   (JNIEnv * env, jobject obj)
 {
     if ( pause_updates == 1 ) {
@@ -494,7 +494,7 @@ JNIEXPORT void JNICALL Java_com_mongraphe_graphui_Graph_unpauseGraph
     }
 }
 
-JNIEXPORT void JNICALL Java_com_mongraphe_graphui_Graph_SetNumberClusters
+JNIEXPORT void JNICALL Java_com_mongraphe_graphui_rendering_GraphNativeEngine_SetNumberClusters
   (JNIEnv * env, jobject obj, jint new_n_clusters)
 {
     free_clusters();
@@ -505,7 +505,7 @@ JNIEXPORT void JNICALL Java_com_mongraphe_graphui_Graph_SetNumberClusters
     assign_cluster_colors();
 }
 
-JNIEXPORT void JNICALL Java_com_mongraphe_graphui_Graph_deleteNode
+JNIEXPORT void JNICALL Java_com_mongraphe_graphui_rendering_GraphNativeEngine_deleteNode
   (JNIEnv * env, jobject obj, jint index)
 {
 
@@ -517,7 +517,7 @@ JNIEXPORT void JNICALL Java_com_mongraphe_graphui_Graph_deleteNode
 
 }
 
-JNIEXPORT void JNICALL Java_com_mongraphe_graphui_Graph_restoreNode
+JNIEXPORT void JNICALL Java_com_mongraphe_graphui_rendering_GraphNativeEngine_restoreNode
 (JNIEnv * env, jobject obj, jint index)
 {
 
@@ -529,13 +529,13 @@ JNIEXPORT void JNICALL Java_com_mongraphe_graphui_Graph_restoreNode
 
 }
 
-JNIEXPORT void JNICALL Java_com_mongraphe_graphui_Graph_setKmeansMode
+JNIEXPORT void JNICALL Java_com_mongraphe_graphui_rendering_GraphNativeEngine_setKmeansMode
   (JNIEnv * env, jobject obj, jboolean b)
 {
   kmeans_mode = b;
 }
 
-JNIEXPORT jobject JNICALL Java_com_mongraphe_graphui_Graph_getHistogram
+JNIEXPORT jobject JNICALL Java_com_mongraphe_graphui_rendering_GraphEngine_getHistogram
   (JNIEnv * env, jobject obj)
 {
   jintArray result = (*env)->NewIntArray(env, NUM_BINS);
@@ -545,19 +545,19 @@ JNIEXPORT jobject JNICALL Java_com_mongraphe_graphui_Graph_getHistogram
   return result;
 }
 
-JNIEXPORT void JNICALL Java_com_mongraphe_graphui_Graph_setInitialNodeSize
+JNIEXPORT void JNICALL Java_com_mongraphe_graphui_rendering_GraphNativeEngine_setInitialNodeSize
   (JNIEnv * env, jobject obj, jdouble size)
 {
   initial_node_size = size;
 }
 
-JNIEXPORT void JNICALL Java_com_mongraphe_graphui_Graph_setDegreeScaleFactor
+JNIEXPORT void JNICALL Java_com_mongraphe_graphui_rendering_GraphNativeEngine_setDegreeScaleFactor
   (JNIEnv * env, jobject obj, jdouble factor)
 {
   degree_scale_factor = factor;
 }
 
-JNIEXPORT void JNICALL Java_com_mongraphe_graphui_Graph_setNoOverlap
+JNIEXPORT void JNICALL Java_com_mongraphe_graphui_rendering_GraphNativeEngine_setNoOverlap
   (JNIEnv * env, jobject obj, jboolean b)
 {
   no_overlap = b;

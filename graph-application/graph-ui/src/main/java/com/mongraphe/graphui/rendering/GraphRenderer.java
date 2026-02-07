@@ -42,6 +42,7 @@ public final class GraphRenderer implements GLEventListener {
         gl.glEnable(GL4.GL_BLEND);
         gl.glBlendFunc(GL4.GL_SRC_ALPHA, GL4.GL_ONE_MINUS_SRC_ALPHA);
         gl.glEnable(GL4.GL_PROGRAM_POINT_SIZE);
+        gl.glClearColor(1f, 1f, 1f, 1f);
     }
 
     @Override
@@ -63,8 +64,8 @@ public final class GraphRenderer implements GLEventListener {
         vertexBuffer.upload(gl);
         edgeBuffer.upload(gl);
 
-        drawVertices(gl);
         drawEdges(gl);
+        drawVertices(gl);
     }
 
     private void drawVertices(GL4 gl) {

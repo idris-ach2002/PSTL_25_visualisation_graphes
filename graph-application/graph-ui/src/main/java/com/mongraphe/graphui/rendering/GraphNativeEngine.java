@@ -68,7 +68,7 @@ public class GraphNativeEngine {
         metadata = initializeDot(path, modeCommunity);
     }
 
-    public int getModeCommunity(GraphData.NodeCommunity community) {
+    private int getModeCommunity(GraphData.NodeCommunity community) {
         return switch (community) {
             case LOUVAIN -> 0;
             case LOUVAIN_PAR_COMPOSANTE -> 1;
@@ -78,7 +78,7 @@ public class GraphNativeEngine {
         };
     }
 
-    public int getModeSimilitude(GraphData.SimilitudeMode mode) {
+    private int getModeSimilitude(GraphData.SimilitudeMode mode) {
         return switch (mode) {
             case CORRELATION -> 0;
             case DISTANCE_COSINE -> 1;
@@ -97,14 +97,30 @@ public class GraphNativeEngine {
         return init_metadata;
     }
 
+    // Méthodes JNI
     public native Metadata initializeDot(String filepath, int md);
-    public native Metadata computeThreshold(int modeSimilitude, int edge_factor);
-    public native Metadata initializeGraph(int modeCommunity, double threshold, double anti_threshold);
+    public native Metadata initializeGraph(int modeCommunity, double threshold, double antiThreshold);
     public native double[][] startsProgram(String filename);
+    public native Metadata computeThreshold(int modeSimilitude, int edge_factor);
+    public native void setDimension(double width, double height);
     public native boolean updatePositions();
     public native Vertex[] getPositions();
+    public native void setNodePosition(int index, double x, double y);
     public native EdgeC[] getEdges();
-    public native void setNodePosition(int id, double x, double y);
-    public native void deleteNode(int id);
-    public native void restoreNode(int id);
+    public native int[] getCommunities();
+    public native float[][] getClusterColors();
+    public native void setSaut(int saut);
+    public native void setThresholdS(double thresholdS);
+    public native void setFriction(double friction);
+    public native void setModeRepulsion(int mode);
+    public native void setAntiRepulsion(double antiedge_repulsion);
+    public native void setAttractionCoeff(double attraction_coeff);
+    public native void setThresholdA(double thresholdA);
+    public native void setSeuilRep(double seuilrep);
+    public native void setAmortissement(double amortissement);
+    public native void SetNumberClusters(int new_number_of_clusters);
+    public native void setKmeansMode(boolean md);
+    public native void deleteNode(int index);
+    public native void restoreNode(int index);
+    public native void freeAllocatedMemory();
 }

@@ -16,7 +16,14 @@ public final class GraphPanel {
         GLProfile profile = GLProfile.get(GLProfile.GL4);
         GLCapabilities caps = new GLCapabilities(profile);
         caps.setDoubleBuffered(true);
-
+        caps.setHardwareAccelerated(true);
+        // Antialiasing pour un rendu plus lisse
+        caps.setSampleBuffers(true);
+        caps.setNumSamples(4); // 4x MSAA
+        // Désactiver le stencil buffer (non nécessaire pour ce projet)
+        caps.setStencilBits(0);
+        // Désactiver le depth buffer (non nécessaire pour un rendu 2D)
+        caps.setDepthBits(0);
 
         window = GLWindow.create(caps);
         window.addGLEventListener(renderer);

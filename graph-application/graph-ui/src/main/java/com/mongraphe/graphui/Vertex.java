@@ -37,6 +37,10 @@ public class Vertex {
     public int getId() {
         return id;
     }
+
+    public void setDiameter(double diameter) {
+        this.diameter = diameter;
+    }
     /**
      * Modifie l'identifiant du sommet
      * @param id : identifiant du sommet
