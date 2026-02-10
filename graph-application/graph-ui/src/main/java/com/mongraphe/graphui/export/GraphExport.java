@@ -1,14 +1,15 @@
 package com.mongraphe.graphui.export;
 
-import com.jogamp.opengl.GL4;
-import com.jogamp.newt.opengl.GLWindow;
-import com.mongraphe.graphui.rendering.GraphRenderer;
-
-import javax.imageio.ImageIO;
 import java.awt.image.BufferedImage;
 import java.io.File;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
+
+import javax.imageio.ImageIO;
+
+import com.jogamp.newt.opengl.GLWindow;
+import com.jogamp.opengl.GL4;
+import com.mongraphe.graphui.rendering.GraphRenderer;
 
 public class GraphExport {
 
@@ -31,7 +32,8 @@ public class GraphExport {
                     width,
                     height,
                     path,
-                    renderer);
+                    renderer
+                    );
             return true;
         });
     }

@@ -26,6 +26,10 @@ public final class GraphSimulation {
         running = true;
     }
 
+    public boolean isRunning() {
+        return running;
+    }
+
     public void stop() {
         running = false;
     }

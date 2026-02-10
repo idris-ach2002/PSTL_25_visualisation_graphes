@@ -5,6 +5,10 @@ import com.jogamp.opengl.GLAutoDrawable;
 import com.jogamp.opengl.GLEventListener;
 import com.mongraphe.graphui.model.GraphModel;
 
+/**
+ * Renderer JOGL: dessine sommets/arêtes depuis le modèle Java.
+ * La simulation est déclenchée via GraphEngine.update().
+ */
 public final class GraphRenderer implements GLEventListener {
 
     private final GraphEngine engine;
@@ -16,9 +20,30 @@ public final class GraphRenderer implements GLEventListener {
     private GLShaderProgram pointShader;
     private GLShaderProgram edgeShader;
 
+    // Couleur de fond paramétrable depuis l'UI
+    private volatile float clearR = 1f, clearG = 1f, clearB = 1f, clearA = 1f;
+
     public GraphRenderer(GraphEngine engine, Camera2D camera) {
         this.engine = engine;
         this.camera = camera;
+    }
+
+
+    public Camera2D camera() {
+        return camera;
+    }
+
+    public void setBackgroundColor(float r, float g, float b, float a) {
+        this.clearR = clamp01(r);
+        this.clearG = clamp01(g);
+        this.clearB = clamp01(b);
+        this.clearA = clamp01(a);
+    }
+
+    private float clamp01(float v) {
+        if (v < 0f) return 0f;
+        if (v > 1f) return 1f;
+        return v;
     }
 
     @Override
@@ -42,7 +67,7 @@ public final class GraphRenderer implements GLEventListener {
         gl.glEnable(GL4.GL_BLEND);
         gl.glBlendFunc(GL4.GL_SRC_ALPHA, GL4.GL_ONE_MINUS_SRC_ALPHA);
         gl.glEnable(GL4.GL_PROGRAM_POINT_SIZE);
-        gl.glClearColor(1f, 1f, 1f, 1f);
+        gl.glClearColor(clearR, clearG, clearB, clearA);
     }
 
     @Override
@@ -52,14 +77,18 @@ public final class GraphRenderer implements GLEventListener {
 
     public void render(GL4 gl) {
 
+        gl.glClearColor(clearR, clearG, clearB, clearA);
         gl.glClear(GL4.GL_COLOR_BUFFER_BIT);
 
         engine.update();
 
         GraphModel model = engine.model();
 
-        vertexBuffer.update(model);
-        edgeBuffer.update(model);
+        synchronized (model.mutex()) {
+            model.setZoom(camera.getZoom());
+            vertexBuffer.update(model);
+            edgeBuffer.update(model);
+        }
 
         vertexBuffer.upload(gl);
         edgeBuffer.upload(gl);
@@ -87,7 +116,11 @@ public final class GraphRenderer implements GLEventListener {
 
     @Override
     public void dispose(GLAutoDrawable drawable) {
-        // TODO liber les ressources GPU
+        // Best effort: libère au moins les programmes shader
+        try {
+            GL4 gl = drawable.getGL().getGL4();
+            if (pointShader != null) pointShader.delete(gl);
+            if (edgeShader != null) edgeShader.delete(gl);
+        } catch (Exception ignored) {}
     }
 }
-

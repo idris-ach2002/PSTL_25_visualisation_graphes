@@ -120,6 +120,8 @@ public class GraphNativeEngine {
     public native void setAmortissement(double amortissement);
     public native void SetNumberClusters(int new_number_of_clusters);
     public native void setKmeansMode(boolean md);
+    public native void setInitialNodeSize(double size);
+    public native void setDegreeScaleFactor(double factor);
     public native void deleteNode(int index);
     public native void restoreNode(int index);
     public native void freeAllocatedMemory();

@@ -80,7 +80,8 @@ public final class OpenGLInputHandler
 
         var v = model.findVertexAt(x, y);
         if (v != null) {
-            model.removeVertex(v);
+            // Ne supprime pas physiquement (préserve les ids). On marque "deleted".
+            model.deleteVertex(v);
             renderRequester.requestRender();
         }
     }

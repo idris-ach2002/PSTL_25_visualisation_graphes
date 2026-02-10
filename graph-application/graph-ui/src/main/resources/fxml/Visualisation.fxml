@@ -15,7 +15,8 @@
 
 <GridPane xmlns="http://javafx.com/javafx/8" xmlns:fx="http://javafx.com/fxml/1"
           fx:controller="com.mongraphe.graphui.view.GraphView"
-          stylesheets="@../css/visualisation.css">
+          stylesheets="@styles/future.css"
+          styleClass="app-root">
     
     <!-- Configuration des colonnes et lignes révisée -->
     <columnConstraints>
@@ -27,41 +28,41 @@
         <RowConstraints prefHeight="25" maxHeight="25" /> <!-- Barre de menus -->
         <RowConstraints prefHeight="40" maxHeight="40" /> <!-- Barre d'onglets -->
         <RowConstraints percentHeight="100"/> <!-- Contenu principal -->
+        <RowConstraints prefHeight="32" maxHeight="32" /> <!-- Barre de statut -->
     </rowConstraints>
 
     <!-- Barre de menus (ligne 0) -->
-    <MenuBar GridPane.columnSpan="3" GridPane.rowIndex="0">
+    <MenuBar styleClass="top-bar" GridPane.columnSpan="3" GridPane.rowIndex="0">
         <Menu text="Fichier">
-            <MenuItem text="Nouveau" />
-            <MenuItem text="Ouvrir..." />
-            <MenuItem text="Enregistrer" />
+            <MenuItem text="Nouveau" onAction="#handleNew"/>
+            <MenuItem text="Ouvrir..." onAction="#handleOpen"/>
+            <MenuItem text="Enregistrer" onAction="#handleSaveProject"/>
+            <MenuItem text="Exporter PNG" onAction="#handleExportPng"/>
             <SeparatorMenuItem />
             <MenuItem text="Quitter" onAction="#handleQuit" />
         </Menu>
         <Menu text="Édition">
-            <MenuItem text="Annuler" />
-            <MenuItem text="Rétablir" />
+            <MenuItem text="Annuler" onAction="#handleUndo" />
+            <MenuItem text="Rétablir" onAction="#handleRedo" />
         </Menu>
         <Menu text="Affichage">
-            <MenuItem text="Plein écran" />
-            <CheckMenuItem text="Afficher les statistiques" />
+            <MenuItem text="Plein écran" onAction="#handleFullScreen" />
+            <CheckMenuItem fx:id="showStatsMenuItem" text="Afficher les statistiques" selected="true" onAction="#handleToggleStats" />
         </Menu>
         <Menu text="Outils">
-            <MenuItem text="Options..." />
+            <MenuItem text="Options..." onAction="#handleOptions" />
         </Menu>
         <Menu text="Fenêtre">
-            <MenuItem text="Disposition" />
+            <MenuItem text="Disposition" onAction="#handleLayoutReset" />
         </Menu>
         <Menu text="Aide">
-            <MenuItem text="Documentation" />
+            <MenuItem text="Documentation" onAction="#handleDocumentation"/>
             <MenuItem text="À propos..." onAction="#handleAbout" />
         </Menu>
     </MenuBar>
 
     <!-- Barre d'onglets (ligne 1) -->
-    <HBox GridPane.columnSpan="3" GridPane.rowIndex="1" 
-          style="-fx-background-color: #f4f4f4; -fx-padding: 5;" 
-          spacing="10">
+    <HBox GridPane.columnSpan="3" GridPane.rowIndex="1" spacing="10" styleClass="tabbar">
         <fx:define>
             <ToggleGroup fx:id="viewToggleGroup"/>
         </fx:define>
@@ -103,7 +104,7 @@
             <BorderPane style="-fx-border-color: grey; -fx-border-width: 1px;" 
                         GridPane.rowIndex="0" GridPane.columnIndex="0">
                     <center>
-                    <VBox spacing="10" style="-fx-padding: 10;">
+                    <VBox spacing="10" styleClass="dock">
                     <HBox style="-fx-padding: 8;-fx-margin: 5; -fx-border-color:rgba(212, 204, 202, 0.55); -fx-border-width: 1px;">
                     <Label text="Aspect du graphe" style="-fx-font-weight: bold; -fx-font-size: 14;"/>
                     </HBox>
@@ -125,20 +126,14 @@
                     </VBox>
                     </center>
                      Bouton Appliquer en bas à droite 
-                    <bottom>
-                    <HBox alignment="BOTTOM_RIGHT" spacing="5" style="-fx-padding: 8;-fx-margin: 5; -fx-border-color:rgba(212, 204, 202, 0.55); -fx-border-width: 1px;">
-                        <Button text="Démarrer" onAction="#handleStartButton"
-                        styleClass="button-8"
-                        AnchorPane.topAnchor="10" AnchorPane.leftAnchor="10" />
-                    </HBox>
-                    </bottom>
+                    <bottom></bottom>
             </BorderPane>-->
 
             <AnchorPane style="-fx-border-color: grey; -fx-border-width: 1px;" 
             GridPane.rowIndex="0" GridPane.columnIndex="0" 
             GridPane.rowSpan="2">
 			    <ScrollPane fitToWidth="true" fitToHeight="true" AnchorPane.topAnchor="0" AnchorPane.bottomAnchor="0" AnchorPane.leftAnchor="0" AnchorPane.rightAnchor="0">
-			        <VBox spacing="10" style="-fx-padding: 10;">
+			        <VBox spacing="10" styleClass="dock">
 			            <!-- Titre et bouton Run -->
 			            <HBox spacing="5" alignment="CENTER_LEFT">
 			                <Label text="Force Atlas" style="-fx-font-weight: bold; -fx-font-size: 14;" />
@@ -182,14 +177,17 @@
 			                <TextField fx:id="nbClusters" text="" GridPane.rowIndex="10" GridPane.columnIndex="1" />
 			
 			                <Label text="Degré minimum:" GridPane.rowIndex="11" GridPane.columnIndex="0" />
-			                <TextField fx:id="minimumDegree" text="0" GridPane.rowIndex="11" GridPane.columnIndex="1" />
+                            <TextField fx:id="minimumDegree" text="0" GridPane.rowIndex="11" GridPane.columnIndex="1" />
+
+                            <Label text="Poids min arêtes:" GridPane.rowIndex="12" GridPane.columnIndex="0" />
+                            <TextField fx:id="minEdgeWeight" text="0" GridPane.rowIndex="12" GridPane.columnIndex="1" />
 							
 							
-							<Label text="Mode de répulsion:" GridPane.rowIndex="12" GridPane.columnIndex="0" />
-							<ComboBox fx:id="repulsionModeComboBox"  prefWidth="200" GridPane.rowIndex="12" GridPane.columnIndex="1"/>
+							<Label text="Mode de répulsion:" GridPane.rowIndex="13" GridPane.columnIndex="0" />
+							<ComboBox fx:id="repulsionModeComboBox"  prefWidth="200" GridPane.rowIndex="13" GridPane.columnIndex="1"/>
 
 			                <Button text="Appliquer" onAction="#applyOptions" styleClass="button-8"
-			                        GridPane.rowIndex="13" GridPane.columnIndex="1" />
+			                        GridPane.rowIndex="14" GridPane.columnIndex="1" />
 			            </GridPane>
 			
 			            <!-- Changement d'algorithmes -->
@@ -201,15 +199,17 @@
 			                <Label text="Méthode de clustering:" GridPane.rowIndex="1" GridPane.columnIndex="0" />
 			                <ComboBox fx:id="clusteringChamp" prefWidth="200" GridPane.rowIndex="1" GridPane.columnIndex="1" />
 
-                            <Label text="Méthode de clustering:" GridPane.rowIndex="1" GridPane.columnIndex="0" />
-			                <ComboBox fx:id="clusteringChamp" prefWidth="200" GridPane.rowIndex="1" GridPane.columnIndex="1" />
-
                             <!-- ColorPicker pour la couleur du cluster -->
                             <Label text="Couleur du Canvas:" GridPane.rowIndex="2" GridPane.columnIndex="0" />
                             <ColorPicker fx:id="canvasColorPicker" GridPane.rowIndex="2" GridPane.columnIndex="1" />
+                            <Label text="Coloration des nœuds:" GridPane.rowIndex="3" GridPane.columnIndex="0" />
+                            <ComboBox fx:id="coloringModeCombo" prefWidth="200" GridPane.rowIndex="3" GridPane.columnIndex="1" />
+
+                            <Label text="Couleur uniforme:" GridPane.rowIndex="4" GridPane.columnIndex="0" />
+                            <ColorPicker fx:id="uniformNodeColorPicker" GridPane.rowIndex="4" GridPane.columnIndex="1" />
 			                
 			                <Button text="Modifier" onAction="#applyChangement" styleClass="button-8"
-			                        GridPane.rowIndex="3" GridPane.columnIndex="1" />
+                                    GridPane.rowIndex="5" GridPane.columnIndex="1" />
 			            </GridPane>
 			            
 			            <CheckBox fx:id="enableKmeans" text="Activer K-Means"
@@ -226,39 +226,22 @@
 
 
             <!-- Panneau central -->
-           <BorderPane fx:id="graphContentPane" 
-           style="-fx-border-color:rgb(163, 157, 156); -fx-border-width: 2px; -fx-background-color: transparent;" 
+           <BorderPane fx:id="graphContentPane" styleClass="graph-pane"
            GridPane.rowIndex="0" GridPane.columnIndex="1" 
-           GridPane.rowSpan="2">
-            <bottom>
-                <HBox spacing="10" alignment="CENTER" style="-fx-padding: 10;">
-                    <fx:define>
-                        <ToggleGroup fx:id="graphModeToggleGroup"/> 
-                    </fx:define>
-
-                    <RadioButton text="Exécuter" 
-                                toggleGroup="$graphModeToggleGroup"
-                                userData="RUN"
-                                selected="true"
-                                onAction="#handleApplyGraphMode"/>
-                    <RadioButton text="Sélectionner" 
-                                toggleGroup="$graphModeToggleGroup"
-                                userData="SELECTION"
-                                onAction="#handleApplyGraphMode"/>
-                    <RadioButton text="Déplacer" 
-                                toggleGroup="$graphModeToggleGroup"
-                                userData="MOVE"
-                                onAction="#handleApplyGraphMode"/>
-                    <RadioButton text="Supprimer" 
-                                toggleGroup="$graphModeToggleGroup"
-                                userData="DELETE"
-                                onAction="#handleApplyGraphMode"/>
-                </HBox>
-            </bottom>
-            <center>
+           GridPane.rowSpan="2"><center>
                 <ScrollPane fx:id="graphScrollPane" fitToWidth="true" fitToHeight="true" 
                         hbarPolicy="AS_NEEDED" vbarPolicy="AS_NEEDED">
-                         <StackPane fx:id="graphContainer">
+                         <StackPane fx:id="graphContainer" styleClass="graph-container">
+                            <!-- Toolbar overlay (modes interaction) -->
+                            <HBox spacing="8" StackPane.alignment="TOP_LEFT" styleClass="graph-toolbar">
+                                <fx:define>
+                                    <ToggleGroup fx:id="toolToggleGroup" />
+                                </fx:define>
+                                <ToggleButton fx:id="toolRun" text="⏵ Run" toggleGroup="$toolToggleGroup" userData="RUN" onAction="#handleToolMode" styleClass="tool-btn" selected="true"/>
+                                <ToggleButton fx:id="toolSelect" text="⭘ Sélection" toggleGroup="$toolToggleGroup" userData="SELECT" onAction="#handleToolMode" styleClass="tool-btn"/>
+                                <ToggleButton fx:id="toolMove" text="✥ Déplacer" toggleGroup="$toolToggleGroup" userData="MOVE" onAction="#handleToolMode" styleClass="tool-btn"/>
+                                <ToggleButton fx:id="toolDelete" text="⌫ Supprimer" toggleGroup="$toolToggleGroup" userData="DELETE" onAction="#handleToolMode" styleClass="tool-btn"/>
+                            </HBox>
                             <ProgressIndicator fx:id="loadingIndicator"
                                 visible="false"
                                 StackPane.alignment="CENTER"
@@ -270,40 +253,40 @@
 
             <!-- Panneau droit -->
             <!-- Panneau des statistiques en haut à droite -->
-        <AnchorPane style="-fx-border-color: grey; -fx-border-width: 1px; -fx-background-color: #ffffff; -fx-padding: 10;" 
+        <AnchorPane styleClass="dock" 
                     GridPane.rowIndex="0" GridPane.columnIndex="2" GridPane.rowSpan="2">
             <!-- Section statistiques -->
-            <VBox alignment="TOP_CENTER" spacing="8" style="-fx-background-color: #f9f9f9; -fx-padding: 1; -fx-border-radius: 5; -fx-border-color: #ccc; -fx-border-width: 1px;" 
+            <VBox alignment="TOP_CENTER" spacing="8" style="-fx-padding: 4;" 
                 AnchorPane.topAnchor="0" AnchorPane.bottomAnchor="0" AnchorPane.leftAnchor="0" AnchorPane.rightAnchor="0">
-                <Label text="📊 Statistiques du Graphe" style="-fx-font-weight: bold; -fx-font-size: 14; -fx-text-fill: #333;" />
+                <Label text="📊 Statistiques du Graphe" styleClass="dock-title" style="-fx-font-size: 14;" />
                 <Separator />
                 <HBox spacing="10">
-                    <Label text="Nœuds affichés:" style="-fx-font-weight: bold;     -fx-padding: 5px" />
-                    <Label fx:id="nodesDisplayedLabel" text="0" style="-fx-text-fill: #2a9d8f;" />
+                    <Label text="Nœuds affichés:" style="-fx-font-weight: bold; -fx-padding: 5px" />
+                    <Label fx:id="nodesDisplayedLabel" text="0" styleClass="accent" />
                 </HBox>
                 <HBox spacing="10">
-                    <Label text="Nœuds supprimés:" style="-fx-font-weight: bold;     -fx-padding: 5px" />
-                    <Label fx:id="nodesDeletedLabel" text="0" style="-fx-text-fill: #e76f51;" />
+                    <Label text="Nœuds supprimés:" style="-fx-font-weight: bold; -fx-padding: 5px" />
+                    <Label fx:id="nodesDeletedLabel" text="0" styleClass="danger" />
                 </HBox>
                 <HBox spacing="10">
                     <Label text="Nœuds Cachés:" style="-fx-font-weight: bold;     -fx-padding: 5px" />
-                    <Label fx:id="nodesHiddenLabel" text="0" style="-fx-text-fill: #e76f51;" />
+                    <Label fx:id="nodesHiddenLabel" text="0" styleClass="muted" />
                 </HBox>
                 <HBox spacing="10">
                     <Label text="Arêtes affichées:" style="-fx-font-weight: bold;     -fx-padding: 5px" />
-                    <Label fx:id="edgesDisplayedLabel" text="0" style="-fx-text-fill: #2a9d8f;" />
+                    <Label fx:id="edgesDisplayedLabel" text="0" styleClass="accent" />
                 </HBox>
                 <HBox spacing="10">
                     <Label text="Arêtes supprimées:" style="-fx-font-weight: bold;     -fx-padding: 5px" />
-                    <Label fx:id="edgesDeletedLabel" text="0" style="-fx-text-fill: #e76f51;" />
+                    <Label fx:id="edgesDeletedLabel" text="0" styleClass="danger" />
                 </HBox>
                 <HBox spacing="10">
                     <Label text="Seuil recommandé arêtes " style="-fx-font-weight: bold;     -fx-padding: 5px" />
-                    <Label fx:id="recommendedTreshold" text="0" style="-fx-text-fill: #e76f51;" />
+                    <Label fx:id="recommendedTreshold" text="0" styleClass="muted" />
                 </HBox>
                 <HBox spacing="10">
                     <Label text="Seuil recommandé anti-arêtes:" style="-fx-font-weight: bold;     -fx-padding: 5px" />
-                    <Label fx:id="recommendedAntiTreshold" text="0" style="-fx-text-fill: #e76f51;" />
+                    <Label fx:id="recommendedAntiTreshold" text="0" styleClass="muted" />
                 </HBox>
                 <HBox spacing="10">
                     <Label text="Seuil actuel arêtes:" style="-fx-font-weight: bold;     -fx-padding: 5px" />
@@ -387,4 +370,10 @@
             <!-- Contenu de prévisualisation -->
         </AnchorPane>
     </StackPane>
+
+    <HBox spacing="12" alignment="CENTER_LEFT" styleClass="status-bar" GridPane.columnSpan="3" GridPane.rowIndex="3">
+        <Label fx:id="statusLabel" text="Prêt" />
+        <Region HBox.hgrow="ALWAYS"/>
+        <Label text="Raccourcis: ESPACE = Pause/Run   |   Clic = Sélection   |   Glisser = Déplacer   |   SUPPR = Supprimer   |   Clic droit = Pan   |   Molette = Zoom" style="-fx-opacity: 0.75;"/>
+    </HBox>
 </GridPane>

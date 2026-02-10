@@ -1,11 +1,22 @@
 package com.mongraphe.graphui.rendering;
 
 import java.nio.FloatBuffer;
+
 import com.jogamp.opengl.GL4;
+import com.mongraphe.graphui.Community;
 import com.mongraphe.graphui.Vertex;
 import com.mongraphe.graphui.model.GraphModel;
+import com.mongraphe.graphui.model.GraphModel.ColoringMode;
 
-public class VertexGpuBuffer {
+/**
+ * VBO des sommets.
+ *
+ * Améliorations étape 6:
+ * - évite les NPE si community == null
+ * - supporte plusieurs modes de coloration (communautés / degré / uniforme)
+ * - surbrillance du sommet sélectionné
+ */
+public final class VertexGpuBuffer {
 
     private float[] pos, col, size, vis;
     private int posVbo, colVbo, sizeVbo, visVbo;
@@ -27,15 +38,50 @@ public class VertexGpuBuffer {
         size = new float[count];
         vis = new float[count];
 
+        final int selectedId = model.getSelectedVertexId();
+        final ColoringMode mode = model.getColoringMode();
+        final int maxDeg = Math.max(1, model.getMaxDegree());
+
         for (int i = 0; i < count; i++) {
             Vertex v = model.vertices().get(i);
+
             pos[i * 2] = (float) v.getX();
             pos[i * 2 + 1] = (float) v.getY();
-            col[i * 3] = v.getCommunity().getR();
-            col[i * 3 + 1] = v.getCommunity().getG();
-            col[i * 3 + 2] = v.getCommunity().getB();
             size[i] = (float) v.getDiameter();
-            vis[i] = (v.isDeleted() || !v.isVisible()) ? 0f : 1f;
+
+            boolean visibleVertex = !(v.isDeleted() || !v.isVisible());
+            vis[i] = visibleVertex ? 1f : 0f;
+
+            // Couleur
+            float r, g, b;
+            if (v.getId() == selectedId && selectedId >= 0) {
+                // surbrillance: blanc
+                r = 1f; g = 1f; b = 1f;
+            } else if (mode == ColoringMode.UNIFORM) {
+                r = model.getUniformNodeR();
+                g = model.getUniformNodeG();
+                b = model.getUniformNodeB();
+            } else if (mode == ColoringMode.DEGREE) {
+                float t = (float) v.getDegree() / (float) maxDeg;
+                // gris légèrement contrasté (pas un arc-en-ciel kitsch)
+                float base = 0.15f;
+                float intensity = base + (1f - base) * t;
+                r = intensity; g = intensity; b = intensity;
+            } else {
+                // COMMUNITY (default)
+                Community c = v.getCommunity();
+                if (c != null) {
+                    r = c.getR();
+                    g = c.getG();
+                    b = c.getB();
+                } else {
+                    r = 0.6f; g = 0.6f; b = 0.6f;
+                }
+            }
+
+            col[i * 3] = r;
+            col[i * 3 + 1] = g;
+            col[i * 3 + 2] = b;
         }
     }
 

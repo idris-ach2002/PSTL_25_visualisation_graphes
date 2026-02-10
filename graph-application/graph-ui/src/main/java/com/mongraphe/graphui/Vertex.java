@@ -97,6 +97,16 @@ public class Vertex {
         isDeleted = true;
         diameter = 0;
     }
+
+    /**
+     * Restaure un sommet supprimé (undo/redo).
+     * Remet le sommet visible et recalcule son diamètre.
+     */
+    public void restore() {
+        isDeleted = false;
+        isVisible = true;
+        updateDiameter();
+    }
     /**
      * @return true si le sommet a été supprimé, false sinon
      */

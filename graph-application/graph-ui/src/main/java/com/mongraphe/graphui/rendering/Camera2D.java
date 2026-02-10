@@ -43,6 +43,16 @@ public final class Camera2D {
         updateProjection();
     }
 
+    /**
+     * Réinitialise le cadrage (zoom/pan).
+     */
+    public void reset() {
+        zoom = 1f;
+        offsetX = 0f;
+        offsetY = 0f;
+        updateProjection();
+    }
+
     private void updateProjection() {
 
         float hw = width / 2f / zoom;
@@ -68,6 +78,13 @@ public final class Camera2D {
 
     public FloatBuffer getProjection() {
         return projection;
+    }
+
+    /**
+     * Zoom courant (1.0 = neutre). Utile pour la sélection sous zoom.
+     */
+    public float getZoom() {
+        return zoom;
     }
 
     public float screenToWorldX(float screenX) {

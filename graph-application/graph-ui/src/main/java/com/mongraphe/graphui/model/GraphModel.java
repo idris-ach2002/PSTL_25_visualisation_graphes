@@ -9,15 +9,106 @@ import com.mongraphe.graphui.Vertex;
 
 public class GraphModel {
 
+    /**
+     * Mode de coloration des nœuds (Appearance).
+     */
+    public enum ColoringMode {
+        COMMUNITY,
+        DEGREE,
+        UNIFORM
+    }
+
+    private final Object mutex = new Object();
+
+    public Object mutex() { return mutex; }
+
+
     private double zoom = 1.0;
+
+    // =========================
+    // === Selection
+    // =========================
+    private int selectedVertexId = -1;
+
+    // =========================
+    // === Filters (Gephi-like)
+    // =========================
+    private int filterMinDegree = 0;
+    private double filterMinEdgeWeight = 0.0;
+
+    // =========================
+    // === Appearance
+    // =========================
+    private float uniformNodeR = 0.82f;
+    private float uniformNodeG = 0.82f;
+    private float uniformNodeB = 0.86f;
+
+    private ColoringMode coloringMode = ColoringMode.COMMUNITY;
     private final List<Vertex> vertices = new ArrayList<>();
     private final List<Edge> edges = new ArrayList<>();
 
     private int visibleVertexCount;
     private int visibleEdgeCount;
+    private int maxDegree = 1;
 
     public void setZoom(double z) {
         this.zoom = z;
+    }
+
+    public double getZoom() {
+        return zoom;
+    }
+
+    public int getSelectedVertexId() {
+        return selectedVertexId;
+    }
+
+    public void setSelectedVertexId(int id) {
+        this.selectedVertexId = id;
+    }
+
+    public ColoringMode getColoringMode() {
+        return coloringMode;
+    }
+
+    public void setColoringMode(ColoringMode mode) {
+        this.coloringMode = (mode == null) ? ColoringMode.COMMUNITY : mode;
+    }
+
+    public int getMaxDegree() {
+        return maxDegree;
+    }
+
+    public int getFilterMinDegree() {
+        return filterMinDegree;
+    }
+
+    public void setFilterMinDegree(int minDegree) {
+        this.filterMinDegree = Math.max(0, minDegree);
+        applyFilters();
+    }
+
+    public double getFilterMinEdgeWeight() {
+        return filterMinEdgeWeight;
+    }
+
+    public void setFilterMinEdgeWeight(double minEdgeWeight) {
+        this.filterMinEdgeWeight = Math.max(0.0, minEdgeWeight);
+        applyFilters();
+    }
+
+    public void setUniformNodeColor(float r, float g, float b) {
+        this.uniformNodeR = clamp01(r);
+        this.uniformNodeG = clamp01(g);
+        this.uniformNodeB = clamp01(b);
+    }
+
+    public float getUniformNodeR() { return uniformNodeR; }
+    public float getUniformNodeG() { return uniformNodeG; }
+    public float getUniformNodeB() { return uniformNodeB; }
+
+    private static float clamp01(float v) {
+        return Math.max(0f, Math.min(1f, v));
     }
 
     public Vertex findVertexAt(double x, double y) {
@@ -48,7 +139,7 @@ public class GraphModel {
             addEdge(e);
         }
 
-        computeVisibilityStats();
+        applyFilters();
     }
 
     public void updateVertexPositions(Vertex[] verticesArray) {
@@ -57,7 +148,7 @@ public class GraphModel {
             Vertex newV = verticesArray[i];
             v.updatePosition(newV.getX(), newV.getY());
         }
-        computeVisibilityStats();
+        applyFilters();
     }
 
     public List<Edge> edges() {
@@ -87,6 +178,7 @@ public class GraphModel {
     public void removeVertex(Vertex v) {
         vertices.remove(v);
         edges.removeIf(e -> e.getStart() == v || e.getEnd() == v);
+        applyFilters();
     }
 
     public void clear() {
@@ -94,13 +186,40 @@ public class GraphModel {
         edges.clear();
     }
 
+    /**
+     * Applique les filtres "min degree" et "min edge weight" sur le modèle.
+     *
+     * On évite de supprimer physiquement les objets pour préserver les index / ids.
+     */
+    public void applyFilters() {
+        // Sommets: visible si non supprimé et degree >= min
+        for (Vertex v : vertices) {
+            if (v.isDeleted()) {
+                v.setVisible(false);
+                continue;
+            }
+            v.setVisible(v.getDegree() >= filterMinDegree);
+        }
+
+        // Arêtes: visible si poids >= min et endpoints visibles
+        for (Edge e : edges) {
+            boolean endpointsOk = e.getStart().isVisible() && e.getEnd().isVisible();
+            boolean wOk = e.getWeight() >= filterMinEdgeWeight;
+            e.setVisible(endpointsOk && wOk);
+        }
+
+        computeVisibilityStats();
+    }
+
     public void computeVisibilityStats() {
         visibleVertexCount = 0;
         visibleEdgeCount = 0;
+        maxDegree = 1;
 
         for (Vertex v : vertices) {
             if (!v.isDeleted() && v.isVisible())
                 visibleVertexCount++;
+            maxDegree = Math.max(maxDegree, v.getDegree());
         }
 
         for (Edge e : edges) {
@@ -119,5 +238,6 @@ public class GraphModel {
 
     public void deleteVertex(Vertex v) {
         v.delete();
+        applyFilters();
     }
 }
