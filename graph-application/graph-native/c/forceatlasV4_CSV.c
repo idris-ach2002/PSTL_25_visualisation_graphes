@@ -211,7 +211,7 @@ JNIEXPORT jobject JNICALL Java_com_mongraphe_graphui_rendering_GraphNativeEngine
 
     calculate_threshold(modeSimilitude, 10*num_nodes, &threshold, &antiseuil, similarities);
 
-    jclass res_class = (*env)->FindClass(env, "Lcom/mongraphe/graphui/Metadata;");
+    jclass res_class = (*env)->FindClass(env, "com/mongraphe/graphui/Metadata");
     jmethodID constructor = (*env)->GetMethodID(env, res_class, "<init>", "(IDDD)V");
     jobject res = (*env)->NewObject(env, res_class, constructor, num_nodes, threshold, antiseuil, means_similitude);
 
@@ -264,7 +264,7 @@ JNIEXPORT jobject JNICALL Java_com_mongraphe_graphui_rendering_GraphNativeEngine
     assign_cluster_colors();
     calculate_node_degrees();
 
-    jclass res_class = (*env)->FindClass(env, "Lcom/mongraphe/graphui/Metadata;");
+    jclass res_class = (*env)->FindClass(env, "com/mongraphe/graphui/Metadata");
     jmethodID constructor = (*env)->GetMethodID(env, res_class, "<init>", "(IDDIII)V");
     jobject res = (*env)->NewObject(env, res_class, constructor, num_nodes, thresh, anti_thresh, num_edges, num_antiedges, n_clusters);
 
@@ -283,7 +283,7 @@ JNIEXPORT jobject JNICALL Java_com_mongraphe_graphui_rendering_GraphNativeEngine
 
 }
 
-JNIEXPORT jobject JNICALL Java_graph_graphui_rendering_GraphNativeEngine_initializeDot
+JNIEXPORT jobject JNICALL Java_com_mongraphe_graphui_rendering_GraphNativeEngine_initializeDot
   (JNIEnv *env, jobject obj, jstring filepath, jint md)
 {
 
@@ -326,7 +326,7 @@ JNIEXPORT jobject JNICALL Java_graph_graphui_rendering_GraphNativeEngine_initial
   assign_cluster_colors();
   calculate_node_degrees();
 
-  jclass res_class = (*env)->FindClass(env, "graph/Metadata");
+  jclass res_class = (*env)->FindClass(env, "com/mongraphe/graphui/Metadata");
   jmethodID constructor = (*env)->GetMethodID(env, res_class, "<init>", "(IDDD)V");
   jobject res = (*env)->NewObject(env, res_class, constructor, num_nodes, 0., 0., 0.);
 
