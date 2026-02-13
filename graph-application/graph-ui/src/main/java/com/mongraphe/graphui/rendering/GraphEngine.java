@@ -34,8 +34,8 @@ public final class GraphEngine {
     }
 
     public void loadCsv(String path,
-                        GraphData.SimilitudeMode sim,
-                        GraphData.NodeCommunity communityMode) {
+            GraphData.SimilitudeMode sim,
+            GraphData.NodeCommunity communityMode) {
 
         if (path == null || path.isBlank())
             throw new IllegalArgumentException("CSV path missing");
@@ -46,7 +46,7 @@ public final class GraphEngine {
     }
 
     public void loadDot(String path,
-                        GraphData.NodeCommunity communityMode) {
+            GraphData.NodeCommunity communityMode) {
 
         if (path == null || path.isBlank())
             throw new IllegalArgumentException("DOT path missing");
@@ -224,18 +224,18 @@ public final class GraphEngine {
      * À appeler lors d'un reload ou à la fermeture.
      */
     public void startSimulation() {
-    simulation.start();
-}
+        simulation.start();
+    }
 
-public void stopSimulation() {
-    simulation.stop();
-}
+    public void stopSimulation() {
+        simulation.stop();
+    }
 
-public boolean isSimulationRunning() {
-    return simulation.isRunning();
-}
+    public boolean isSimulationRunning() {
+        return simulation.isRunning();
+    }
 
-public void freeNativeMemory() {
+    public void freeNativeMemory() {
         nativeEngine.freeAllocatedMemory();
     }
 }

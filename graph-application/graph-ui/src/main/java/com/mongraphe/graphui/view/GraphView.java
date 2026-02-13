@@ -13,8 +13,8 @@ import com.mongraphe.graphui.GraphData;
 import com.mongraphe.graphui.GraphData.NodeCommunity;
 import com.mongraphe.graphui.GraphData.SimilitudeMode;
 import com.mongraphe.graphui.Vertex;
+import com.mongraphe.graphui.app.GraphEngineAdapter;
 import com.mongraphe.graphui.app.GraphProject;
-import com.mongraphe.graphui.app.GraphService;
 import com.mongraphe.graphui.app.InteractionService;
 import com.mongraphe.graphui.app.InteractionService.Mode;
 import com.mongraphe.graphui.app.UiState;
@@ -61,7 +61,8 @@ import javafx.stage.Stage;
  * - puis choisit mesure + algo
  * - puis "Démarrer" initialise et affiche le graphe.
  *
- * Le rendu et l'interaction sont délégués à GraphService/InteractionService.
+ * Le rendu et l'interaction sont délégués à
+ * graphEngineAdapterervice/InteractionService.
  */
 public final class GraphView {
 
@@ -219,13 +220,11 @@ public final class GraphView {
     @FXML
     private TextField minimumDegree;
 
-    private final UiState ui = new UiState();
-    private final GraphService graphs = new GraphService(ui);
-    private final InteractionService interaction = new InteractionService(ui, graphs);
-
+    private InteractionService interaction;
     private File fichier;
     private SimilitudeMode similitudeMode;
     private NodeCommunity communityMode;
+    private GraphEngineAdapter graphEngineAdapter;
 
     @FXML
     private void initialize() {
@@ -303,9 +302,9 @@ public final class GraphView {
         if (canvasColorPicker == null)
             return;
         var c = canvasColorPicker.getValue();
-        ui.setBackground(c);
-        if (graphs.renderer() != null) {
-            graphs.renderer().setBackgroundColor((float) c.getRed(), (float) c.getGreen(), (float) c.getBlue(),
+        if (graphEngineAdapter != null) {
+            graphEngineAdapter.setBackgroundColor((float) c.getRed(), (float) c.getGreen(),
+                    (float) c.getBlue(),
                     (float) c.getOpacity());
         }
     }
@@ -331,7 +330,7 @@ public final class GraphView {
             try {
                 Platform.runLater(() -> {
                     GraphProject.SourceType type = detectType(fichier);
-                    graphs.load(fichier, type, similitudeMode, communityMode);
+                    graphEngineAdapter.load(fichier, type, similitudeMode, communityMode);
 
                     // Appliquer options moteurs (s'il y a déjà des valeurs)
                     applyOptionsInternal();
@@ -357,46 +356,46 @@ public final class GraphView {
     }
 
     private void mountPanelIfNeeded() {
-        if (graphs.panel() == null)
+        if (graphEngineAdapter.panel() == null)
             return;
 
         // Panel JOGL -> JavaFX
-        if (!graphContainer.getChildren().contains(graphs.panel().canvas())) {
-            graphContainer.getChildren().setAll(graphs.panel().canvas());
+        if (!graphContainer.getChildren().contains(graphEngineAdapter.panel().canvas())) {
+            graphContainer.getChildren().setAll(graphEngineAdapter.panel().canvas());
         }
 
         // Resize camera & canvas
-        graphs.panel().canvas().setWidth(graphContainer.getWidth());
-        graphs.panel().canvas().setHeight(graphContainer.getHeight());
-        graphs.camera().resize((int) graphContainer.getWidth(), (int) graphContainer.getHeight());
+        graphEngineAdapter.panel().canvas().setWidth(graphContainer.getWidth());
+        graphEngineAdapter.panel().canvas().setHeight(graphContainer.getHeight());
+        graphEngineAdapter.camera().resize((int) graphContainer.getWidth(), (int) graphContainer.getHeight());
 
         graphContainer.widthProperty().addListener((obs, o, n) -> {
-            graphs.panel().canvas().setWidth(n.doubleValue());
-            graphs.camera().resize((int) n.doubleValue(), (int) graphContainer.getHeight());
+            graphEngineAdapter.panel().canvas().setWidth(n.doubleValue());
+            graphEngineAdapter.camera().resize((int) n.doubleValue(), (int) graphContainer.getHeight());
         });
         graphContainer.heightProperty().addListener((obs, o, n) -> {
-            graphs.panel().canvas().setHeight(n.doubleValue());
-            graphs.camera().resize((int) graphContainer.getWidth(), (int) n.doubleValue());
+            graphEngineAdapter.panel().canvas().setHeight(n.doubleValue());
+            graphEngineAdapter.camera().resize((int) graphContainer.getWidth(), (int) n.doubleValue());
         });
 
-        interaction.attach(graphs.panel().window());
+        interaction.attach(graphEngineAdapter.panel().window());
         handleToolMode(null);
 
         applyCanvasColor();
 
         // Coloring mode
-        if (graphs.engine() != null && coloringModeCombo != null) {
+        if (graphEngineAdapter.engine() != null && coloringModeCombo != null) {
             coloringModeCombo.valueProperty().addListener((obs, o, n) -> {
-                GraphModel m = graphs.engine().model();
+                GraphModel m = graphEngineAdapter.engine().model();
                 synchronized (m.mutex()) {
                     m.setColoringMode(n == null ? GraphModel.ColoringMode.COMMUNITY : n);
                 }
             });
         }
-        if (graphs.engine() != null && uniformNodeColorPicker != null) {
+        if (graphEngineAdapter.engine() != null && uniformNodeColorPicker != null) {
             uniformNodeColorPicker.setOnAction(e -> {
                 var c = uniformNodeColorPicker.getValue();
-                GraphModel m = graphs.engine().model();
+                GraphModel m = graphEngineAdapter.engine().model();
                 synchronized (m.mutex()) {
                     m.setUniformNodeColor((float) c.getRed(), (float) c.getGreen(), (float) c.getBlue());
                 }
@@ -408,9 +407,9 @@ public final class GraphView {
     }
 
     private void populateTablesOnce() {
-        if (graphs.engine() == null)
+        if (graphEngineAdapter.engine() == null)
             return;
-        GraphModel model = graphs.engine().model();
+        GraphModel model = graphEngineAdapter.engine().model();
         synchronized (model.mutex()) {
             vertexTable.getItems().setAll(model.vertices());
             edgeTable.getItems().setAll(model.edges());
@@ -423,38 +422,39 @@ public final class GraphView {
     }
 
     private void applyOptionsInternal() {
-        if (graphs.engine() == null)
+        if (graphEngineAdapter.engine() == null)
             return;
 
         try {
             if (!degreeFactor.getText().isEmpty())
-                graphs.engine().setDegreeScaleFactor(Double.parseDouble(degreeFactor.getText()));
+                graphEngineAdapter.engine().setDegreeScaleFactor(Double.parseDouble(degreeFactor.getText()));
             if (!initNodeSize.getText().isEmpty())
-                graphs.engine().setInitialNodeSize(Double.parseDouble(initNodeSize.getText()));
+                graphEngineAdapter.engine().setInitialNodeSize(Double.parseDouble(initNodeSize.getText()));
             if (!upScale.getText().isEmpty())
-                graphs.engine().setUpscale(Integer.parseInt(upScale.getText()));
+                graphEngineAdapter.engine().setUpscale(Integer.parseInt(upScale.getText()));
             if (!stabilizedTreshold.getText().isEmpty())
-                graphs.engine().setStabilizedThreshold(Double.parseDouble(stabilizedTreshold.getText()));
+                graphEngineAdapter.engine().setStabilizedThreshold(Double.parseDouble(stabilizedTreshold.getText()));
             if (!attractionTreshold.getText().isEmpty())
-                graphs.engine().setAttractionThreshold(Double.parseDouble(attractionTreshold.getText()));
+                graphEngineAdapter.engine().setAttractionThreshold(Double.parseDouble(attractionTreshold.getText()));
             if (!updatedFrequence.getText().isEmpty())
-                graphs.engine().setClusterUpdateFrequency(Integer.parseInt(updatedFrequence.getText()));
+                graphEngineAdapter.engine().setClusterUpdateFrequency(Integer.parseInt(updatedFrequence.getText()));
             if (!newFriction.getText().isEmpty())
-                graphs.engine().setNewFriction(Double.parseDouble(newFriction.getText()));
+                graphEngineAdapter.engine().setNewFriction(Double.parseDouble(newFriction.getText()));
             if (!attractionCoefficient.getText().isEmpty())
-                graphs.engine().setAttractionCoefficient(Double.parseDouble(attractionCoefficient.getText()));
+                graphEngineAdapter.engine()
+                        .setAttractionCoefficient(Double.parseDouble(attractionCoefficient.getText()));
             if (!repulsionTreshold.getText().isEmpty())
-                graphs.engine().setRepulsionThreshold(Double.parseDouble(repulsionTreshold.getText()));
+                graphEngineAdapter.engine().setRepulsionThreshold(Double.parseDouble(repulsionTreshold.getText()));
             if (!newAmortissement.getText().isEmpty())
-                graphs.engine().setNewAmortissement(Double.parseDouble(newAmortissement.getText()));
+                graphEngineAdapter.engine().setNewAmortissement(Double.parseDouble(newAmortissement.getText()));
             if (!nbClusters.getText().isEmpty())
-                graphs.engine().setNbClusters(Integer.parseInt(nbClusters.getText()));
+                graphEngineAdapter.engine().setNbClusters(Integer.parseInt(nbClusters.getText()));
             if (!minimumDegree.getText().isEmpty())
-                graphs.engine().setMinimumDegree(Integer.parseInt(minimumDegree.getText()));
+                graphEngineAdapter.engine().setMinimumDegree(Integer.parseInt(minimumDegree.getText()));
 
             GraphData.RepulsionMode rm = repulsionModeComboBox.getValue();
             if (rm != null)
-                graphs.engine().setRepulsionMode(rm);
+                graphEngineAdapter.engine().setRepulsionMode(rm);
         } catch (NumberFormatException e) {
             ui.setStatus("Valeur invalide: " + e.getMessage());
         } catch (Exception e) {
@@ -463,12 +463,12 @@ public final class GraphView {
     }
 
     @FXML
-    private void resetGraphSettings(ActionEvent event) {
+    private void resetgraphEngineAdapterettings(ActionEvent event) {
         // Minimal reset: caméra + filtres, sans écraser tes réglages par défaut
-        if (graphs.camera() != null)
-            graphs.camera().reset();
-        if (graphs.engine() != null) {
-            GraphModel m = graphs.engine().model();
+        if (graphEngineAdapter.camera() != null)
+            graphEngineAdapter.camera().reset();
+        if (graphEngineAdapter.engine() != null) {
+            GraphModel m = graphEngineAdapter.engine().model();
             synchronized (m.mutex()) {
                 m.setFilterMinDegree(0);
                 m.applyFilters();
@@ -479,14 +479,14 @@ public final class GraphView {
 
     @FXML
     private void handleEnableKmeans(ActionEvent event) {
-        if (graphs.engine() != null)
-            graphs.engine().enableKmeans(enableKmeans.isSelected());
+        if (graphEngineAdapter.engine() != null)
+            graphEngineAdapter.engine().enableKmeans(enableKmeans.isSelected());
     }
 
     @FXML
     private void handleApplyGraphMode(ActionEvent event) {
         Toggle selected = graphModeToggleGroup == null ? null : graphModeToggleGroup.getSelectedToggle();
-        if (selected == null || graphs.engine() == null)
+        if (selected == null || graphEngineAdapter.engine() == null)
             return;
         try {
             GraphData.GraphMode mode = GraphData.GraphMode.valueOf(String.valueOf(selected.getUserData()));
@@ -659,8 +659,8 @@ public final class GraphView {
 
     @FXML
     private void handleLayoutReset(ActionEvent event) {
-        if (graphs.camera() != null)
-            graphs.camera().reset();
+        if (graphEngineAdapter.camera() != null)
+            graphEngineAdapter.camera().reset();
         ui.setStatus("Vue réinitialisée");
     }
 
@@ -705,7 +705,7 @@ public final class GraphView {
 
     @FXML
     private void handleExportPng(ActionEvent event) {
-        if (graphs.panel() == null) {
+        if (graphEngineAdapter.panel() == null) {
             alert(AlertType.WARNING, "Export PNG", "Aucun graphe affiché");
             return;
         }
@@ -727,7 +727,7 @@ public final class GraphView {
                 if (outFinal.toPath().getParent() != null) {
                     Files.createDirectories(outFinal.toPath().getParent());
                 }
-                graphs.exportPng(outFinal, w, h);
+                graphEngineAdapter.exportPng(outFinal, w, h);
             } catch (Exception e) {
                 Platform.runLater(() -> alert(AlertType.ERROR, "Erreur", "Export PNG impossible: " + e.getMessage()));
             }
@@ -752,7 +752,7 @@ public final class GraphView {
 
     private void disposeGraph() {
         try {
-            graphs.dispose();
+            graphEngineAdapter.dispose();
         } catch (Exception ignored) {
         }
     }

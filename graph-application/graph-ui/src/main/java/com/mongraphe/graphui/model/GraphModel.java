@@ -1,7 +1,9 @@
 package com.mongraphe.graphui.model;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import com.mongraphe.graphui.Edge;
 import com.mongraphe.graphui.EdgeC;
@@ -20,8 +22,9 @@ public class GraphModel {
 
     private final Object mutex = new Object();
 
-    public Object mutex() { return mutex; }
-
+    public Object mutex() {
+        return mutex;
+    }
 
     private double zoom = 1.0;
 
@@ -46,6 +49,7 @@ public class GraphModel {
     private ColoringMode coloringMode = ColoringMode.COMMUNITY;
     private final List<Vertex> vertices = new ArrayList<>();
     private final List<Edge> edges = new ArrayList<>();
+    private final Map<Integer, Vertex> verticesById = new HashMap<>();
 
     private int visibleVertexCount;
     private int visibleEdgeCount;
@@ -103,9 +107,17 @@ public class GraphModel {
         this.uniformNodeB = clamp01(b);
     }
 
-    public float getUniformNodeR() { return uniformNodeR; }
-    public float getUniformNodeG() { return uniformNodeG; }
-    public float getUniformNodeB() { return uniformNodeB; }
+    public float getUniformNodeR() {
+        return uniformNodeR;
+    }
+
+    public float getUniformNodeG() {
+        return uniformNodeG;
+    }
+
+    public float getUniformNodeB() {
+        return uniformNodeB;
+    }
 
     private static float clamp01(float v) {
         return Math.max(0f, Math.min(1f, v));
@@ -113,14 +125,16 @@ public class GraphModel {
 
     public Vertex findVertexAt(double x, double y) {
         for (Vertex v : vertices) {
-            if (v.isDeleted()) continue;
+            if (v.isDeleted())
+                continue;
 
             double dx = x - v.getX();
             double dy = y - v.getY();
             double dist = Math.sqrt(dx * dx + dy * dy);
             double r = (v.getDiameter() / 2.0) / zoom;
 
-            if (dist <= r) return v;
+            if (dist <= r)
+                return v;
         }
         return null;
     }
@@ -169,6 +183,11 @@ public class GraphModel {
 
     public void addVertex(Vertex v) {
         vertices.add(v);
+        verticesById.put(v.getId(), v);
+    }
+
+    public Vertex vertexById(int id) {
+        return verticesById.get(id);
     }
 
     public void addEdge(Edge e) {
@@ -177,6 +196,7 @@ public class GraphModel {
 
     public void removeVertex(Vertex v) {
         vertices.remove(v);
+        verticesById.remove(v.getId());
         edges.removeIf(e -> e.getStart() == v || e.getEnd() == v);
         applyFilters();
     }
@@ -186,11 +206,6 @@ public class GraphModel {
         edges.clear();
     }
 
-    /**
-     * Applique les filtres "min degree" et "min edge weight" sur le modèle.
-     *
-     * On évite de supprimer physiquement les objets pour préserver les index / ids.
-     */
     public void applyFilters() {
         // Sommets: visible si non supprimé et degree >= min
         for (Vertex v : vertices) {

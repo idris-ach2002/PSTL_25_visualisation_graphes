@@ -1,33 +1,22 @@
 package com.mongraphe.graphui.app;
 
-import java.util.Objects;
 
-import com.mongraphe.graphui.interaction.UndoManager;
-
+/** This class encapsulates the shared state of the application, such as the UI state and the interaction service. */
 public class InteractionContext {
+    
     private final UiState ui;
-    private final GraphService graphService;
-    private final UndoManager undo;
+    private final GraphEngineAdapter graphAdapter;
 
-    public InteractionContext(
-            UiState ui,
-            GraphService graphs,
-            UndoManager undo) {
-
-        this.ui = Objects.requireNonNull(ui);
-        this.graphService = Objects.requireNonNull(graphs);
-        this.undo = Objects.requireNonNull(undo);
+    public InteractionContext(UiState ui, GraphEngineAdapter graphAdapter) {
+        this.ui = ui;
+        this.graphAdapter = graphAdapter;
     }
 
-    public UiState ui() {
+    public UiState getUI() {
         return ui;
     }
 
-    public GraphService graphService() {
-        return graphService();
-    }
-
-    public UndoManager undo() {
-        return undo;
+    public GraphEngineAdapter getGraphAdapter() {
+        return graphAdapter;
     }
 }
