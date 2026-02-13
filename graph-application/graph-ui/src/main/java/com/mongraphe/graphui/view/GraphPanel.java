@@ -40,6 +40,7 @@ public final class GraphPanel {
 
         // Intégration JavaFX (reparenting)
         canvas = new NewtCanvasJFX(window);
+        canvas.setFocusTraversable(false);
 
         // Taille initiale (sera redimensionnée dynamiquement par GraphView)
         window.setSize(1024, 768);

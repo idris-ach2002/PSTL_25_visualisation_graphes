@@ -28,7 +28,6 @@ public final class GraphRenderer implements GLEventListener {
         this.camera = camera;
     }
 
-
     public Camera2D camera() {
         return camera;
     }
@@ -41,8 +40,10 @@ public final class GraphRenderer implements GLEventListener {
     }
 
     private float clamp01(float v) {
-        if (v < 0f) return 0f;
-        if (v > 1f) return 1f;
+        if (v < 0f)
+            return 0f;
+        if (v > 1f)
+            return 1f;
         return v;
     }
 
@@ -60,7 +61,7 @@ public final class GraphRenderer implements GLEventListener {
         edgeBuffer.init(gl);
 
         pointShader = ShaderFactory.createPointShader(gl);
-        edgeShader  = ShaderFactory.createEdgeShader(gl);
+        edgeShader = ShaderFactory.createEdgeShader(gl);
     }
 
     private void configureGL(GL4 gl) {
@@ -74,7 +75,7 @@ public final class GraphRenderer implements GLEventListener {
     public void display(GLAutoDrawable drawable) {
         render(drawable.getGL().getGL4());
     }
-
+    
     public void render(GL4 gl) {
 
         gl.glClearColor(clearR, clearG, clearB, clearA);
@@ -119,8 +120,11 @@ public final class GraphRenderer implements GLEventListener {
         // Best effort: libère au moins les programmes shader
         try {
             GL4 gl = drawable.getGL().getGL4();
-            if (pointShader != null) pointShader.delete(gl);
-            if (edgeShader != null) edgeShader.delete(gl);
-        } catch (Exception ignored) {}
+            if (pointShader != null)
+                pointShader.delete(gl);
+            if (edgeShader != null)
+                edgeShader.delete(gl);
+        } catch (Exception ignored) {
+        }
     }
 }

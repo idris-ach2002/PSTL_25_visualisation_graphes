@@ -95,7 +95,6 @@ public final class GraphService {
     public void exportPng(File outFile, int width, int height) throws Exception {
         Objects.requireNonNull(outFile, "outFile");
         if (panel == null || renderer == null) throw new IllegalStateException("Panel non initialisé");
-        // GraphExport est un helper orienté instance dans ce projet
         new GraphExport(panel.window()).export(outFile.getAbsolutePath(), width, height, renderer);
         ui.setStatus("Export PNG: " + outFile.getName());
     }

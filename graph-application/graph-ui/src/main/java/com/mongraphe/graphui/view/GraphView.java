@@ -20,7 +20,6 @@ import com.mongraphe.graphui.app.InteractionService.Mode;
 import com.mongraphe.graphui.app.UiState;
 import com.mongraphe.graphui.model.GraphModel;
 
-import javafx.animation.AnimationTimer;
 import javafx.application.Platform;
 import javafx.beans.property.SimpleBooleanProperty;
 import javafx.beans.property.SimpleDoubleProperty;
@@ -67,101 +66,159 @@ import javafx.stage.Stage;
 public final class GraphView {
 
     // =====================
-    // === FXML: layout  ===
+    // === FXML: layout ===
     // =====================
-    @FXML private StackPane mainContentPane;
-    @FXML private GridPane overviewPane;
-    @FXML private AnchorPane dataPane;
-    @FXML private AnchorPane previewPane;
-    @FXML private StackPane graphContainer;
-    @FXML private AnchorPane statsPane;
+    @FXML
+    private StackPane mainContentPane;
+    @FXML
+    private GridPane overviewPane;
+    @FXML
+    private AnchorPane dataPane;
+    @FXML
+    private AnchorPane previewPane;
+    @FXML
+    private StackPane graphContainer;
+    @FXML
+    private AnchorPane statsPane;
 
-    @FXML private ToggleGroup viewToggleGroup;
-    @FXML private ToggleGroup graphModeToggleGroup;
+    @FXML
+    private ToggleGroup viewToggleGroup;
+    @FXML
+    private ToggleGroup graphModeToggleGroup;
 
     // Toolbar tools
-    @FXML private ToggleGroup toolToggleGroup;
-    @FXML private ToggleButton toolRun;
-    @FXML private ToggleButton toolSelect;
-    @FXML private ToggleButton toolMove;
-    @FXML private ToggleButton toolDelete;
+    @FXML
+    private ToggleGroup toolToggleGroup;
+    @FXML
+    private ToggleButton toolRun;
+    @FXML
+    private ToggleButton toolSelect;
+    @FXML
+    private ToggleButton toolMove;
+    @FXML
+    private ToggleButton toolDelete;
 
     // Menu
-    @FXML private CheckMenuItem showStatsMenuItem;
+    @FXML
+    private CheckMenuItem showStatsMenuItem;
 
     // Status
-    @FXML private Label statusLabel;
+    @FXML
+    private Label statusLabel;
 
     // Start button
-    @FXML private Button startButton;
+    @FXML
+    private Button startButton;
 
     // =========================
     // === FXML : statistiques ===
     // =========================
-    @FXML private Label nodesDeletedLabel;
-    @FXML private Label nodesDisplayedLabel;
-    @FXML private Label nodesHiddenLabel;
-    @FXML private Label edgesDisplayedLabel;
-    @FXML private Label edgesDeletedLabel;
-    @FXML private Label totalElementsLabel;
+    @FXML
+    private Label nodesDeletedLabel;
+    @FXML
+    private Label nodesDisplayedLabel;
+    @FXML
+    private Label nodesHiddenLabel;
+    @FXML
+    private Label edgesDisplayedLabel;
+    @FXML
+    private Label edgesDeletedLabel;
+    @FXML
+    private Label totalElementsLabel;
 
-    @FXML private Label recommendedTreshold;
-    @FXML private Label recommendedAntiTreshold;
-    @FXML private Label treshold;
-    @FXML private Label antiTreshold;
+    @FXML
+    private Label recommendedTreshold;
+    @FXML
+    private Label recommendedAntiTreshold;
+    @FXML
+    private Label treshold;
+    @FXML
+    private Label antiTreshold;
 
-    @FXML private Label idHovredVertexLabel;
-    @FXML private Label XHovredVertexLabel;
-    @FXML private Label YHovredVertexLabel;
+    @FXML
+    private Label idHovredVertexLabel;
+    @FXML
+    private Label XHovredVertexLabel;
+    @FXML
+    private Label YHovredVertexLabel;
 
     // ====================
     // === FXML : tables ===
     // ====================
-    @FXML private TableView<Vertex> vertexTable;
-    @FXML private TableColumn<Vertex, Integer> vertexIdCol;
-    @FXML private TableColumn<Vertex, Integer> vertexCommunityCol;
-    @FXML private TableColumn<Vertex, Integer> vertexDegreeCol;
-    @FXML private TableColumn<Vertex, Double> vertexXCol;
-    @FXML private TableColumn<Vertex, Double> vertexYCol;
-    @FXML private TableColumn<Vertex, Double> vertexDiameterCol;
-    @FXML private TableColumn<Vertex, Boolean> vertexDeletedCol;
+    @FXML
+    private TableView<Vertex> vertexTable;
+    @FXML
+    private TableColumn<Vertex, Integer> vertexIdCol;
+    @FXML
+    private TableColumn<Vertex, Integer> vertexCommunityCol;
+    @FXML
+    private TableColumn<Vertex, Integer> vertexDegreeCol;
+    @FXML
+    private TableColumn<Vertex, Double> vertexXCol;
+    @FXML
+    private TableColumn<Vertex, Double> vertexYCol;
+    @FXML
+    private TableColumn<Vertex, Double> vertexDiameterCol;
+    @FXML
+    private TableColumn<Vertex, Boolean> vertexDeletedCol;
 
-    @FXML private TableView<Edge> edgeTable;
-    @FXML private TableColumn<Edge, Integer> edgeStartCol;
-    @FXML private TableColumn<Edge, Integer> edgeEndCol;
-    @FXML private TableColumn<Edge, Double> edgeWeightCol;
+    @FXML
+    private TableView<Edge> edgeTable;
+    @FXML
+    private TableColumn<Edge, Integer> edgeStartCol;
+    @FXML
+    private TableColumn<Edge, Integer> edgeEndCol;
+    @FXML
+    private TableColumn<Edge, Double> edgeWeightCol;
 
     // =====================
     // === FXML : options ===
     // =====================
-    @FXML private ProgressIndicator loadingIndicator;
-    @FXML private ColorPicker canvasColorPicker;
-    @FXML private CheckBox enableKmeans;
+    @FXML
+    private ProgressIndicator loadingIndicator;
+    @FXML
+    private ColorPicker canvasColorPicker;
+    @FXML
+    private CheckBox enableKmeans;
 
-    @FXML private ComboBox<GraphData.RepulsionMode> repulsionModeComboBox;
-    @FXML private ComboBox<GraphData.SimilitudeMode> mesureChamp;
-    @FXML private ComboBox<GraphData.NodeCommunity> clusteringChamp;
+    @FXML
+    private ComboBox<GraphData.RepulsionMode> repulsionModeComboBox;
+    @FXML
+    private ComboBox<GraphData.SimilitudeMode> mesureChamp;
+    @FXML
+    private ComboBox<GraphData.NodeCommunity> clusteringChamp;
 
     // Nouveaux contrôles (présents dans le FXML)
-    @FXML private ComboBox<GraphModel.ColoringMode> coloringModeCombo;
-    @FXML private ColorPicker uniformNodeColorPicker;
+    @FXML
+    private ComboBox<GraphModel.ColoringMode> coloringModeCombo;
+    @FXML
+    private ColorPicker uniformNodeColorPicker;
 
-    @FXML private TextField initNodeSize;
-    @FXML private TextField degreeFactor;
-    @FXML private TextField upScale;
-    @FXML private TextField stabilizedTreshold;
-    @FXML private TextField attractionTreshold;
-    @FXML private TextField updatedFrequence;
-    @FXML private TextField newFriction;
-    @FXML private TextField attractionCoefficient;
-    @FXML private TextField repulsionTreshold;
-    @FXML private TextField newAmortissement;
-    @FXML private TextField nbClusters;
-    @FXML private TextField minimumDegree;
+    @FXML
+    private TextField initNodeSize;
+    @FXML
+    private TextField degreeFactor;
+    @FXML
+    private TextField upScale;
+    @FXML
+    private TextField stabilizedTreshold;
+    @FXML
+    private TextField attractionTreshold;
+    @FXML
+    private TextField updatedFrequence;
+    @FXML
+    private TextField newFriction;
+    @FXML
+    private TextField attractionCoefficient;
+    @FXML
+    private TextField repulsionTreshold;
+    @FXML
+    private TextField newAmortissement;
+    @FXML
+    private TextField nbClusters;
+    @FXML
+    private TextField minimumDegree;
 
-    // =====================
-    // === Etat / services ===
-    // =====================
     private final UiState ui = new UiState();
     private final GraphService graphs = new GraphService(ui);
     private final InteractionService interaction = new InteractionService(ui, graphs);
@@ -170,11 +227,6 @@ public final class GraphView {
     private SimilitudeMode similitudeMode;
     private NodeCommunity communityMode;
 
-    private AnimationTimer statsTimer;
-
-    // =========================
-    // === Initialisation UI  ===
-    // =========================
     @FXML
     private void initialize() {
         // Combos
@@ -225,7 +277,8 @@ public final class GraphView {
         if (toolToggleGroup != null) {
             toolToggleGroup.selectedToggleProperty().addListener((obs, old, now) -> handleToolMode(null));
             // Default
-            if (toolRun != null) toolToggleGroup.selectToggle(toolRun);
+            if (toolRun != null)
+                toolToggleGroup.selectToggle(toolRun);
         }
 
         // Toggle stats default: visible
@@ -240,31 +293,34 @@ public final class GraphView {
     }
 
     private void updateStartButtonState() {
-        if (startButton == null) return;
+        if (startButton == null)
+            return;
         boolean ready = fichier != null && similitudeMode != null && communityMode != null;
         startButton.setDisable(!ready);
     }
 
     private void applyCanvasColor() {
-        if (canvasColorPicker == null) return;
+        if (canvasColorPicker == null)
+            return;
         var c = canvasColorPicker.getValue();
         ui.setBackground(c);
         if (graphs.renderer() != null) {
-            graphs.renderer().setBackgroundColor((float) c.getRed(), (float) c.getGreen(), (float) c.getBlue(), (float) c.getOpacity());
+            graphs.renderer().setBackgroundColor((float) c.getRed(), (float) c.getGreen(), (float) c.getBlue(),
+                    (float) c.getOpacity());
         }
     }
 
-    // ==================================
-    // === Chargement / démarrage graphe ===
-    // ==================================
     @FXML
     private void handleStartButton() {
         // Boucle d'alertes (oui, c'est un peu autoritaire, mais c'est l'idée)
         while (fichier == null || similitudeMode == null || communityMode == null) {
             StringBuilder sb = new StringBuilder("Avant d'afficher le graphe, il faut:");
-            if (fichier == null) sb.append("\n- Choisir un fichier");
-            if (similitudeMode == null) sb.append("\n- Choisir une mesure de similarité");
-            if (communityMode == null) sb.append("\n- Choisir un algorithme");
+            if (fichier == null)
+                sb.append("\n- Choisir un fichier");
+            if (similitudeMode == null)
+                sb.append("\n- Choisir une mesure de similarité");
+            if (communityMode == null)
+                sb.append("\n- Choisir un algorithme");
             alert(AlertType.WARNING, "Paramètres manquants", sb.toString());
             return;
         }
@@ -274,13 +330,12 @@ public final class GraphView {
         new Thread(() -> {
             try {
                 Platform.runLater(() -> {
-                GraphProject.SourceType type = detectType(fichier);
-                graphs.load(fichier, type, similitudeMode, communityMode);
+                    GraphProject.SourceType type = detectType(fichier);
+                    graphs.load(fichier, type, similitudeMode, communityMode);
 
-                // Appliquer options moteurs (s'il y a déjà des valeurs)
-                applyOptionsInternal();
+                    // Appliquer options moteurs (s'il y a déjà des valeurs)
+                    applyOptionsInternal();
 
-               
                     mountPanelIfNeeded();
                     loadingIndicator.setVisible(false);
                 });
@@ -296,12 +351,14 @@ public final class GraphView {
 
     private GraphProject.SourceType detectType(File f) {
         String n = f.getName().toLowerCase();
-        if (n.endsWith(".dot")) return GraphProject.SourceType.DOT;
+        if (n.endsWith(".dot"))
+            return GraphProject.SourceType.DOT;
         return GraphProject.SourceType.CSV;
     }
 
     private void mountPanelIfNeeded() {
-        if (graphs.panel() == null) return;
+        if (graphs.panel() == null)
+            return;
 
         // Panel JOGL -> JavaFX
         if (!graphContainer.getChildren().contains(graphs.panel().canvas())) {
@@ -322,11 +379,9 @@ public final class GraphView {
             graphs.camera().resize((int) graphContainer.getWidth(), (int) n.doubleValue());
         });
 
-        // Interaction
         interaction.attach(graphs.panel().window());
         handleToolMode(null);
 
-        // Background
         applyCanvasColor();
 
         // Coloring mode
@@ -349,12 +404,12 @@ public final class GraphView {
         }
 
         // Stats refresh
-        startStatsTimer();
         populateTablesOnce();
     }
 
     private void populateTablesOnce() {
-        if (graphs.engine() == null) return;
+        if (graphs.engine() == null)
+            return;
         GraphModel model = graphs.engine().model();
         synchronized (model.mutex()) {
             vertexTable.getItems().setAll(model.vertices());
@@ -362,94 +417,44 @@ public final class GraphView {
         }
     }
 
-    private void startStatsTimer() {
-        if (statsTimer != null) return;
-        statsTimer = new AnimationTimer() {
-            private long last = 0;
-            @Override
-            public void handle(long now) {
-                if (now - last < 200_000_000L) return; // ~200ms
-                last = now;
-                refreshStats();
-            }
-        };
-        statsTimer.start();
-    }
-
-    private void refreshStats() {
-        if (graphs.engine() == null) return;
-        GraphModel model = graphs.engine().model();
-
-        int totalV, totalE, visibleV, visibleE, deletedV, deletedE;
-        int selectedId;
-        double selX = 0, selY = 0;
-
-        synchronized (model.mutex()) {
-            totalV = model.vertices().size();
-            totalE = model.edges().size();
-            visibleV = model.getVisibleVertexCount();
-            visibleE = model.getVisibleEdgeCount();
-            deletedV = (int) model.vertices().stream().filter(Vertex::isDeleted).count();
-            deletedE = 0;
-            selectedId = model.getSelectedVertexId();
-            if (selectedId >= 0 && selectedId < model.vertices().size()) {
-                Vertex v = model.vertices().get(selectedId);
-                selX = v.getX();
-                selY = v.getY();
-            }
-        }
-
-        int hiddenV = Math.max(0, totalV - visibleV - deletedV);
-        int hiddenE = Math.max(0, totalE - visibleE - deletedE);
-
-        nodesDisplayedLabel.setText(String.valueOf(visibleV));
-        nodesDeletedLabel.setText(String.valueOf(deletedV));
-        nodesHiddenLabel.setText(String.valueOf(hiddenV));
-        edgesDisplayedLabel.setText(String.valueOf(visibleE));
-        edgesDeletedLabel.setText(String.valueOf(deletedE));
-        totalElementsLabel.setText(String.valueOf(totalV + totalE));
-
-        recommendedTreshold.setText("-");
-        recommendedAntiTreshold.setText("-");
-
-        // Valeurs UI (champs) si dispo
-        try {
-            treshold.setText(attractionTreshold.getText());
-            antiTreshold.setText(repulsionTreshold.getText());
-        } catch (Exception ignored) {}
-
-        idHovredVertexLabel.setText(selectedId >= 0 ? String.valueOf(selectedId) : "-");
-        XHovredVertexLabel.setText(selectedId >= 0 ? String.format("%.2f", selX) : "-");
-        YHovredVertexLabel.setText(selectedId >= 0 ? String.format("%.2f", selY) : "-");
-    }
-
-    // =====================
-    // === Options panel  ===
-    // =====================
     @FXML
     private void applyOptions(ActionEvent event) {
         applyOptionsInternal();
     }
 
     private void applyOptionsInternal() {
-        if (graphs.engine() == null) return;
+        if (graphs.engine() == null)
+            return;
 
         try {
-            if (!degreeFactor.getText().isEmpty()) graphs.engine().setDegreeScaleFactor(Double.parseDouble(degreeFactor.getText()));
-            if (!initNodeSize.getText().isEmpty()) graphs.engine().setInitialNodeSize(Double.parseDouble(initNodeSize.getText()));
-            if (!upScale.getText().isEmpty()) graphs.engine().setUpscale(Integer.parseInt(upScale.getText()));
-            if (!stabilizedTreshold.getText().isEmpty()) graphs.engine().setStabilizedThreshold(Double.parseDouble(stabilizedTreshold.getText()));
-            if (!attractionTreshold.getText().isEmpty()) graphs.engine().setAttractionThreshold(Double.parseDouble(attractionTreshold.getText()));
-            if (!updatedFrequence.getText().isEmpty()) graphs.engine().setClusterUpdateFrequency(Integer.parseInt(updatedFrequence.getText()));
-            if (!newFriction.getText().isEmpty()) graphs.engine().setNewFriction(Double.parseDouble(newFriction.getText()));
-            if (!attractionCoefficient.getText().isEmpty()) graphs.engine().setAttractionCoefficient(Double.parseDouble(attractionCoefficient.getText()));
-            if (!repulsionTreshold.getText().isEmpty()) graphs.engine().setRepulsionThreshold(Double.parseDouble(repulsionTreshold.getText()));
-            if (!newAmortissement.getText().isEmpty()) graphs.engine().setNewAmortissement(Double.parseDouble(newAmortissement.getText()));
-            if (!nbClusters.getText().isEmpty()) graphs.engine().setNbClusters(Integer.parseInt(nbClusters.getText()));
-            if (!minimumDegree.getText().isEmpty()) graphs.engine().setMinimumDegree(Integer.parseInt(minimumDegree.getText()));
+            if (!degreeFactor.getText().isEmpty())
+                graphs.engine().setDegreeScaleFactor(Double.parseDouble(degreeFactor.getText()));
+            if (!initNodeSize.getText().isEmpty())
+                graphs.engine().setInitialNodeSize(Double.parseDouble(initNodeSize.getText()));
+            if (!upScale.getText().isEmpty())
+                graphs.engine().setUpscale(Integer.parseInt(upScale.getText()));
+            if (!stabilizedTreshold.getText().isEmpty())
+                graphs.engine().setStabilizedThreshold(Double.parseDouble(stabilizedTreshold.getText()));
+            if (!attractionTreshold.getText().isEmpty())
+                graphs.engine().setAttractionThreshold(Double.parseDouble(attractionTreshold.getText()));
+            if (!updatedFrequence.getText().isEmpty())
+                graphs.engine().setClusterUpdateFrequency(Integer.parseInt(updatedFrequence.getText()));
+            if (!newFriction.getText().isEmpty())
+                graphs.engine().setNewFriction(Double.parseDouble(newFriction.getText()));
+            if (!attractionCoefficient.getText().isEmpty())
+                graphs.engine().setAttractionCoefficient(Double.parseDouble(attractionCoefficient.getText()));
+            if (!repulsionTreshold.getText().isEmpty())
+                graphs.engine().setRepulsionThreshold(Double.parseDouble(repulsionTreshold.getText()));
+            if (!newAmortissement.getText().isEmpty())
+                graphs.engine().setNewAmortissement(Double.parseDouble(newAmortissement.getText()));
+            if (!nbClusters.getText().isEmpty())
+                graphs.engine().setNbClusters(Integer.parseInt(nbClusters.getText()));
+            if (!minimumDegree.getText().isEmpty())
+                graphs.engine().setMinimumDegree(Integer.parseInt(minimumDegree.getText()));
 
             GraphData.RepulsionMode rm = repulsionModeComboBox.getValue();
-            if (rm != null) graphs.engine().setRepulsionMode(rm);
+            if (rm != null)
+                graphs.engine().setRepulsionMode(rm);
         } catch (NumberFormatException e) {
             ui.setStatus("Valeur invalide: " + e.getMessage());
         } catch (Exception e) {
@@ -460,7 +465,8 @@ public final class GraphView {
     @FXML
     private void resetGraphSettings(ActionEvent event) {
         // Minimal reset: caméra + filtres, sans écraser tes réglages par défaut
-        if (graphs.camera() != null) graphs.camera().reset();
+        if (graphs.camera() != null)
+            graphs.camera().reset();
         if (graphs.engine() != null) {
             GraphModel m = graphs.engine().model();
             synchronized (m.mutex()) {
@@ -473,16 +479,19 @@ public final class GraphView {
 
     @FXML
     private void handleEnableKmeans(ActionEvent event) {
-        if (graphs.engine() != null) graphs.engine().enableKmeans(enableKmeans.isSelected());
+        if (graphs.engine() != null)
+            graphs.engine().enableKmeans(enableKmeans.isSelected());
     }
 
     @FXML
     private void handleApplyGraphMode(ActionEvent event) {
         Toggle selected = graphModeToggleGroup == null ? null : graphModeToggleGroup.getSelectedToggle();
-        if (selected == null || graphs.engine() == null) return;
+        if (selected == null || graphs.engine() == null)
+            return;
         try {
             GraphData.GraphMode mode = GraphData.GraphMode.valueOf(String.valueOf(selected.getUserData()));
-            // Ce "GraphMode" correspond aux outils d'interaction (RUN/SELECTION/MOVE/DELETE).
+            // Ce "GraphMode" correspond aux outils d'interaction
+            // (RUN/SELECTION/MOVE/DELETE).
             // On le mappe sur InteractionService.Mode sans toucher à la logique UI.
             switch (mode) {
                 case RUN -> interaction.setMode(Mode.RUN);
@@ -498,19 +507,19 @@ public final class GraphView {
 
     @FXML
     private void applyChangement(ActionEvent event) {
-        if (mesureChamp.getValue() != null) similitudeMode = mesureChamp.getValue();
-        if (clusteringChamp.getValue() != null) communityMode = clusteringChamp.getValue();
+        if (mesureChamp.getValue() != null)
+            similitudeMode = mesureChamp.getValue();
+        if (clusteringChamp.getValue() != null)
+            communityMode = clusteringChamp.getValue();
         updateStartButtonState();
         handleStartButton();
     }
 
-    // =====================
-    // === Navigation vues ===
-    // =====================
     @FXML
     private void handleViewChange(ActionEvent event) {
         Toggle selected = viewToggleGroup == null ? null : viewToggleGroup.getSelectedToggle();
-        if (selected == null) return;
+        if (selected == null)
+            return;
         String view = String.valueOf(selected.getUserData());
 
         overviewPane.setVisible("overview".equals(view));
@@ -518,25 +527,22 @@ public final class GraphView {
         previewPane.setVisible("preview".equals(view));
     }
 
-    // ==========================
-    // === Init depuis l'accueil ===
-    // ==========================
-    public void initData(File fichier, SimilitudeMode similitudeMode, double upThreshold, double downThreshold, NodeCommunity communityMode) {
+    public void initData(File fichier, SimilitudeMode similitudeMode, double upThreshold, double downThreshold,
+            NodeCommunity communityMode) {
         this.fichier = fichier;
         this.similitudeMode = similitudeMode;
         this.communityMode = communityMode;
         Platform.runLater(this::updateStartButtonState);
     }
 
-    // =========================
-    // === Toolbar (modes)    ===
-    // =========================
     @FXML
     private void handleToolMode(ActionEvent event) {
         Toggle t = toolToggleGroup == null ? null : toolToggleGroup.getSelectedToggle();
-        if (t == null) return;
+        if (t == null)
+            return;
         Object ud = t.getUserData();
-        if (ud == null) return;
+        if (ud == null)
+            return;
         try {
             interaction.setMode(Mode.valueOf(String.valueOf(ud)));
         } catch (Exception ignored) {
@@ -544,9 +550,6 @@ public final class GraphView {
         }
     }
 
-    // =========================
-    // === Menus (logique)    ===
-    // =========================
     @FXML
     private void handleNew(ActionEvent event) {
         // Retour à l'accueil
@@ -578,10 +581,10 @@ public final class GraphView {
         fc.getExtensionFilters().addAll(
                 new FileChooser.ExtensionFilter("Graph CSV", "*.csv"),
                 new FileChooser.ExtensionFilter("Graph DOT", "*.dot"),
-                new FileChooser.ExtensionFilter("Tous les fichiers", "*.*")
-        );
+                new FileChooser.ExtensionFilter("Tous les fichiers", "*.*"));
         File f = fc.showOpenDialog(mainContentPane.getScene().getWindow());
-        if (f == null) return;
+        if (f == null)
+            return;
         fichier = f;
         ui.setStatus("Fichier: " + f.getName());
         updateStartButtonState();
@@ -600,8 +603,10 @@ public final class GraphView {
         fc.setTitle("Enregistrer le projet");
         fc.getExtensionFilters().add(new FileChooser.ExtensionFilter("Projet MonGraphe", "*.mongraphe"));
         File out = fc.showSaveDialog(mainContentPane.getScene().getWindow());
-        if (out == null) return;
-        if (!out.getName().toLowerCase().endsWith(".mongraphe")) out = new File(out.getAbsolutePath() + ".mongraphe");
+        if (out == null)
+            return;
+        if (!out.getName().toLowerCase().endsWith(".mongraphe"))
+            out = new File(out.getAbsolutePath() + ".mongraphe");
 
         Properties p = new Properties();
         p.setProperty("source", fichier.getAbsolutePath());
@@ -646,14 +651,16 @@ public final class GraphView {
     }
 
     private void setStatsVisible(boolean show) {
-        if (statsPane == null) return;
+        if (statsPane == null)
+            return;
         statsPane.setVisible(show);
         statsPane.setManaged(show);
     }
 
     @FXML
     private void handleLayoutReset(ActionEvent event) {
-        if (graphs.camera() != null) graphs.camera().reset();
+        if (graphs.camera() != null)
+            graphs.camera().reset();
         ui.setStatus("Vue réinitialisée");
     }
 
@@ -668,12 +675,11 @@ public final class GraphView {
         a.setHeaderText("Raccourcis et outils");
         a.setContentText(
                 "Outils: Exécuter / Sélectionner / Déplacer / Supprimer\n" +
-                "SPACE: pause/run\n" +
-                "DEL: supprimer le sommet sélectionné\n" +
-                "Molette: zoom (sur curseur)\n" +
-                "Clic droit + drag: déplacer la caméra\n" +
-                "Undo/Redo: via le menu Édition"
-        );
+                        "SPACE: pause/run\n" +
+                        "DEL: supprimer le sommet sélectionné\n" +
+                        "Molette: zoom (sur curseur)\n" +
+                        "Clic droit + drag: déplacer la caméra\n" +
+                        "Undo/Redo: via le menu Édition");
         a.showAndWait();
     }
 
@@ -686,7 +692,8 @@ public final class GraphView {
                 Desktop.getDesktop().open(readme);
                 return;
             }
-        } catch (Exception ignored) {}
+        } catch (Exception ignored) {
+        }
         try {
             if (Desktop.isDesktopSupported()) {
                 Desktop.getDesktop().browse(URI.create("https://openjfx.io/"));
@@ -706,8 +713,10 @@ public final class GraphView {
         fc.setTitle("Exporter en PNG");
         fc.getExtensionFilters().add(new FileChooser.ExtensionFilter("Image PNG", "*.png"));
         File out = fc.showSaveDialog(mainContentPane.getScene().getWindow());
-        if (out == null) return;
-        if (!out.getName().toLowerCase().endsWith(".png")) out = new File(out.getAbsolutePath() + ".png");
+        if (out == null)
+            return;
+        if (!out.getName().toLowerCase().endsWith(".png"))
+            out = new File(out.getAbsolutePath() + ".png");
 
         final File outFinal = out;
         int w = Math.max(1, (int) graphContainer.getWidth());
@@ -743,12 +752,9 @@ public final class GraphView {
 
     private void disposeGraph() {
         try {
-            if (statsTimer != null) {
-                statsTimer.stop();
-                statsTimer = null;
-            }
-        } catch (Exception ignored) {}
-        try { graphs.dispose(); } catch (Exception ignored) {}
+            graphs.dispose();
+        } catch (Exception ignored) {
+        }
     }
 
     private void alert(AlertType type, String title, String content) {
