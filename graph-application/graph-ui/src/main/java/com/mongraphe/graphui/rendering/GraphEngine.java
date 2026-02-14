@@ -82,23 +82,23 @@ public final class GraphEngine {
             verticesArray[i].setCommunity(c);
         }
 
-        // Construire le modèle Java
-        model.clear();
-        for (Vertex v : verticesArray) {
-            v.updateDiameter();
-            model.addVertex(v);
-        }
-        for (EdgeC ec : edgesArray) {
-            if (ec.getStart() < 0 || ec.getStart() >= model.vertices().size())
-                continue;
-            if (ec.getEnd() < 0 || ec.getEnd() >= model.vertices().size())
-                continue;
+        synchronized (model.mutex()) {
+            model.clear();
+            for (Vertex v : verticesArray) {
+                v.updateDiameter();
+                model.addVertex(v);
+            }
+            for (EdgeC ec : edgesArray) {
+                if (ec.getStart() < 0 || ec.getStart() >= model.vertices().size())
+                    continue;
+                if (ec.getEnd() < 0 || ec.getEnd() >= model.vertices().size())
+                    continue;
 
-            Vertex start = model.vertices().get(ec.getStart());
-            Vertex end = model.vertices().get(ec.getEnd());
-            model.addEdge(new Edge(start, end, ec.getWeight()));
+                Vertex start = model.vertices().get(ec.getStart());
+                Vertex end = model.vertices().get(ec.getEnd());
+                model.addEdge(new Edge(start, end, ec.getWeight()));
+            }
         }
-
         visibility.apply(model);
     }
 
@@ -109,6 +109,14 @@ public final class GraphEngine {
 
     public GraphModel model() {
         return model;
+    }
+
+    public void setNodeDiameter(int index, double diameter) {
+        synchronized (model.mutex()) {
+            if (index >= 0 && index < model.vertices().size()) {
+                model.vertices().get(index).setDiameter(diameter);
+            }
+        }
     }
 
     public void setMinimumDegree(int degree) {
@@ -193,14 +201,25 @@ public final class GraphEngine {
 
     public void setNodePosition(int index, double x, double y) {
         nativeEngine.setNodePosition(index, x, y);
+        synchronized (model.mutex()) {
+            if (index >= 0 && index < model.vertices().size()) {
+                model.vertices().get(index).updatePosition(x, y);
+            }
+        }
     }
 
     public void deleteNode(int index) {
         nativeEngine.deleteNode(index);
+        synchronized (model.mutex()) {
+            if (index >= 0 && index < model.vertices().size()) {
+                model.deleteVertex(model.vertices().get(index));
+            }
+        }
     }
 
     public void restoreNode(int index) {
         nativeEngine.restoreNode(index);
+        rebuildModelFromNative(); // TODO : normalement on devrait pas avoir à tt rebuild !
     }
 
     /**

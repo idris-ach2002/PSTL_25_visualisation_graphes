@@ -5,9 +5,6 @@ import com.mongraphe.graphui.Vertex;
 import com.mongraphe.graphui.app.InteractionContext;
 import com.mongraphe.graphui.interfaces.InteractionModeHandler;
 import com.mongraphe.graphui.interaction.actions.DeleteAction;
-import com.mongraphe.graphui.rendering.Camera2D;
-import com.mongraphe.graphui.rendering.GraphEngine;
-import com.mongraphe.graphui.model.GraphModel;
 
 public final class DeleteModeHandler implements InteractionModeHandler {
 
@@ -20,21 +17,13 @@ public final class DeleteModeHandler implements InteractionModeHandler {
         if (button != MouseEvent.BUTTON1)
             return;
 
-        GraphEngine engine = ctx.graphService().engine();
-        Camera2D camera = ctx.graphService().camera();
-
-        if (engine == null || camera == null)
+        if (ctx.getGraphAdapter() == null)
             return;
 
-        float wx = camera.screenToWorldX(sx);
-        float wy = camera.screenToWorldY(sy);
+        float wx = ctx.getGraphAdapter().screenToWorldX(sx);
+        float wy = ctx.getGraphAdapter().screenToWorldY(sy);
 
-        GraphModel model = engine.model();
-        Vertex selected;
-
-        synchronized (model.mutex()) {
-            selected = model.findVertexAt(wx, wy);
-        }
+        Vertex selected = ctx.getGraphAdapter().findVertexAt(wx, wy);
 
         if (selected == null)
             return;
@@ -42,19 +31,11 @@ public final class DeleteModeHandler implements InteractionModeHandler {
         int id = selected.getId();
         double previousDiameter = selected.getDiameter();
 
-        // Supprimer côté moteur
-        engine.deleteNode(id);
+        ctx.getGraphAdapter().deleteNode(id);
 
-        // Supprimer côté modèle
-        synchronized (model.mutex()) {
-            model.deleteVertex(selected);
-            model.setSelectedVertexId(-1);
-        }
+        ctx.getUndoManager().push(new DeleteAction(ctx.getGraphAdapter(), id, previousDiameter));
 
-        ctx.undo().push(
-                new DeleteAction(engine, id, previousDiameter));
-
-        ctx.ui().setStatus("Sommet supprimé: " + id);
+        ctx.getUI().setStatus("Sommet supprimé: " + id);
     }
 
     @Override
@@ -71,13 +52,12 @@ public final class DeleteModeHandler implements InteractionModeHandler {
             int sy,
             float rotation) {
 
-        Camera2D camera = ctx.graphService().camera();
-        if (camera != null)
-            camera.zoomAt(sx, sy, rotation);
+        ctx.getGraphAdapter().zoomCamera(sx, sy, rotation);
     }
 
     @Override
     public void onKeyPressed(InteractionContext ctx,
             int keyCode,
-            boolean ctrlDown) {}
+            boolean ctrlDown) {
+    }
 }

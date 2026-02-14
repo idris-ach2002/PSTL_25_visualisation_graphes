@@ -32,7 +32,8 @@ public final class GraphPanel {
         caps.setDepthBits(0);
 
         // Important: créer le canvas AVANT de démarrer l'animator.
-        // Sinon la GLWindow peut être "réalisée" et apparaître comme une fenêtre séparée
+        // Sinon la GLWindow peut être "réalisée" et apparaître comme une fenêtre
+        // séparée
         // avant d'être reparentée dans le canvas JavaFX.
         window = GLWindow.create(caps);
         window.setUndecorated(true);
@@ -53,10 +54,6 @@ public final class GraphPanel {
         return canvas;
     }
 
-    public GLWindow window() {
-        return window;
-    }
-
     /**
      * Libération propre (évite les threads JOGL orphelins et les fuites).
      */
@@ -65,22 +62,26 @@ public final class GraphPanel {
             if (animator != null && animator.isStarted()) {
                 animator.stop();
             }
-        } catch (Exception ignored) {}
+        } catch (Exception ignored) {
+        }
 
         try {
             if (window != null) {
                 window.destroy();
             }
-        } catch (Exception ignored) {}
+        } catch (Exception ignored) {
+        }
     }
 
     /**
      * Redimensionne la surface GL (appelé depuis JavaFX quand le viewport change).
      */
     public void resize(int w, int h) {
-        if (w <= 0 || h <= 0) return;
+        if (w <= 0 || h <= 0)
+            return;
         try {
             window.setSize(w, h);
-        } catch (Exception ignored) {}
+        } catch (Exception ignored) {
+        }
     }
 }

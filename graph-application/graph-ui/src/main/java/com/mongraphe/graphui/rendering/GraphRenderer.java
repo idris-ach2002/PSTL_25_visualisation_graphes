@@ -28,10 +28,6 @@ public final class GraphRenderer implements GLEventListener {
         this.camera = camera;
     }
 
-    public Camera2D camera() {
-        return camera;
-    }
-
     public void setBackgroundColor(float r, float g, float b, float a) {
         this.clearR = clamp01(r);
         this.clearG = clamp01(g);

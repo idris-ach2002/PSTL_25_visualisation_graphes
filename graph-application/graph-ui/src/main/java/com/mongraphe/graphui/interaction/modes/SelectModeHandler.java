@@ -4,9 +4,6 @@ import com.jogamp.newt.event.MouseEvent;
 import com.mongraphe.graphui.Vertex;
 import com.mongraphe.graphui.app.InteractionContext;
 import com.mongraphe.graphui.interfaces.InteractionModeHandler;
-import com.mongraphe.graphui.rendering.Camera2D;
-import com.mongraphe.graphui.rendering.GraphEngine;
-import com.mongraphe.graphui.model.GraphModel;
 
 public final class SelectModeHandler implements InteractionModeHandler {
 
@@ -19,46 +16,31 @@ public final class SelectModeHandler implements InteractionModeHandler {
         if (button != MouseEvent.BUTTON1)
             return;
 
-        GraphEngine engine = ctx.graphService().engine();
-        Camera2D camera = ctx.graphService().camera();
-
-        if (engine == null || camera == null)
+        if (ctx.getGraphAdapter() == null)
             return;
 
-        float wx = camera.screenToWorldX(sx);
-        float wy = camera.screenToWorldY(sy);
-
-        GraphModel model = engine.model();
+        float wx = ctx.getGraphAdapter().screenToWorldX(sx);
+        float wy = ctx.getGraphAdapter().screenToWorldY(sy);
 
         Vertex selected;
 
-        synchronized (model.mutex()) {
-            selected = model.findVertexAt(wx, wy);
-            model.setSelectedVertexId(
-                    selected != null ? selected.getId() : -1);
-        }
+        selected = ctx.getGraphAdapter().findVertexAt(wx, wy);
 
         if (selected != null) {
-            ctx.ui().setStatus(
+            ctx.getUI().setStatus(
                     "Sélection: sommet " + selected.getId());
         } else {
-            ctx.ui().setStatus("Aucune sélection");
+            ctx.getUI().setStatus("Aucune sélection");
         }
     }
-
 
     @Override
     public void onMouseWheel(InteractionContext ctx,
             int sx,
             int sy,
             float rotation) {
-
-        Camera2D camera = ctx.graphService().camera();
-
-        if (camera == null)
-            return;
-
-        camera.zoomAt(sx, sy, rotation);
+        if (ctx.getGraphAdapter() != null)
+            ctx.getGraphAdapter().zoomCamera(sx, sy, rotation);
     }
 
     @Override

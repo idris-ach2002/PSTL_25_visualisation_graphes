@@ -5,9 +5,6 @@ import com.mongraphe.graphui.Vertex;
 import com.mongraphe.graphui.app.InteractionContext;
 import com.mongraphe.graphui.interfaces.InteractionModeHandler;
 import com.mongraphe.graphui.interaction.actions.MoveAction;
-import com.mongraphe.graphui.rendering.Camera2D;
-import com.mongraphe.graphui.rendering.GraphEngine;
-import com.mongraphe.graphui.model.GraphModel;
 
 public final class MoveModeHandler implements InteractionModeHandler {
 
@@ -22,20 +19,13 @@ public final class MoveModeHandler implements InteractionModeHandler {
         if (button != MouseEvent.BUTTON1)
             return;
 
-        GraphEngine engine = ctx.graphService().engine();
-        Camera2D cam = ctx.graphService().camera();
-
-        if (engine == null || cam == null)
+        if (ctx.getGraphAdapter() == null)
             return;
 
-        float wx = cam.screenToWorldX(sx);
-        float wy = cam.screenToWorldY(sy);
+        float wx = ctx.getGraphAdapter().screenToWorldX(sx);
+        float wy = ctx.getGraphAdapter().screenToWorldY(sy);
 
-        GraphModel model = engine.model();
-
-        synchronized (model.mutex()) {
-            selected = model.findVertexAt(wx, wy);
-        }
+        selected = ctx.getGraphAdapter().findVertexAt(wx, wy);
 
         if (selected == null)
             return;
@@ -52,20 +42,13 @@ public final class MoveModeHandler implements InteractionModeHandler {
         if (!dragging || selected == null)
             return;
 
-        GraphEngine engine = ctx.graphService().engine();
-        Camera2D cam = ctx.graphService().camera();
-
-        if (engine == null || cam == null)
+        if (ctx.getGraphAdapter() == null)
             return;
 
-        float wx = cam.screenToWorldX(sx);
-        float wy = cam.screenToWorldY(sy);
+        float wx = ctx.getGraphAdapter().screenToWorldX(sx);
+        float wy = ctx.getGraphAdapter().screenToWorldY(sy);
 
-        engine.setNodePosition(id, wx, wy);
-
-        synchronized (engine.model().mutex()) {
-            selected.updatePosition(wx, wy);
-        }
+        ctx.getGraphAdapter().setNodePosition(id, wx, wy);
     }
 
     @Override
@@ -82,8 +65,8 @@ public final class MoveModeHandler implements InteractionModeHandler {
         if (Math.abs(endX - startX) > 1e-6 ||
             Math.abs(endY - startY) > 1e-6) {
 
-            ctx.undo().push(
-                new MoveAction(ctx.graphService().engine(), id,
+            ctx.getUndoManager().push(
+                new MoveAction(ctx.getGraphAdapter(), id,
                         startX, startY, endX, endY)
             );
         }
