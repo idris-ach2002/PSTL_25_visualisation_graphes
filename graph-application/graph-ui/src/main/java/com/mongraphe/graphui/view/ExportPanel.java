@@ -15,10 +15,9 @@ public final class ExportPanel {
         this.engine = engine;
     }
 
-    // TODO: Gérer l'export proprement en accédant correctement au panel...
     @FXML
     private void handleExportPng() {
-        if (engine == null || engine.panel() == null)
+        if (engine == null)
             return;
 
         FileChooser fc = new FileChooser();

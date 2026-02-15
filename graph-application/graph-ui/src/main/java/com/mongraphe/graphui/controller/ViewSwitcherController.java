@@ -1,11 +1,16 @@
 package com.mongraphe.graphui.controller;
 
+import com.mongraphe.graphui.app.ApplicationContext;
+import com.mongraphe.graphui.interfaces.ContextAware;
+
 import javafx.fxml.FXML;
 import javafx.scene.control.Toggle;
 import javafx.scene.control.ToggleGroup;
 import javafx.scene.layout.Pane;
 
-public final class ViewSwitcherController {
+public final class ViewSwitcherController implements ContextAware {
+
+    private ApplicationContext context;
 
     @FXML
     private ToggleGroup viewToggleGroup;
@@ -27,5 +32,10 @@ public final class ViewSwitcherController {
         overviewPane.setVisible("overview".equals(view));
         dataPane.setVisible("data".equals(view));
         previewPane.setVisible("preview".equals(view));
+    }
+
+    @Override
+    public void setContext(ApplicationContext context) {
+        this.context = context;
     }
 }

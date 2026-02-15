@@ -1,8 +1,10 @@
 package com.mongraphe.graphui.controller;
 
+import com.mongraphe.graphui.app.ApplicationContext;
 import com.mongraphe.graphui.app.GraphEngineAdapter;
 import com.mongraphe.graphui.app.InteractionService;
 import com.mongraphe.graphui.app.InteractionService.Mode;
+import com.mongraphe.graphui.interfaces.ContextAware;
 import com.mongraphe.graphui.view.GraphPanel;
 
 import javafx.fxml.FXML;
@@ -11,7 +13,7 @@ import javafx.scene.control.Toggle;
 import javafx.scene.control.ToggleGroup;
 import javafx.scene.layout.StackPane;
 
-public final class GraphWorkspaceController {
+public final class GraphWorkspaceController implements ContextAware {
 
     @FXML
     private StackPane graphContainer;
@@ -20,17 +22,16 @@ public final class GraphWorkspaceController {
     @FXML
     private ColorPicker canvasColorPicker;
 
-    private GraphEngineAdapter graphEngineAdapter;
     private InteractionService interaction;
+    private ApplicationContext context;
 
     public void init(GraphEngineAdapter adapter, InteractionService interaction, GraphPanel panel) {
-        this.graphEngineAdapter = adapter;
         this.interaction = interaction;
         mountCanvas(panel);
     }
 
     private void mountCanvas(GraphPanel panel) {
-        if (graphEngineAdapter == null)
+        if (context == null)
             return;
 
         var canvasNode = panel.canvas();
@@ -42,10 +43,10 @@ public final class GraphWorkspaceController {
         
         // Adapter resize
         graphContainer.widthProperty().addListener((obs, oldVal, newVal) -> {
-            graphEngineAdapter.resizeCamera(newVal.intValue(), (int) graphContainer.getHeight());
+            context.getGraphAdapter().resizeCamera(newVal.intValue(), (int) graphContainer.getHeight());
         });
         graphContainer.heightProperty().addListener((obs, oldVal, newVal) -> {
-            graphEngineAdapter.resizeCamera((int) graphContainer.getWidth(), newVal.intValue());
+            context.getGraphAdapter().resizeCamera((int) graphContainer.getWidth(), newVal.intValue());
         });
     }
 
@@ -65,15 +66,20 @@ public final class GraphWorkspaceController {
     @FXML
     private void applyCanvasColor() {
 
-        if (graphEngineAdapter == null)
+        if (context.getGraphAdapter() == null)
             return;
 
         var c = canvasColorPicker.getValue();
 
-        graphEngineAdapter.setBackgroundColor(
+        context.getGraphAdapter().setBackgroundColor(
                 (float) c.getRed(),
                 (float) c.getGreen(),
                 (float) c.getBlue(),
                 (float) c.getOpacity());
+    }
+
+    @Override
+    public void setContext(ApplicationContext context) {
+        this.context = context;
     }
 }

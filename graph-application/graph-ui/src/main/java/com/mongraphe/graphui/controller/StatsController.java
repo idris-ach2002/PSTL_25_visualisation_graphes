@@ -1,13 +1,16 @@
 package com.mongraphe.graphui.controller;
 
-import com.mongraphe.graphui.model.GraphModel;
 import com.mongraphe.graphui.Vertex;
+import com.mongraphe.graphui.app.ApplicationContext;
+import com.mongraphe.graphui.app.GraphEngineAdapter.GraphDataSnapshot;
+import com.mongraphe.graphui.interfaces.ContextAware;
+
 import com.mongraphe.graphui.Edge;
 import javafx.fxml.FXML;
 import javafx.scene.control.Label;
 import javafx.scene.control.TableView;
 
-public final class StatsController {
+public final class StatsController implements ContextAware {
 
     @FXML
     private TableView<Vertex> vertexTable;
@@ -16,13 +19,21 @@ public final class StatsController {
     @FXML
     private Label totalElementsLabel;
 
-    public void refresh(GraphModel model) {
-        synchronized (model.mutex()) {
-            vertexTable.getItems().setAll(model.vertices());
-            edgeTable.getItems().setAll(model.edges());
-            totalElementsLabel.setText(
-                    String.valueOf(
-                            model.vertices().size() + model.edges().size()));
+    private ApplicationContext context;
+
+    public void refresh() {
+        if (context == null) {
+            return;
         }
+        GraphDataSnapshot snapshot = context.getGraphAdapter().getDataSnapshot();
+        vertexTable.getItems().setAll(snapshot.getVertices());
+        edgeTable.getItems().setAll(snapshot.getEdges());
+        totalElementsLabel.setText(
+                String.valueOf(snapshot.getVertices().size() + snapshot.getEdges().size()));
+    }
+
+    @Override
+    public void setContext(ApplicationContext context) {
+        this.context = context;
     }
 }

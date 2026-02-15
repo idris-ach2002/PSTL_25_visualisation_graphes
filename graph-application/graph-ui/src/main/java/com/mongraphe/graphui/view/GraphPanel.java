@@ -5,6 +5,8 @@ import com.jogamp.newt.opengl.GLWindow;
 import com.jogamp.opengl.GLCapabilities;
 import com.jogamp.opengl.GLProfile;
 import com.jogamp.opengl.util.FPSAnimator;
+import com.mongraphe.graphui.export.OpenGLGraphImageExporter;
+import com.mongraphe.graphui.interfaces.GraphImageExporter;
 import com.mongraphe.graphui.rendering.GraphRenderer;
 
 /**
@@ -16,6 +18,7 @@ public final class GraphPanel {
     private final GLWindow window;
     private final NewtCanvasJFX canvas;
     private final FPSAnimator animator;
+    private final GraphRenderer renderer;
 
     public GraphPanel(GraphRenderer renderer) {
 
@@ -38,6 +41,7 @@ public final class GraphPanel {
         window = GLWindow.create(caps);
         window.setUndecorated(true);
         window.addGLEventListener(renderer);
+        this.renderer = renderer;
 
         // Intégration JavaFX (reparenting)
         canvas = new NewtCanvasJFX(window);
@@ -50,8 +54,20 @@ public final class GraphPanel {
         animator.start();
     }
 
+    public GraphImageExporter createExporter(GraphRenderer renderer) {
+        return new OpenGLGraphImageExporter(window, renderer);
+    }
+
+    public GLWindow window() {
+        return window;
+    }
+
     public NewtCanvasJFX canvas() {
         return canvas;
+    }
+
+    public GraphRenderer renderer() {
+        return renderer;
     }
 
     /**

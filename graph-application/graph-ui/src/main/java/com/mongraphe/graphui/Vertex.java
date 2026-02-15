@@ -143,13 +143,7 @@ public class Vertex {
             degree_scale_factor = 0;
         diameter = initial_node_size + degree_scale_factor * getDegree();
     }
-
-    /**
-     * @return liste des arêtes rattachées au sommet
-     */
-    public ArrayList<Edge> getEdges() {
-        return edges;
-    }
+    
     /**
      * Ajoute une arête à la liste des arêtes rattachées au sommet
      * @param edge : arête à ajouter

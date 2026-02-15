@@ -1,12 +1,15 @@
 package com.mongraphe.graphui.controller;
 
+import com.mongraphe.graphui.app.ApplicationContext;
 import com.mongraphe.graphui.app.GraphEngineAdapter;
+import com.mongraphe.graphui.interfaces.ContextAware;
 import com.mongraphe.graphui.GraphData;
+
 import javafx.fxml.FXML;
 import javafx.scene.control.ComboBox;
 import javafx.scene.control.TextField;
 
-public final class EngineOptionsController {
+public final class EngineOptionsController implements ContextAware {
 
     @FXML
     private TextField degreeFactor;
@@ -35,18 +38,15 @@ public final class EngineOptionsController {
     @FXML
     private ComboBox<GraphData.RepulsionMode> repulsionModeComboBox;
 
-    private GraphEngineAdapter adapter;
-
-    public void setAdapter(GraphEngineAdapter adapter) {
-        this.adapter = adapter;
-    }
+    private ApplicationContext context;
 
     @FXML
     private void applyOptions() {
-        if (adapter == null)
+        if (context == null)
             return;
 
         try {
+            GraphEngineAdapter adapter = context.getGraphAdapter();
             parseDouble(degreeFactor, adapter::setDegreeScaleFactor);
             parseDouble(initNodeSize, adapter::setInitialNodeSize);
             parseInt(upScale, adapter::setUpscale);
@@ -85,5 +85,10 @@ public final class EngineOptionsController {
 
     private void setStatus(String message) {
         System.out.println(message);
+    }
+
+    @Override
+    public void setContext(ApplicationContext context) {
+        this.context = context;
     }
 }

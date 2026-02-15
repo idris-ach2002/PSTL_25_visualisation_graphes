@@ -6,6 +6,7 @@ import com.mongraphe.graphui.interaction.OpenGLInputHandler;
 import com.mongraphe.graphui.interfaces.InteractionModeHandler;
 import com.mongraphe.graphui.rendering.Camera2D;
 import com.mongraphe.graphui.rendering.GraphEngine;
+import com.mongraphe.graphui.view.GraphPanel;
 import com.mongraphe.graphui.interaction.modes.*;
 
 public final class InteractionService {
@@ -18,7 +19,7 @@ public final class InteractionService {
     }
 
     private InteractionModeHandler current;
-    private final InteractionContext ctx;
+    private final ApplicationContext ctx;
 
     private final InteractionModeHandler selectHandler;
     private final InteractionModeHandler moveHandler;
@@ -27,11 +28,12 @@ public final class InteractionService {
 
     public InteractionService(GraphEngine engine,
             Camera2D camera,
-            GLWindow window) {
+            GraphPanel panel) {
 
-        GraphEngineAdapter adapter = new GraphEngineAdapter(engine, camera, window);
+        GraphEngineAdapter adapter = new GraphEngineAdapter(engine, camera, panel.createExporter(panel.renderer()),
+                panel.window());
 
-        this.ctx = new InteractionContext(new UiState(), adapter);
+        this.ctx = new ApplicationContext(new UiState(), adapter);
 
         this.selectHandler = new SelectModeHandler();
         this.moveHandler = new MoveModeHandler();
@@ -40,7 +42,7 @@ public final class InteractionService {
 
         this.current = runHandler;
 
-        attach(window);
+        attach(panel.window());
     }
 
     public void setMode(Mode mode) {

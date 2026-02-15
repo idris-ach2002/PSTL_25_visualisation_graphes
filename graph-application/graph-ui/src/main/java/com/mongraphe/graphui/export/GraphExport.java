@@ -11,7 +11,7 @@ import com.jogamp.newt.opengl.GLWindow;
 import com.jogamp.opengl.GL4;
 import com.mongraphe.graphui.rendering.GraphRenderer;
 
-public class GraphExport {
+class GraphExport {
 
     private final GLWindow window;
 

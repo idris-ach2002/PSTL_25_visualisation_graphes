@@ -2,13 +2,13 @@ package com.mongraphe.graphui.interaction.modes;
 
 import com.jogamp.newt.event.MouseEvent;
 import com.mongraphe.graphui.Vertex;
-import com.mongraphe.graphui.app.InteractionContext;
+import com.mongraphe.graphui.app.ApplicationContext;
 import com.mongraphe.graphui.interfaces.InteractionModeHandler;
 
 public final class SelectModeHandler implements InteractionModeHandler {
 
     @Override
-    public void onMousePressed(InteractionContext ctx,
+    public void onMousePressed(ApplicationContext ctx,
             int sx,
             int sy,
             int button) {
@@ -35,7 +35,7 @@ public final class SelectModeHandler implements InteractionModeHandler {
     }
 
     @Override
-    public void onMouseWheel(InteractionContext ctx,
+    public void onMouseWheel(ApplicationContext ctx,
             int sx,
             int sy,
             float rotation) {
@@ -44,21 +44,21 @@ public final class SelectModeHandler implements InteractionModeHandler {
     }
 
     @Override
-    public void onMouseDragged(InteractionContext ctx,
+    public void onMouseDragged(ApplicationContext ctx,
             int sx,
             int sy,
             int button) {
     }
 
     @Override
-    public void onMouseReleased(InteractionContext ctx,
+    public void onMouseReleased(ApplicationContext ctx,
             int sx,
             int sy,
             int button) {
     }
 
     @Override
-    public void onKeyPressed(InteractionContext ctx,
+    public void onKeyPressed(ApplicationContext ctx,
             int keyCode,
             boolean ctrlDown) {
     }

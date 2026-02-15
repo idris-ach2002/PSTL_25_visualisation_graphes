@@ -3,11 +3,13 @@ package com.mongraphe.graphui.app;
 import com.mongraphe.graphui.Vertex;
 import com.mongraphe.graphui.Edge;
 import com.mongraphe.graphui.GraphData;
+import com.mongraphe.graphui.interfaces.GraphImageExporter;
 import com.mongraphe.graphui.interfaces.InteractionModel;
 import com.mongraphe.graphui.model.GraphModel;
 import com.mongraphe.graphui.rendering.Camera2D;
 import com.mongraphe.graphui.rendering.GraphEngine;
 
+import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -19,11 +21,16 @@ public final class GraphEngineAdapter implements InteractionModel {
 
     private final GraphEngine engine;
     private final Camera2D camera;
+    private final GraphImageExporter exporter;
+
     private final GLWindow window;
 
-    public GraphEngineAdapter(GraphEngine engine, Camera2D camera, GLWindow window) {
+    public GraphEngineAdapter(GraphEngine engine,
+            Camera2D camera,
+            GraphImageExporter exporter, GLWindow window) {
         this.engine = engine;
         this.camera = camera;
+        this.exporter = exporter;
         this.window = window;
     }
 
@@ -33,7 +40,8 @@ public final class GraphEngineAdapter implements InteractionModel {
         private int visibleVertexCount;
         private int visibleEdgeCount;
 
-        public GraphDataSnapshot(List<Vertex> vertices, List<Edge> edges, int visibleVertexCount, int visibleEdgeCount) {
+        public GraphDataSnapshot(List<Vertex> vertices, List<Edge> edges, int visibleVertexCount,
+                int visibleEdgeCount) {
             this.vertices = vertices;
             this.edges = edges;
             this.visibleVertexCount = visibleVertexCount;
@@ -75,6 +83,11 @@ public final class GraphEngineAdapter implements InteractionModel {
             int visibleEdgeCount = model.getVisibleEdgeCount();
             return new GraphDataSnapshot(verticesCopy, edgesCopy, visibleVertexCount, visibleEdgeCount);
         }
+    }
+
+    public void exportPng(File file, int width, int height) {
+        if (exporter != null)
+            exporter.exportPng(file, width, height);
     }
 
     @Override
@@ -135,7 +148,7 @@ public final class GraphEngineAdapter implements InteractionModel {
     }
 
     public void deleteNode(int index) {
-        invokeOnGlThread(() -> engine.deleteNode(index));  
+        invokeOnGlThread(() -> engine.deleteNode(index));
     }
 
     public void restoreNode(int index) {

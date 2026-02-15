@@ -1,13 +1,21 @@
 package com.mongraphe.graphui.controller;
 
 import javafx.fxml.FXML;
+
+import com.mongraphe.graphui.app.ApplicationContext;
+import com.mongraphe.graphui.interfaces.ContextAware;
+
 import javafx.application.Platform;
 import javafx.scene.control.Alert;
 
-public final class MainMenuController {
+public final class MainMenuController implements ContextAware {
 
-    private GraphWorkspaceController workspace;
-    private ProjectController project;
+    private ApplicationContext context;
+
+    @Override
+    public void setContext(ApplicationContext context) {
+        this.context = context;
+    }
 
     @FXML
     private void handleQuit() {
@@ -32,13 +40,5 @@ public final class MainMenuController {
         a.setHeaderText("MonGraphe");
         a.setContentText("Visualisation de graphes - 0.0.1");
         a.showAndWait();
-    }
-
-    public void setWorkspace(GraphWorkspaceController workspace) {
-        this.workspace = workspace;
-    }
-
-    public void setProject(ProjectController project) {
-        this.project = project;
     }
 }

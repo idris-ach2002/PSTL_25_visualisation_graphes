@@ -1,11 +1,7 @@
 package com.mongraphe.graphui.interaction.actions;
 
-import com.mongraphe.graphui.Vertex;
 import com.mongraphe.graphui.app.GraphEngineAdapter;
 import com.mongraphe.graphui.interaction.UndoManager;
-import com.mongraphe.graphui.model.GraphModel;
-import com.mongraphe.graphui.rendering.GraphEngine;
-
 public class DeleteAction implements UndoManager.EditAction {
 
     private final GraphEngineAdapter adapter;
