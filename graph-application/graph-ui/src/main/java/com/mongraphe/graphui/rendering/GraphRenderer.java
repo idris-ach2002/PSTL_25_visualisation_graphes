@@ -12,7 +12,6 @@ import com.mongraphe.graphui.model.GraphModel;
 public final class GraphRenderer implements GLEventListener {
 
     private final GraphEngine engine;
-    private final Camera2D camera;
 
     private VertexGpuBuffer vertexBuffer;
     private EdgeGpuBuffer edgeBuffer;
@@ -25,7 +24,6 @@ public final class GraphRenderer implements GLEventListener {
 
     public GraphRenderer(GraphEngine engine, Camera2D camera) {
         this.engine = engine;
-        this.camera = camera;
     }
 
     public void setBackgroundColor(float r, float g, float b, float a) {
@@ -82,7 +80,7 @@ public final class GraphRenderer implements GLEventListener {
         GraphModel model = engine.model();
 
         synchronized (model.mutex()) {
-            model.setZoom(camera.getZoom());
+            model.setZoom(engine.camera().getZoom());
             vertexBuffer.update(model);
             edgeBuffer.update(model);
         }
@@ -96,19 +94,19 @@ public final class GraphRenderer implements GLEventListener {
 
     private void drawVertices(GL4 gl) {
         pointShader.use(gl);
-        pointShader.setMat4(gl, "u_transform", camera.getProjection());
+        pointShader.setMat4(gl, "u_transform", engine.camera().getProjection());
         vertexBuffer.draw(gl);
     }
 
     private void drawEdges(GL4 gl) {
         edgeShader.use(gl);
-        edgeShader.setMat4(gl, "u_transform", camera.getProjection());
+        edgeShader.setMat4(gl, "u_transform", engine.camera().getProjection());
         edgeBuffer.draw(gl);
     }
 
     @Override
     public void reshape(GLAutoDrawable d, int x, int y, int w, int h) {
-        camera.resize(w, h);
+        engine.camera().resize(w, h);
     }
 
     @Override

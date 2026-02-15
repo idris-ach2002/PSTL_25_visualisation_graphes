@@ -16,6 +16,7 @@ import com.mongraphe.graphui.model.GraphModel;
 public final class GraphEngine {
 
     private final GraphNativeEngine nativeEngine;
+    private final Camera2D camera;
     private final GraphModel model;
     private final GraphSimulation simulation;
     private final GraphVisibilityFilter visibility;
@@ -28,6 +29,7 @@ public final class GraphEngine {
 
     public GraphEngine(GraphNativeEngine nativeEngine) {
         this.nativeEngine = nativeEngine;
+        this.camera = new Camera2D();
         this.model = new GraphModel();
         this.simulation = new GraphSimulation(nativeEngine);
         this.visibility = new GraphVisibilityFilter();
@@ -109,6 +111,10 @@ public final class GraphEngine {
 
     public GraphModel model() {
         return model;
+    }
+
+    public Camera2D camera() {
+        return camera;
     }
 
     public void setNodeDiameter(int index, double diameter) {

@@ -4,7 +4,7 @@ import com.mongraphe.graphui.app.ApplicationContext;
 import com.mongraphe.graphui.app.GraphEngineAdapter;
 import com.mongraphe.graphui.app.InteractionService;
 import com.mongraphe.graphui.app.InteractionService.Mode;
-import com.mongraphe.graphui.interfaces.ContextAware;
+import com.mongraphe.graphui.interfaces.CommandBusLinked;
 import com.mongraphe.graphui.view.GraphPanel;
 
 import javafx.fxml.FXML;
@@ -13,7 +13,7 @@ import javafx.scene.control.Toggle;
 import javafx.scene.control.ToggleGroup;
 import javafx.scene.layout.StackPane;
 
-public final class GraphWorkspaceController implements ContextAware {
+public final class GraphWorkspaceController implements CommandBusLinked {
 
     @FXML
     private StackPane graphContainer;

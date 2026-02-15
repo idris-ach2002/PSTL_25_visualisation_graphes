@@ -3,7 +3,7 @@ package com.mongraphe.graphui.controller;
 import com.mongraphe.graphui.app.ApplicationContext;
 import com.mongraphe.graphui.app.GraphEngineAdapter;
 import com.mongraphe.graphui.app.UiState;
-import com.mongraphe.graphui.interfaces.ContextAware;
+import com.mongraphe.graphui.interfaces.CommandBusLinked;
 import com.mongraphe.graphui.rendering.Camera2D;
 import com.mongraphe.graphui.rendering.GraphEngine;
 import com.mongraphe.graphui.rendering.GraphNativeEngine;
@@ -55,7 +55,7 @@ public final class MainController {
         inject(menuController, context);
     }
 
-    private void inject(ContextAware controller, ApplicationContext context) {
+    private void inject(CommandBusLinked controller, ApplicationContext context) {
         controller.setContext(context);
     }
 }

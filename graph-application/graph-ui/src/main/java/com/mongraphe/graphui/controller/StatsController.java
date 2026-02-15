@@ -3,14 +3,14 @@ package com.mongraphe.graphui.controller;
 import com.mongraphe.graphui.Vertex;
 import com.mongraphe.graphui.app.ApplicationContext;
 import com.mongraphe.graphui.app.GraphEngineAdapter.GraphDataSnapshot;
-import com.mongraphe.graphui.interfaces.ContextAware;
+import com.mongraphe.graphui.interfaces.CommandBusLinked;
 
 import com.mongraphe.graphui.Edge;
 import javafx.fxml.FXML;
 import javafx.scene.control.Label;
 import javafx.scene.control.TableView;
 
-public final class StatsController implements ContextAware {
+public final class StatsController implements CommandBusLinked<CommandGraph> {
 
     @FXML
     private TableView<Vertex> vertexTable;

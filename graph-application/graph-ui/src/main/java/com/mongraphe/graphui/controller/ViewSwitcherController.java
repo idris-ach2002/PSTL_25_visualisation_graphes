@@ -1,14 +1,14 @@
 package com.mongraphe.graphui.controller;
 
 import com.mongraphe.graphui.app.ApplicationContext;
-import com.mongraphe.graphui.interfaces.ContextAware;
+import com.mongraphe.graphui.interfaces.CommandBusLinked;
 
 import javafx.fxml.FXML;
 import javafx.scene.control.Toggle;
 import javafx.scene.control.ToggleGroup;
 import javafx.scene.layout.Pane;
 
-public final class ViewSwitcherController implements ContextAware {
+public final class ViewSwitcherController implements CommandBusLinked {
 
     private ApplicationContext context;
 

@@ -1,15 +1,23 @@
 package com.mongraphe.graphui.controller;
 
-import com.mongraphe.graphui.app.ApplicationContext;
-import com.mongraphe.graphui.app.GraphEngineAdapter;
-import com.mongraphe.graphui.interfaces.ContextAware;
 import com.mongraphe.graphui.GraphData;
+import com.mongraphe.graphui.app.CommandBus;
+import com.mongraphe.graphui.app.commands.*;
+import com.mongraphe.graphui.interfaces.CommandBusLinked;
+import com.mongraphe.graphui.rendering.GraphEngine;
 
 import javafx.fxml.FXML;
 import javafx.scene.control.ComboBox;
 import javafx.scene.control.TextField;
 
-public final class EngineOptionsController implements ContextAware {
+public final class EngineOptionsController
+        implements CommandBusLinked<GraphEngine> {
+
+    private CommandBus<GraphEngine> bus;
+
+    public void setCommandBus(CommandBus<GraphEngine> bus) {
+        this.bus = bus;
+    }
 
     @FXML
     private TextField degreeFactor;
@@ -38,57 +46,76 @@ public final class EngineOptionsController implements ContextAware {
     @FXML
     private ComboBox<GraphData.RepulsionMode> repulsionModeComboBox;
 
-    private ApplicationContext context;
-
     @FXML
     private void applyOptions() {
-        if (context == null)
+
+        if (bus == null)
             return;
 
         try {
-            GraphEngineAdapter adapter = context.getGraphAdapter();
-            parseDouble(degreeFactor, adapter::setDegreeScaleFactor);
-            parseDouble(initNodeSize, adapter::setInitialNodeSize);
-            parseInt(upScale, adapter::setUpscale);
-            parseDouble(stabilizedThreshold, adapter::setStabilizedThreshold);
-            parseDouble(attractionThreshold, adapter::setAttractionThreshold);
-            parseInt(updatedFrequence, adapter::setClusterUpdateFrequency);
-            parseDouble(newFriction, adapter::setNewFriction);
-            parseDouble(attractionCoefficient, adapter::setAttractionCoefficient);
-            parseDouble(repulsionThreshold, adapter::setRepulsionThreshold);
-            parseDouble(newAmortissement, adapter::setNewAmortissement);
-            parseInt(nbClusters, adapter::setNbClusters);
-            parseInt(minimumDegree, adapter::setMinimumDegree);
+
+            parseDouble(degreeFactor,
+                    v -> bus.dispatch(new SetDegreeScaleFactorCommand(v)));
+
+            parseDouble(initNodeSize,
+                    v -> bus.dispatch(new SetInitialNodeSizeCommand(v)));
+
+            parseInt(upScale,
+                    v -> bus.dispatch(new SetUpscaleCommand(v)));
+
+            parseDouble(stabilizedThreshold,
+                    v -> bus.dispatch(new SetStabilizedThresholdCommand(v)));
+
+            parseDouble(attractionThreshold,
+                    v -> bus.dispatch(new SetAttractionThresholdCommand(v)));
+
+            parseInt(updatedFrequence,
+                    v -> bus.dispatch(new SetClusterUpdateFrequencyCommand(v)));
+
+            parseDouble(newFriction,
+                    v -> bus.dispatch(new SetNewFrictionCommand(v)));
+
+            parseDouble(attractionCoefficient,
+                    v -> bus.dispatch(new SetAttractionCoefficientCommand(v)));
+
+            parseDouble(repulsionThreshold,
+                    v -> bus.dispatch(new SetRepulsionThresholdCommand(v)));
+
+            parseDouble(newAmortissement,
+                    v -> bus.dispatch(new SetNewAmortissementCommand(v)));
+
+            parseInt(nbClusters,
+                    v -> bus.dispatch(new SetNbClustersCommand(v)));
+
+            parseInt(minimumDegree,
+                    v -> bus.dispatch(new SetMinimumDegreeCommand(v)));
 
             GraphData.RepulsionMode rm = repulsionModeComboBox.getValue();
-            if (rm != null)
-                adapter.setRepulsionMode(rm);
+            if (rm != null) {
+                bus.dispatch(new SetRepulsionModeCommand(rm));
+            }
 
         } catch (NumberFormatException e) {
-            setStatus("Valeur invalide: " + e.getMessage());
-        } catch (Exception e) {
-            setStatus("Impossible d'appliquer les options: " + e.getMessage());
+            System.out.println("Valeur invalide: " + e.getMessage());
         }
     }
 
-    private void parseDouble(TextField field, java.util.function.DoubleConsumer consumer) {
+    private void parseDouble(TextField field,
+            java.util.function.DoubleConsumer consumer) {
         if (field.getText() != null && !field.getText().isEmpty()) {
             consumer.accept(Double.parseDouble(field.getText()));
         }
     }
 
-    private void parseInt(TextField field, java.util.function.IntConsumer consumer) {
+    private void parseInt(TextField field,
+            java.util.function.IntConsumer consumer) {
         if (field.getText() != null && !field.getText().isEmpty()) {
             consumer.accept(Integer.parseInt(field.getText()));
         }
     }
 
-    private void setStatus(String message) {
-        System.out.println(message);
-    }
-
     @Override
-    public void setContext(ApplicationContext context) {
-        this.context = context;
+    public void setBus(CommandBus<GraphEngine> bus) {
+        this.bus = bus;
     }
 }

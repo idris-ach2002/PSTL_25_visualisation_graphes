@@ -3,12 +3,12 @@ package com.mongraphe.graphui.controller;
 import javafx.fxml.FXML;
 
 import com.mongraphe.graphui.app.ApplicationContext;
-import com.mongraphe.graphui.interfaces.ContextAware;
+import com.mongraphe.graphui.interfaces.CommandBusLinked;
 
 import javafx.application.Platform;
 import javafx.scene.control.Alert;
 
-public final class MainMenuController implements ContextAware {
+public final class MainMenuController implements CommandBusLinked {
 
     private ApplicationContext context;
 
