@@ -2,7 +2,6 @@ package com.mongraphe.graphui.interaction.modes;
 
 import com.jogamp.newt.event.MouseEvent;
 import com.mongraphe.graphui.Vertex;
-import com.mongraphe.graphui.app.ApplicationContext;
 import com.mongraphe.graphui.interfaces.InteractionModeHandler;
 
 public final class SelectModeHandler implements InteractionModeHandler {

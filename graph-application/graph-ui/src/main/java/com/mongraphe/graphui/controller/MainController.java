@@ -43,7 +43,7 @@ public final class MainController {
         GraphRenderer renderer = new GraphRenderer(engine, camera);
         GraphPanel panel = new GraphPanel(renderer);
 
-        CommandBus<GraphEngine> bus = new CommandBus<>(engine);
+        CommandBus<GraphEngine> bus = 
 
         inject(workspaceController, bus);
         inject(statsController, bus);

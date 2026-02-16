@@ -2,14 +2,15 @@ package com.mongraphe.graphui.interaction.modes;
 
 import com.jogamp.newt.event.MouseEvent;
 import com.mongraphe.graphui.Vertex;
-import com.mongraphe.graphui.app.ApplicationContext;
+import com.mongraphe.graphui.app.CommandBus;
+import com.mongraphe.graphui.app.commands.DeleteNodeCommand;
 import com.mongraphe.graphui.interfaces.InteractionModeHandler;
-import com.mongraphe.graphui.interaction.actions.DeleteAction;
+import com.mongraphe.graphui.rendering.GraphEngine;
 
 public final class DeleteModeHandler implements InteractionModeHandler {
 
     @Override
-    public void onMousePressed(ApplicationContext ctx,
+    public void onMousePressed(CommandBus<GraphEngine> bus,
             int sx,
             int sy,
             int button) {
@@ -17,46 +18,41 @@ public final class DeleteModeHandler implements InteractionModeHandler {
         if (button != MouseEvent.BUTTON1)
             return;
 
-        if (ctx.getGraphAdapter() == null)
+        if (bus == null)
             return;
 
-        float wx = ctx.getGraphAdapter().screenToWorldX(sx);
-        float wy = ctx.getGraphAdapter().screenToWorldY(sy);
+        float wx = bus.dispatchSync(b -> b.camera().screenToWorldX(sx));
+        float wy = bus.dispatchSync(b -> b.camera().screenToWorldY(sy));
 
-        Vertex selected = ctx.getGraphAdapter().findVertexAt(wx, wy);
-
-        if (selected == null)
-            return;
+        Vertex selected = bus.dispatchSync(b -> b.model().findVertexAt(wx, wy));
 
         int id = selected.getId();
         double previousDiameter = selected.getDiameter();
 
-        ctx.getGraphAdapter().deleteNode(id);
+        bus.dispatch(new DeleteNodeCommand(id));
 
-        ctx.getUndoManager().push(new DeleteAction(ctx.getGraphAdapter(), id, previousDiameter));
-
-        ctx.getUI().setStatus("Sommet supprimé: " + id);
+        getUI().setStatus("Sommet supprimé: " + id);
     }
 
     @Override
-    public void onMouseDragged(ApplicationContext ctx, int sx, int sy, int b) {
+    public void onMouseDragged(CommandBus<GraphEngine> bus, int sx, int sy, int b) {
     }
 
     @Override
-    public void onMouseReleased(ApplicationContext ctx, int sx, int sy, int b) {
+    public void onMouseReleased(CommandBus<GraphEngine> bus, int sx, int sy, int b) {
     }
 
     @Override
-    public void onMouseWheel(ApplicationContext ctx,
+    public void onMouseWheel(CommandBus<GraphEngine> bus,
             int sx,
             int sy,
             float rotation) {
 
-        ctx.getGraphAdapter().zoomCamera(sx, sy, rotation);
+        bus.dispatch(b -> b.camera().zoomAt(sx, sy, rotation));
     }
 
     @Override
-    public void onKeyPressed(ApplicationContext ctx,
+    public void onKeyPressed(CommandBus<GraphEngine> bus,
             int keyCode,
             boolean ctrlDown) {
     }

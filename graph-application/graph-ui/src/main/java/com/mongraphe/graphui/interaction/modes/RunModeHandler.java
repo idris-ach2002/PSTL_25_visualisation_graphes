@@ -1,39 +1,49 @@
 package com.mongraphe.graphui.interaction.modes;
 
-import com.mongraphe.graphui.app.ApplicationContext;
+import com.mongraphe.graphui.app.CommandBus;
 import com.mongraphe.graphui.interfaces.InteractionModeHandler;
+import com.mongraphe.graphui.rendering.GraphEngine;
+
+import javafx.scene.input.KeyCode;
 
 public final class RunModeHandler implements InteractionModeHandler {
 
     @Override
-    public void onMousePressed(ApplicationContext ctx, int sx, int sy, int button) {
+    public void onMousePressed(CommandBus<GraphEngine> bus, int sx, int sy, int button) {
         // Ne rien faire, le mode "Run" ne gère pas les interactions de la souris
     }
 
     @Override
-    public void onMouseDragged(ApplicationContext ctx, int sx, int sy, int button) {
+    public void onMouseDragged(CommandBus<GraphEngine> bus, int sx, int sy, int button) {
         // Déplacement de la caméra pour faire du "panning"
-        if (ctx.getGraphAdapter() != null) {
-            ctx.getGraphAdapter().panCamera(sx, sy);
+        if (bus != null) {
+            bus.dispatch(b -> b.camera().pan(sx, sy));
         }
     }
 
     @Override
-    public void onMouseReleased(ApplicationContext ctx, int sx, int sy, int button) {
+    public void onMouseReleased(CommandBus<GraphEngine> bus, int sx, int sy, int button) {
         // Ne rien faire, le mode "Run" ne gère pas les interactions de la souris
     }
 
     @Override
-    public void onMouseWheel(ApplicationContext ctx, int sx, int sy, float rotation) {
+    public void onMouseWheel(CommandBus<GraphEngine> bus, int sx, int sy, float rotation) {
         // Zoom de la caméra
-        if (ctx.getGraphAdapter() != null) {
-            ctx.getGraphAdapter().zoomCamera(sx, sy, rotation);
+        if (bus != null) {
+            bus.dispatch(b -> b.camera().zoomAt(sx, sy, rotation));
         }
     }
 
     @Override
-    public void onKeyPressed(ApplicationContext ctx, int keyCode, boolean ctrlDown) {
-        // TODO : Remettre la possibilité de mettre en pause ou de relancer la simulation avec la barre d'espace
+    public void onKeyPressed(CommandBus<GraphEngine> bus, int keyCode, boolean ctrlDown) {
+        if (bus != null && keyCode == KeyCode.SPACE.getCode()) {
+            boolean run = bus.dispatchSync(b -> b.isSimulationRunning());
+            if (run) {
+                bus.dispatch(b -> b.stopSimulation());
+            } else {
+                bus.dispatch(b -> b.startSimulation());
+            }
+        }
     }
 
 }
