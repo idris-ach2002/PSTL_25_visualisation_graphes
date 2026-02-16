@@ -20,6 +20,19 @@ public final class CommandBus<C> {
         executor.execute(() -> command.execute(context));
     }
 
+    public <R> R dispatchSync(java.util.function.Function<C, R> query) {
+
+        java.util.concurrent.FutureTask<R> task = new java.util.concurrent.FutureTask<>(() -> query.apply(context));
+
+        executor.execute(task);
+
+        try {
+            return task.get();
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+    }
+
     public void dispatchUndoable(
             UndoableGraphCommand<C> command,
             UndoManager undoManager) {

@@ -15,7 +15,8 @@ public final class EngineOptionsController
 
     private CommandBus<GraphEngine> bus;
 
-    public void setCommandBus(CommandBus<GraphEngine> bus) {
+    @Override
+    public void setBus(CommandBus<GraphEngine> bus) {
         this.bus = bus;
     }
 
@@ -112,10 +113,5 @@ public final class EngineOptionsController
         if (field.getText() != null && !field.getText().isEmpty()) {
             consumer.accept(Integer.parseInt(field.getText()));
         }
-    }
-
-    @Override
-    public void setBus(CommandBus<GraphEngine> bus) {
-        this.bus = bus;
     }
 }

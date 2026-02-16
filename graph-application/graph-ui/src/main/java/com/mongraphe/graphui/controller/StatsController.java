@@ -1,16 +1,16 @@
 package com.mongraphe.graphui.controller;
 
 import com.mongraphe.graphui.Vertex;
-import com.mongraphe.graphui.app.ApplicationContext;
-import com.mongraphe.graphui.app.GraphEngineAdapter.GraphDataSnapshot;
+import com.mongraphe.graphui.app.CommandBus;
 import com.mongraphe.graphui.interfaces.CommandBusLinked;
-
+import com.mongraphe.graphui.rendering.GraphEngine;
+import com.mongraphe.graphui.rendering.GraphEngine.GraphDataSnapshot;
 import com.mongraphe.graphui.Edge;
 import javafx.fxml.FXML;
 import javafx.scene.control.Label;
 import javafx.scene.control.TableView;
 
-public final class StatsController implements CommandBusLinked<CommandGraph> {
+public final class StatsController implements CommandBusLinked<GraphEngine> {
 
     @FXML
     private TableView<Vertex> vertexTable;
@@ -19,21 +19,22 @@ public final class StatsController implements CommandBusLinked<CommandGraph> {
     @FXML
     private Label totalElementsLabel;
 
-    private ApplicationContext context;
+    private CommandBus<GraphEngine> bus;
+
+    @Override
+    public void setBus(CommandBus<GraphEngine> bus) {
+        this.bus = bus;
+    }
 
     public void refresh() {
-        if (context == null) {
+        if (bus == null) {
             return;
         }
-        GraphDataSnapshot snapshot = context.getGraphAdapter().getDataSnapshot();
+        GraphDataSnapshot snapshot = bus.dispatchSync(c -> c.getDataSnapshot());
         vertexTable.getItems().setAll(snapshot.getVertices());
         edgeTable.getItems().setAll(snapshot.getEdges());
         totalElementsLabel.setText(
                 String.valueOf(snapshot.getVertices().size() + snapshot.getEdges().size()));
     }
 
-    @Override
-    public void setContext(ApplicationContext context) {
-        this.context = context;
-    }
 }

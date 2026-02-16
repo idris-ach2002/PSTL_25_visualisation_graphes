@@ -1,16 +1,22 @@
 package com.mongraphe.graphui.controller;
 
-import com.mongraphe.graphui.app.ApplicationContext;
+import com.mongraphe.graphui.app.CommandBus;
 import com.mongraphe.graphui.interfaces.CommandBusLinked;
+import com.mongraphe.graphui.rendering.GraphEngine;
 
 import javafx.fxml.FXML;
 import javafx.scene.control.Toggle;
 import javafx.scene.control.ToggleGroup;
 import javafx.scene.layout.Pane;
 
-public final class ViewSwitcherController implements CommandBusLinked {
+public final class ViewSwitcherController implements CommandBusLinked<GraphEngine> {
+    
+    private CommandBus<GraphEngine> bus;
 
-    private ApplicationContext context;
+    @Override
+    public void setBus(CommandBus<GraphEngine> bus) {
+        this.bus = bus;
+    }
 
     @FXML
     private ToggleGroup viewToggleGroup;
@@ -32,10 +38,5 @@ public final class ViewSwitcherController implements CommandBusLinked {
         overviewPane.setVisible("overview".equals(view));
         dataPane.setVisible("data".equals(view));
         previewPane.setVisible("preview".equals(view));
-    }
-
-    @Override
-    public void setContext(ApplicationContext context) {
-        this.context = context;
     }
 }

@@ -2,21 +2,17 @@ package com.mongraphe.graphui.controller;
 
 import javafx.fxml.FXML;
 
-import com.mongraphe.graphui.app.ApplicationContext;
+import com.mongraphe.graphui.app.CommandBus;
 import com.mongraphe.graphui.interfaces.CommandBusLinked;
+import com.mongraphe.graphui.rendering.GraphEngine;
 
 import javafx.application.Platform;
 import javafx.scene.control.Alert;
 
-public final class MainMenuController implements CommandBusLinked {
+public final class MainMenuController implements CommandBusLinked<GraphEngine> {
 
-    private ApplicationContext context;
-
-    @Override
-    public void setContext(ApplicationContext context) {
-        this.context = context;
-    }
-
+    private CommandBus<GraphEngine> bus;
+    
     @FXML
     private void handleQuit() {
         Platform.exit();
@@ -40,5 +36,10 @@ public final class MainMenuController implements CommandBusLinked {
         a.setHeaderText("MonGraphe");
         a.setContentText("Visualisation de graphes - 0.0.1");
         a.showAndWait();
+    }
+
+    @Override
+    public void setBus(CommandBus<GraphEngine> bus) {
+        this.bus = bus;
     }
 }

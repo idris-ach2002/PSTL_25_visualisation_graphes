@@ -1,14 +1,14 @@
 package com.mongraphe.graphui.app;
 
 import java.util.Objects;
+
 import com.jogamp.newt.opengl.GLWindow;
 import com.mongraphe.graphui.interaction.OpenGLInputHandler;
+import com.mongraphe.graphui.interfaces.CommandBusLinked;
 import com.mongraphe.graphui.interfaces.InteractionModeHandler;
+import com.mongraphe.graphui.interaction.modes.*;
 import com.mongraphe.graphui.rendering.Camera2D;
 import com.mongraphe.graphui.rendering.GraphEngine;
-import com.mongraphe.graphui.rendering.GraphNativeEngine;
-import com.mongraphe.graphui.view.GraphPanel;
-import com.mongraphe.graphui.interaction.modes.*;
 
 public final class InteractionService {
 
@@ -20,16 +20,19 @@ public final class InteractionService {
     }
 
     private InteractionModeHandler current;
-    private final GraphEngine engine;
+    private final CommandBus<GraphEngine> bus;
 
     private final InteractionModeHandler selectHandler;
     private final InteractionModeHandler moveHandler;
     private final InteractionModeHandler deleteHandler;
     private final InteractionModeHandler runHandler;
 
-    public InteractionService(GraphPanel panel) {
+    public InteractionService(CommandBus<GraphEngine> bus, GLWindow window) {
 
-        this.engine = new GraphEngine(new GraphNativeEngine());
+        Objects.requireNonNull(bus);
+        Objects.requireNonNull(window);
+
+        this.bus = bus;
 
         this.selectHandler = new SelectModeHandler();
         this.moveHandler = new MoveModeHandler();
@@ -38,7 +41,7 @@ public final class InteractionService {
 
         this.current = runHandler;
 
-        attach(panel.window());
+        attach(window);
     }
 
     public void setMode(Mode mode) {
@@ -58,23 +61,27 @@ public final class InteractionService {
         window.addKeyListener(handler);
     }
 
+    // ======================
+    // Event routing
+    // ======================
+
     public void onMousePressed(int x, int y, int b) {
-        current.onMousePressed(ctx, x, y, b);
+        current.onMousePressed(bus, x, y, b);
     }
 
     public void onMouseDragged(int x, int y, int b) {
-        current.onMouseDragged(ctx, x, y, b);
+        current.onMouseDragged(bus, x, y, b);
     }
 
     public void onMouseReleased(int x, int y, int b) {
-        current.onMouseReleased(ctx, x, y, b);
+        current.onMouseReleased(bus, x, y, b);
     }
 
     public void onMouseWheel(int x, int y, float a) {
-        current.onMouseWheel(ctx, x, y, a);
+        current.onMouseWheel(bus, x, y, a);
     }
 
     public void onKeyPressed(int key, boolean ctrl) {
-        current.onKeyPressed(ctx, key, ctrl);
+        current.onKeyPressed(bus, key, ctrl);
     }
 }

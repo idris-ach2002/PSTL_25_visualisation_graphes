@@ -1,6 +1,9 @@
 package com.mongraphe.graphui.rendering;
 
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 import com.mongraphe.graphui.Community;
 import com.mongraphe.graphui.Edge;
@@ -21,11 +24,58 @@ public final class GraphEngine {
     private final GraphSimulation simulation;
     private final GraphVisibilityFilter visibility;
 
+    // Couleur de fond paramétrable depuis l'UI
+    private volatile float clearR = 1f, clearG = 1f, clearB = 1f, clearA = 1f;
+
     /**
      * Fréquence (itérations) d'update des clusters côté natif (k-means).
      * L'UI la manipule via le champ "updatedFrequence".
      */
     private int clusterUpdateFrequency = 1;
+
+    public static class GraphDataSnapshot {
+        private final List<Vertex> vertices = new ArrayList<>();
+        private final List<Edge> edges = new ArrayList<>();
+        private final Map<Integer, Vertex> verticesById = new HashMap<>();
+
+        private int visibleVertexCount;
+        private int visibleEdgeCount;
+
+        public GraphDataSnapshot(List<Vertex> vertices, List<Edge> edges, int visibleVertexCount,
+                int visibleEdgeCount) {
+            this.vertices.addAll(vertices);
+            this.edges.addAll(edges);
+            this.visibleVertexCount = visibleVertexCount;
+            this.visibleEdgeCount = visibleEdgeCount;
+
+            for (Vertex v : vertices) {
+                verticesById.put(v.getId(), v);
+            }
+        }
+
+        public List<Vertex> getVertices() {
+            return vertices;
+        }
+
+        public List<Edge> getEdges() {
+            return edges;
+        }
+
+        public int getVisibleVertexCount() {
+            return visibleVertexCount;
+        }
+
+        public int getVisibleEdgeCount() {
+            return visibleEdgeCount;
+        }
+    }
+
+    public GraphDataSnapshot getDataSnapshot() {
+        synchronized (model.mutex()) {
+            return new GraphDataSnapshot(model.vertices(), model.edges(), model.getVisibleVertexCount(),
+                    model.getVisibleEdgeCount());
+        }
+    }
 
     public GraphEngine(GraphNativeEngine nativeEngine) {
         this.nativeEngine = nativeEngine;
@@ -107,6 +157,37 @@ public final class GraphEngine {
     public void update() {
         simulation.update(model);
         visibility.apply(model);
+    }
+
+    public void setBackgroundColor(float r, float g, float b, float a) {
+        this.clearR = clamp01(r);
+        this.clearG = clamp01(g);
+        this.clearB = clamp01(b);
+        this.clearA = clamp01(a);
+    }
+
+    public float getBackgroundColorR() {
+        return clearR;
+    }
+
+    public float getBackgroundColorG() {
+        return clearG;
+    }
+
+    public float getBackgroundColorB() {
+        return clearB;
+    }
+
+    public float getBackgroundColorA() {
+        return clearA;
+    }
+
+    private float clamp01(float v) {
+        if (v < 0f)
+            return 0f;
+        if (v > 1f)
+            return 1f;
+        return v;
     }
 
     public GraphModel model() {

@@ -1,9 +1,9 @@
 package com.mongraphe.graphui.controller;
 
-import com.mongraphe.graphui.app.ApplicationContext;
-import com.mongraphe.graphui.app.GraphEngineAdapter;
+import com.mongraphe.graphui.app.CommandBus;
 import com.mongraphe.graphui.app.UiState;
 import com.mongraphe.graphui.interfaces.CommandBusLinked;
+import com.mongraphe.graphui.interfaces.GraphCommand;
 import com.mongraphe.graphui.rendering.Camera2D;
 import com.mongraphe.graphui.rendering.GraphEngine;
 import com.mongraphe.graphui.rendering.GraphNativeEngine;
@@ -43,19 +43,17 @@ public final class MainController {
         GraphRenderer renderer = new GraphRenderer(engine, camera);
         GraphPanel panel = new GraphPanel(renderer);
 
-        GraphEngineAdapter adapter = new GraphEngineAdapter(engine, camera, panel.createExporter(renderer), panel.window());
+        CommandBus<GraphEngine> bus = new CommandBus<>(engine);
 
-        ApplicationContext context = new ApplicationContext(uiState, adapter);
-
-        inject(workspaceController, context);
-        inject(statsController, context);
-        inject(optionsController, context);
-        inject(projectController, context);
-        inject(viewSwitcherController, context);
-        inject(menuController, context);
+        inject(workspaceController, bus);
+        inject(statsController, bus);
+        inject(optionsController, bus);
+        inject(projectController, bus);
+        inject(viewSwitcherController, bus);
+        inject(menuController, bus);
     }
 
-    private void inject(CommandBusLinked controller, ApplicationContext context) {
-        controller.setContext(context);
+    private void inject(CommandBusLinked<GraphEngine> cbl, CommandBus<GraphEngine> bus) {
+        cbl.setBus(bus);
     }
 }

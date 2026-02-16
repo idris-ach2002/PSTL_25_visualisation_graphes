@@ -1,21 +1,22 @@
 package com.mongraphe.graphui.controller;
 
-import com.mongraphe.graphui.app.ApplicationContext;
+import com.mongraphe.graphui.app.CommandBus;
 import com.mongraphe.graphui.interfaces.CommandBusLinked;
+import com.mongraphe.graphui.rendering.GraphEngine;
 
 import javafx.fxml.FXML;
 import javafx.stage.FileChooser;
 import java.io.File;
 
-public final class ProjectController implements CommandBusLinked {
+public final class ProjectController implements CommandBusLinked<GraphEngine> {
 
     private File currentFile;
 
-    private ApplicationContext context;
+    private CommandBus<GraphEngine> bus;
 
     @Override
-    public void setContext(ApplicationContext context) {
-        this.context = context;
+    public void setBus(CommandBus<GraphEngine> bus) {
+        this.bus = bus;
     }
 
     @FXML
@@ -25,11 +26,8 @@ public final class ProjectController implements CommandBusLinked {
         if (currentFile == null)
             return;
 
-        /**
-         * TODO: gérer l'ouverture d'un projet
-         * GraphEngineAdapter adapter = new GraphEngineAdapter();
-         * 
-         * adapter.load(currentFile, GraphProject.SourceType.CSV, null, null);
+        // Regarder l'extension du fichier pour savoir comment le charger si c'est csv ou dot
+
          * 
          * InteractionService interaction = new InteractionService(adapter);
          * 

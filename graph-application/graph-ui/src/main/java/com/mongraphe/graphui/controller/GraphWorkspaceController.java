@@ -1,10 +1,11 @@
 package com.mongraphe.graphui.controller;
 
-import com.mongraphe.graphui.app.ApplicationContext;
-import com.mongraphe.graphui.app.GraphEngineAdapter;
+import com.mongraphe.graphui.app.CommandBus;
 import com.mongraphe.graphui.app.InteractionService;
 import com.mongraphe.graphui.app.InteractionService.Mode;
+import com.mongraphe.graphui.app.commands.SetBackgroundColorCommand;
 import com.mongraphe.graphui.interfaces.CommandBusLinked;
+import com.mongraphe.graphui.rendering.GraphEngine;
 import com.mongraphe.graphui.view.GraphPanel;
 
 import javafx.fxml.FXML;
@@ -13,7 +14,7 @@ import javafx.scene.control.Toggle;
 import javafx.scene.control.ToggleGroup;
 import javafx.scene.layout.StackPane;
 
-public final class GraphWorkspaceController implements CommandBusLinked {
+public final class GraphWorkspaceController implements CommandBusLinked<GraphEngine> {
 
     @FXML
     private StackPane graphContainer;
@@ -22,16 +23,16 @@ public final class GraphWorkspaceController implements CommandBusLinked {
     @FXML
     private ColorPicker canvasColorPicker;
 
+    private CommandBus<GraphEngine> bus;
     private InteractionService interaction;
-    private ApplicationContext context;
 
-    public void init(GraphEngineAdapter adapter, InteractionService interaction, GraphPanel panel) {
+    public GraphWorkspaceController(GraphPanel panel, InteractionService interaction) {
         this.interaction = interaction;
         mountCanvas(panel);
     }
 
     private void mountCanvas(GraphPanel panel) {
-        if (context == null)
+        if (bus == null)
             return;
 
         var canvasNode = panel.canvas();
@@ -40,13 +41,12 @@ public final class GraphWorkspaceController implements CommandBusLinked {
             return;
 
         graphContainer.getChildren().setAll(canvasNode);
-        
-        // Adapter resize
+
         graphContainer.widthProperty().addListener((obs, oldVal, newVal) -> {
-            context.getGraphAdapter().resizeCamera(newVal.intValue(), (int) graphContainer.getHeight());
+            bus.dispatch(g -> g.camera().resize(newVal.intValue(), (int) graphContainer.getHeight()));
         });
         graphContainer.heightProperty().addListener((obs, oldVal, newVal) -> {
-            context.getGraphAdapter().resizeCamera((int) graphContainer.getWidth(), newVal.intValue());
+            bus.dispatch(g -> g.camera().resize((int) graphContainer.getWidth(), newVal.intValue()));
         });
     }
 
@@ -66,20 +66,20 @@ public final class GraphWorkspaceController implements CommandBusLinked {
     @FXML
     private void applyCanvasColor() {
 
-        if (context.getGraphAdapter() == null)
+        if (bus == null)
             return;
 
         var c = canvasColorPicker.getValue();
 
-        context.getGraphAdapter().setBackgroundColor(
+        bus.dispatch(new SetBackgroundColorCommand(
                 (float) c.getRed(),
                 (float) c.getGreen(),
                 (float) c.getBlue(),
-                (float) c.getOpacity());
+                (float) c.getOpacity()));
     }
 
     @Override
-    public void setContext(ApplicationContext context) {
-        this.context = context;
+    public void setBus(CommandBus<GraphEngine> bus) {
+        this.bus = bus;
     }
 }
