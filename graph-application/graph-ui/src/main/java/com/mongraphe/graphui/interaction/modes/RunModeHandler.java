@@ -1,6 +1,7 @@
 package com.mongraphe.graphui.interaction.modes;
 
 import com.mongraphe.graphui.app.CommandBus;
+import com.mongraphe.graphui.app.UiState;
 import com.mongraphe.graphui.interfaces.InteractionModeHandler;
 import com.mongraphe.graphui.rendering.GraphEngine;
 
@@ -45,5 +46,8 @@ public final class RunModeHandler implements InteractionModeHandler {
             }
         }
     }
+
+    @Override
+    public void setUiState(UiState state) {}
 
 }

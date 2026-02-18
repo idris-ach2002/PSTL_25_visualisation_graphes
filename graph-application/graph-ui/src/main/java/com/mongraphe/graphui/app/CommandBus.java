@@ -10,6 +10,7 @@ public final class CommandBus<C> {
 
     private final C context;
     private final Executor executor;
+    private final UndoManager undoManager = new UndoManager();
 
     public CommandBus(C context, Executor executor) {
         this.context = context;
@@ -34,8 +35,7 @@ public final class CommandBus<C> {
     }
 
     public void dispatchUndoable(
-            UndoableGraphCommand<C> command,
-            UndoManager undoManager) {
+            UndoableGraphCommand<C> command) {
 
         executor.execute(() -> {
 

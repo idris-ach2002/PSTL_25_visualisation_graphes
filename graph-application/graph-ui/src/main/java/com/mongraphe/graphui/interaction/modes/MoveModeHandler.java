@@ -3,6 +3,7 @@ package com.mongraphe.graphui.interaction.modes;
 import com.jogamp.newt.event.MouseEvent;
 import com.mongraphe.graphui.Vertex;
 import com.mongraphe.graphui.app.CommandBus;
+import com.mongraphe.graphui.app.UiState;
 import com.mongraphe.graphui.app.commands.MoveVertexCommand;
 import com.mongraphe.graphui.interfaces.InteractionModeHandler;
 import com.mongraphe.graphui.rendering.GraphEngine;
@@ -73,4 +74,7 @@ public final class MoveModeHandler implements InteractionModeHandler {
 
     @Override public void onMouseWheel(CommandBus<GraphEngine> bus, int sx, int sy, float r) {}
     @Override public void onKeyPressed(CommandBus<GraphEngine> bus, int key, boolean ctrl) {}
+
+    @Override
+    public void setUiState(UiState state) {}
 }

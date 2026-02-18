@@ -1,7 +1,9 @@
 package com.mongraphe.graphui.view;
 
-import com.mongraphe.graphui.app.GraphEngineAdapter;
+import com.mongraphe.graphui.app.CommandBus;
 import com.mongraphe.graphui.app.InteractionService;
+import com.mongraphe.graphui.app.commands.SetBackgroundColorCommand;
+import com.mongraphe.graphui.rendering.GraphEngine;
 
 import javafx.fxml.FXML;
 import javafx.scene.control.ColorPicker;
@@ -27,31 +29,34 @@ public final class GraphWorkspacePanel {
     private ColorPicker canvasColorPicker;
 
     private InteractionService interaction;
-    private GraphEngineAdapter engine;
+    private CommandBus<GraphEngine> bus;
 
-    public void init(GraphEngineAdapter engine, InteractionService interaction) {
-        this.engine = engine;
+    public void init(CommandBus<GraphEngine> bus, InteractionService interaction) {
+        this.bus = bus;
         this.interaction = interaction;
 
-        //mountCanvas();
+        // mountCanvas();
         setupTools();
         setupCanvasColor();
     }
 
     /*
-    private void mountCanvas() {
-        if (engine.panel() == null)
-            return;
-
-        graphContainer.getChildren().setAll(engine.panel().canvas());
-        interaction.attach(engine.panel().window());
-
-        graphContainer.widthProperty()
-                .addListener((obs, o, n) -> engine.camera().resize(n.intValue(), (int) graphContainer.getHeight()));
-
-        graphContainer.heightProperty()
-                .addListener((obs, o, n) -> engine.camera().resize((int) graphContainer.getWidth(), n.intValue()));
-    }*/
+     * private void mountCanvas() {
+     * if (engine.panel() == null)
+     * return;
+     * 
+     * graphContainer.getChildren().setAll(engine.panel().canvas());
+     * interaction.attach(engine.panel().window());
+     * 
+     * graphContainer.widthProperty()
+     * .addListener((obs, o, n) -> engine.camera().resize(n.intValue(), (int)
+     * graphContainer.getHeight()));
+     * 
+     * graphContainer.heightProperty()
+     * .addListener((obs, o, n) -> engine.camera().resize((int)
+     * graphContainer.getWidth(), n.intValue()));
+     * }
+     */
 
     private void setupTools() {
         toolToggleGroup.selectedToggleProperty().addListener((obs, old, now) -> {
@@ -67,11 +72,11 @@ public final class GraphWorkspacePanel {
     private void setupCanvasColor() {
         canvasColorPicker.setOnAction(e -> {
             var c = canvasColorPicker.getValue();
-            engine.setBackgroundColor(
+            bus.dispatch(new SetBackgroundColorCommand(
                     (float) c.getRed(),
                     (float) c.getGreen(),
                     (float) c.getBlue(),
-                    1f);
+                    1f));
         });
     }
 }

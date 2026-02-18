@@ -3,11 +3,14 @@ package com.mongraphe.graphui.interaction.modes;
 import com.jogamp.newt.event.MouseEvent;
 import com.mongraphe.graphui.Vertex;
 import com.mongraphe.graphui.app.CommandBus;
+import com.mongraphe.graphui.app.UiState;
 import com.mongraphe.graphui.app.commands.DeleteNodeCommand;
 import com.mongraphe.graphui.interfaces.InteractionModeHandler;
 import com.mongraphe.graphui.rendering.GraphEngine;
 
 public final class DeleteModeHandler implements InteractionModeHandler {
+
+    private UiState state;
 
     @Override
     public void onMousePressed(CommandBus<GraphEngine> bus,
@@ -31,7 +34,7 @@ public final class DeleteModeHandler implements InteractionModeHandler {
 
         bus.dispatch(new DeleteNodeCommand(id));
 
-        getUI().setStatus("Sommet supprimé: " + id);
+        state.setStatus("Sommet supprimé: " + id);
     }
 
     @Override
@@ -55,5 +58,9 @@ public final class DeleteModeHandler implements InteractionModeHandler {
     public void onKeyPressed(CommandBus<GraphEngine> bus,
             int keyCode,
             boolean ctrlDown) {
+    }
+
+    public void setUiState(UiState state) {
+        this.state = state;
     }
 }
