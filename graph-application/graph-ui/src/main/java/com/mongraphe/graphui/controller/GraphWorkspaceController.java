@@ -4,7 +4,7 @@ import com.mongraphe.graphui.app.CommandBus;
 import com.mongraphe.graphui.app.InteractionService;
 import com.mongraphe.graphui.app.InteractionService.Mode;
 import com.mongraphe.graphui.app.commands.SetBackgroundColorCommand;
-import com.mongraphe.graphui.interfaces.CommandBusLinked;
+import com.mongraphe.graphui.interfaces.CommandBusLinkedI;
 import com.mongraphe.graphui.rendering.GraphEngine;
 import com.mongraphe.graphui.view.GraphPanel;
 
@@ -14,7 +14,7 @@ import javafx.scene.control.Toggle;
 import javafx.scene.control.ToggleGroup;
 import javafx.scene.layout.StackPane;
 
-public final class GraphWorkspaceController implements CommandBusLinked<GraphEngine> {
+public final class GraphWorkspaceController implements CommandBusLinkedI<GraphEngine> {
 
     @FXML
     private StackPane graphContainer;
@@ -48,6 +48,11 @@ public final class GraphWorkspaceController implements CommandBusLinked<GraphEng
         graphContainer.heightProperty().addListener((obs, oldVal, newVal) -> {
             bus.dispatch(g -> g.camera().resize((int) graphContainer.getWidth(), newVal.intValue()));
         });
+    }
+
+    @FXML
+    private void handleStartButton(){
+        
     }
 
     @FXML

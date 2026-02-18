@@ -15,6 +15,10 @@ public final class MoveModeHandler implements InteractionModeHandler {
     private double startX, startY;
     private int id = -1;
 
+    public MoveModeHandler(UiState state){
+        
+    }
+
     @Override
     public void onMousePressed(CommandBus<GraphEngine> bus, int sx, int sy, int button) {
 
@@ -75,6 +79,4 @@ public final class MoveModeHandler implements InteractionModeHandler {
     @Override public void onMouseWheel(CommandBus<GraphEngine> bus, int sx, int sy, float r) {}
     @Override public void onKeyPressed(CommandBus<GraphEngine> bus, int key, boolean ctrl) {}
 
-    @Override
-    public void setUiState(UiState state) {}
 }

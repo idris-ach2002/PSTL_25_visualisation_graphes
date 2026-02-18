@@ -2,8 +2,10 @@ package com.mongraphe.graphui.view;
 
 import com.mongraphe.graphui.Edge;
 import com.mongraphe.graphui.Vertex;
-import com.mongraphe.graphui.app.GraphEngineAdapter;
-import com.mongraphe.graphui.app.GraphEngineAdapter.GraphDataSnapshot;
+import com.mongraphe.graphui.app.CommandBus;
+import com.mongraphe.graphui.rendering.GraphEngine;
+import com.mongraphe.graphui.rendering.GraphEngine.GraphDataSnapshot;
+
 import javafx.fxml.FXML;
 import javafx.scene.control.Label;
 import javafx.scene.control.TableView;
@@ -20,9 +22,9 @@ public final class StatsPanel {
     @FXML
     private TableView<Edge> edgeTable;
 
-    private GraphEngineAdapter engine;
+    private CommandBus<GraphEngine> engine;
 
-    public void init(GraphEngineAdapter engine) {
+    public void init(CommandBus<GraphEngine> engine) {
         this.engine = engine;
         refresh();
     }
@@ -32,7 +34,7 @@ public final class StatsPanel {
             return;
         }
         // Copier les données du modèle dans les éléments graphiques
-        GraphDataSnapshot snapshot = engine.getDataSnapshot();
+        GraphDataSnapshot snapshot = engine.dispatchSync(e -> e.getDataSnapshot());
 
         nodesDisplayedLabel.setText(String.valueOf(snapshot.getVisibleVertexCount()));
         edgesDisplayedLabel.setText(String.valueOf(snapshot.getVisibleEdgeCount()));

@@ -12,6 +12,10 @@ public final class DeleteModeHandler implements InteractionModeHandler {
 
     private UiState state;
 
+    public DeleteModeHandler (UiState state) {
+        this.state = state;
+    }
+
     @Override
     public void onMousePressed(CommandBus<GraphEngine> bus,
             int sx,
@@ -58,9 +62,5 @@ public final class DeleteModeHandler implements InteractionModeHandler {
     public void onKeyPressed(CommandBus<GraphEngine> bus,
             int keyCode,
             boolean ctrlDown) {
-    }
-
-    public void setUiState(UiState state) {
-        this.state = state;
     }
 }

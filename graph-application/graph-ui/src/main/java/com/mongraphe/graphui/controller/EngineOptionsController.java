@@ -3,15 +3,14 @@ package com.mongraphe.graphui.controller;
 import com.mongraphe.graphui.GraphData;
 import com.mongraphe.graphui.app.CommandBus;
 import com.mongraphe.graphui.app.commands.*;
-import com.mongraphe.graphui.interfaces.CommandBusLinked;
+import com.mongraphe.graphui.interfaces.CommandBusLinkedI;
 import com.mongraphe.graphui.rendering.GraphEngine;
 
 import javafx.fxml.FXML;
 import javafx.scene.control.ComboBox;
 import javafx.scene.control.TextField;
 
-public final class EngineOptionsController
-                implements CommandBusLinked<GraphEngine> {
+public final class EngineOptionsController implements CommandBusLinkedI<GraphEngine> {
 
         private CommandBus<GraphEngine> bus;
 
@@ -54,7 +53,6 @@ public final class EngineOptionsController
                         return;
 
                 try {
-
                         EngineOptions options = new EngineOptions();
 
                         options.degreeFactor = parseDouble(degreeFactor);

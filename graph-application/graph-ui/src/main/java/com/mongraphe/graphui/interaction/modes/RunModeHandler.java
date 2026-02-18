@@ -8,6 +8,10 @@ import com.mongraphe.graphui.rendering.GraphEngine;
 import javafx.scene.input.KeyCode;
 
 public final class RunModeHandler implements InteractionModeHandler {
+    
+    public RunModeHandler(UiState state){
+
+    }
 
     @Override
     public void onMousePressed(CommandBus<GraphEngine> bus, int sx, int sy, int button) {
@@ -46,8 +50,4 @@ public final class RunModeHandler implements InteractionModeHandler {
             }
         }
     }
-
-    @Override
-    public void setUiState(UiState state) {}
-
 }

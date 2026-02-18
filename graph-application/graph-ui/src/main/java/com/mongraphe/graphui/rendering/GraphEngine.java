@@ -10,6 +10,7 @@ import com.mongraphe.graphui.Edge;
 import com.mongraphe.graphui.EdgeC;
 import com.mongraphe.graphui.GraphData;
 import com.mongraphe.graphui.Vertex;
+import com.mongraphe.graphui.app.GraphProject;
 import com.mongraphe.graphui.model.GraphModel;
 
 /**
@@ -83,6 +84,18 @@ public final class GraphEngine {
         this.model = new GraphModel();
         this.simulation = new GraphSimulation(nativeEngine);
         this.visibility = new GraphVisibilityFilter();
+    }
+
+    public void load(String path, GraphProject.SourceType type, GraphData.SimilitudeMode sim,
+            GraphData.NodeCommunity communityMode) {
+        switch (type) {
+            case CSV:
+                loadCsv(path, sim, communityMode);
+                break;
+            case DOT:
+                loadDot(path, communityMode);
+                break;
+        }
     }
 
     public void loadCsv(String path,

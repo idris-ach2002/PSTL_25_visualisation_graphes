@@ -1,9 +1,8 @@
 package com.mongraphe.graphui.controller;
 
 import com.mongraphe.graphui.app.CommandBus;
-import com.mongraphe.graphui.app.UiState;
-import com.mongraphe.graphui.interfaces.CommandBusLinked;
-import com.mongraphe.graphui.interfaces.GraphCommand;
+import com.mongraphe.graphui.app.GLExecutor;
+import com.mongraphe.graphui.interfaces.CommandBusLinkedI;
 import com.mongraphe.graphui.rendering.Camera2D;
 import com.mongraphe.graphui.rendering.GraphEngine;
 import com.mongraphe.graphui.rendering.GraphNativeEngine;
@@ -34,8 +33,6 @@ public final class MainController {
     @FXML
     private void initialize() {
 
-        UiState uiState = new UiState();
-
         GraphNativeEngine nativeEngine = new GraphNativeEngine();
         GraphEngine engine = new GraphEngine(nativeEngine);
         Camera2D camera = new Camera2D();
@@ -43,7 +40,7 @@ public final class MainController {
         GraphRenderer renderer = new GraphRenderer(engine, camera);
         GraphPanel panel = new GraphPanel(renderer);
 
-        CommandBus<GraphEngine> bus = 
+        CommandBus<GraphEngine> bus = new CommandBus<GraphEngine>(engine, new GLExecutor(panel.window()));
 
         inject(workspaceController, bus);
         inject(statsController, bus);
@@ -51,9 +48,11 @@ public final class MainController {
         inject(projectController, bus);
         inject(viewSwitcherController, bus);
         inject(menuController, bus);
+
+        projectController.setStats(statsController);
     }
 
-    private void inject(CommandBusLinked<GraphEngine> cbl, CommandBus<GraphEngine> bus) {
+    private void inject(CommandBusLinkedI<GraphEngine> cbl, CommandBus<GraphEngine> bus) {
         cbl.setBus(bus);
     }
 }

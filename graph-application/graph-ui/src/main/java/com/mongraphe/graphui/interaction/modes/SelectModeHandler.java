@@ -10,6 +10,10 @@ import com.mongraphe.graphui.rendering.GraphEngine;
 public final class SelectModeHandler implements InteractionModeHandler {
     private UiState state;
 
+    public SelectModeHandler(UiState state){
+        this.state = state;
+    }
+
     @Override
     public void onMousePressed(CommandBus<GraphEngine> bus,
             int sx,
@@ -64,10 +68,5 @@ public final class SelectModeHandler implements InteractionModeHandler {
     public void onKeyPressed(CommandBus<GraphEngine> bus,
             int keyCode,
             boolean ctrlDown) {
-    }
-
-    @Override
-    public void setUiState(UiState state) {
-        this.state = state;
     }
 }

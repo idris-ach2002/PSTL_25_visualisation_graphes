@@ -4,10 +4,8 @@ import java.util.Objects;
 
 import com.jogamp.newt.opengl.GLWindow;
 import com.mongraphe.graphui.interaction.OpenGLInputHandler;
-import com.mongraphe.graphui.interfaces.CommandBusLinked;
 import com.mongraphe.graphui.interfaces.InteractionModeHandler;
 import com.mongraphe.graphui.interaction.modes.*;
-import com.mongraphe.graphui.rendering.Camera2D;
 import com.mongraphe.graphui.rendering.GraphEngine;
 
 public final class InteractionService {
@@ -27,17 +25,18 @@ public final class InteractionService {
     private final InteractionModeHandler deleteHandler;
     private final InteractionModeHandler runHandler;
 
-    public InteractionService(CommandBus<GraphEngine> bus, GLWindow window) {
+    public InteractionService(CommandBus<GraphEngine> bus, GLWindow window, UiState state) {
 
         Objects.requireNonNull(bus);
         Objects.requireNonNull(window);
 
         this.bus = bus;
 
-        this.selectHandler = new SelectModeHandler();
-        this.moveHandler = new MoveModeHandler();
-        this.deleteHandler = new DeleteModeHandler();
-        this.runHandler = new RunModeHandler();
+        this.selectHandler = new SelectModeHandler(state);
+        this.moveHandler = new MoveModeHandler(state);
+        this.deleteHandler = new DeleteModeHandler(state);
+        this.runHandler = new RunModeHandler(state);
+
 
         this.current = runHandler;
 
@@ -60,10 +59,6 @@ public final class InteractionService {
         window.addMouseListener(handler);
         window.addKeyListener(handler);
     }
-
-    // ======================
-    // Event routing
-    // ======================
 
     public void onMousePressed(int x, int y, int b) {
         current.onMousePressed(bus, x, y, b);

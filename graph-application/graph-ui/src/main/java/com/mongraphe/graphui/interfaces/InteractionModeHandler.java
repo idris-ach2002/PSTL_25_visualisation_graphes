@@ -1,7 +1,6 @@
 package com.mongraphe.graphui.interfaces;
 
 import com.mongraphe.graphui.app.CommandBus;
-import com.mongraphe.graphui.app.UiState;
 import com.mongraphe.graphui.rendering.GraphEngine;
 
 public interface InteractionModeHandler {
@@ -16,5 +15,4 @@ public interface InteractionModeHandler {
 
     void onKeyPressed(CommandBus<GraphEngine> bus, int keyCode, boolean ctrlDown);
 
-    void setUiState(UiState state);
 }
