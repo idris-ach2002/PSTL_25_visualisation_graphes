@@ -13,6 +13,10 @@ import javafx.scene.control.TableView;
 public final class StatsController implements CommandBusLinkedI<GraphEngine> {
 
     @FXML
+    private Label nodesDisplayedLabel;
+    @FXML
+    private Label edgesDisplayedLabel;
+    @FXML
     private TableView<Vertex> vertexTable;
     @FXML
     private TableView<Edge> edgeTable;
@@ -30,11 +34,12 @@ public final class StatsController implements CommandBusLinkedI<GraphEngine> {
         if (bus == null) {
             return;
         }
-        GraphDataSnapshot snapshot = bus.dispatchSync(c -> c.getDataSnapshot());
+        GraphDataSnapshot snapshot = bus.dispatchSync(e -> e.getDataSnapshot());
+
+        nodesDisplayedLabel.setText(String.valueOf(snapshot.getVisibleVertexCount()));
+        edgesDisplayedLabel.setText(String.valueOf(snapshot.getVisibleEdgeCount()));
         vertexTable.getItems().setAll(snapshot.getVertices());
         edgeTable.getItems().setAll(snapshot.getEdges());
-        totalElementsLabel.setText(
-                String.valueOf(snapshot.getVertices().size() + snapshot.getEdges().size()));
     }
 
 }
