@@ -70,8 +70,15 @@ bool Pop(queue q, struct Job* task)
 
 void isFinished(queue q)
 {
+    // Defensive: this can be called during cleanup even if the pool/queue
+    // was never initialized. Avoid NULL dereference.
+    if (q == NULL) {
+        return;
+    }
+
     q->isFinished = true;
 
+    // Wake up consumers.
     pthread_cond_broadcast (&q->isEmpty);
 }
 
@@ -133,13 +140,32 @@ void submit(thr_Pool pool, struct Job j)
 
 void FreePool(thr_Pool pool)
 {
+    // Defensive: allow calling FreePool multiple times and/or before InitPool.
+    if (pool == NULL) {
+        return;
+    }
+
+    // If the pool was never initialized, there is nothing to clean up.
+    if (pool->job_queue == NULL) {
+        pool->working = false;
+        pool->nb_threads = 0;
+        return;
+    }
+
     pool->working = false;
     isFinished(pool->job_queue);
-    for (int i = 0; i < pool->nb_threads; ++i)
-    {
-        pthread_join(pool->threads[i], NULL);
+
+    if (pool->threads != NULL) {
+        for (int i = 0; i < pool->nb_threads; ++i)
+        {
+            pthread_join(pool->threads[i], NULL);
+        }
+        free(pool->threads);
+        pool->threads = NULL;
     }
-    free(pool->threads);
+    pool->nb_threads = 0;
 
     QueueFree(pool->job_queue);
+    free(pool->job_queue);
+    pool->job_queue = NULL;
 }

@@ -5,6 +5,7 @@ import java.io.IOException;
 
 import com.mongraphe.graphui.GraphData.NodeCommunity;
 import com.mongraphe.graphui.GraphData.SimilitudeMode;
+import com.mongraphe.graphui.view.GraphView;
 
 import javafx.collections.ObservableList;
 import javafx.fxml.FXML;
@@ -204,7 +205,7 @@ public class ConfigurationController {
             loader.setLocation(getClass().getResource("/fxml/Visualisation.fxml"));
             Parent root = loader.load();
 
-            GraphVue controller = loader.getController();
+            GraphView controller = loader.getController();
             controller.initData(file, measure, upThresh, downThresh, method);
 
             Stage stage = (Stage) mainBorderPane.getScene().getWindow();

@@ -37,6 +37,10 @@ public class Vertex {
     public int getId() {
         return id;
     }
+
+    public void setDiameter(double diameter) {
+        this.diameter = diameter;
+    }
     /**
      * Modifie l'identifiant du sommet
      * @param id : identifiant du sommet
@@ -82,12 +86,26 @@ public class Vertex {
         return isVisible;
     }
 
+    public void setVisible(boolean visible) {
+        this.isVisible = visible;
+    }
+
     /**
      * Marque le sommet comme supprimé
      */
     public void delete() {
         isDeleted = true;
         diameter = 0;
+    }
+
+    /**
+     * Restaure un sommet supprimé (undo/redo).
+     * Remet le sommet visible et recalcule son diamètre.
+     */
+    public void restore() {
+        isDeleted = false;
+        isVisible = true;
+        updateDiameter();
     }
     /**
      * @return true si le sommet a été supprimé, false sinon

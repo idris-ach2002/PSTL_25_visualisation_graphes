@@ -14,7 +14,7 @@ public class Edge {
     private final float color_b;
 
     private final double weight;
-
+    private boolean visible = true;
 
     /**
      * Crée une arête à partir de ses deux sommets
@@ -95,6 +95,14 @@ public class Edge {
      */
     public String toString() {
         return start + " -> " + end;
+    }
+
+    public boolean isVisible() {
+        return visible;
+    }
+
+    public void setVisible(boolean visible) {
+        this.visible = visible;
     }
 
 }

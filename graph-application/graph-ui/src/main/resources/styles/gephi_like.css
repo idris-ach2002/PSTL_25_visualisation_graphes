@@ -1,0 +1,88 @@
+/* Thème sombre "futuriste" (sans partir dans le cosplay cyberpunk) */
+
+.root {
+    -fx-font-family: "Inter", "Segoe UI", "Roboto", "Helvetica Neue", Arial, sans-serif;
+    -fx-font-size: 13px;
+    -fx-background-color: #0b0f19;
+    -fx-text-fill: #e6e8ee;
+}
+
+.top-bar {
+    -fx-background-color: rgba(255,255,255,0.02);
+    -fx-border-color: rgba(255,255,255,0.06);
+    -fx-border-width: 0 0 1 0;
+}
+
+.dock {
+    -fx-background-color: rgba(255,255,255,0.02);
+    -fx-border-color: rgba(255,255,255,0.06);
+    -fx-border-width: 1;
+    -fx-background-radius: 12;
+    -fx-border-radius: 12;
+    -fx-padding: 12;
+}
+
+.dock-title {
+    -fx-font-size: 12px;
+    -fx-text-fill: rgba(230,232,238,0.8);
+    -fx-font-weight: 700;
+}
+
+.status-bar {
+    -fx-background-color: rgba(255,255,255,0.02);
+    -fx-border-color: rgba(255,255,255,0.06);
+    -fx-border-width: 1 0 0 0;
+    -fx-padding: 8 12 8 12;
+}
+
+.button, .toggle-button {
+    -fx-background-color: rgba(255,255,255,0.06);
+    -fx-text-fill: #e6e8ee;
+    -fx-background-radius: 10;
+    -fx-border-radius: 10;
+    -fx-border-color: rgba(255,255,255,0.10);
+    -fx-border-width: 1;
+    -fx-padding: 8 12 8 12;
+}
+
+.button:hover, .toggle-button:hover {
+    -fx-background-color: rgba(255,255,255,0.10);
+}
+
+.button:pressed {
+    -fx-background-color: rgba(255,255,255,0.14);
+}
+
+.text-field, .combo-box, .spinner, .check-box, .color-picker {
+    -fx-background-radius: 10;
+    -fx-border-radius: 10;
+    -fx-border-color: rgba(255,255,255,0.10);
+    -fx-border-width: 1;
+    -fx-background-color: rgba(255,255,255,0.04);
+    -fx-text-fill: #e6e8ee;
+}
+
+.label {
+    -fx-text-fill: #e6e8ee;
+}
+
+.separator *.line {
+    -fx-border-color: rgba(255,255,255,0.06);
+}
+
+.menu-bar {
+    -fx-background-color: transparent;
+}
+
+.menu-bar .label {
+    -fx-text-fill: rgba(230,232,238,0.9);
+}
+
+.menu-item .label {
+    -fx-text-fill: #0b0f19;
+}
+
+/* Accent léger */
+.accent {
+    -fx-text-fill: #77aaff;
+}

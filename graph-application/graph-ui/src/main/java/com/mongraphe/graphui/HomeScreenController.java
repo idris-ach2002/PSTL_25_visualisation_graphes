@@ -3,6 +3,8 @@ package com.mongraphe.graphui;
 import java.io.File;
 import java.io.IOException;
 
+import com.mongraphe.graphui.view.GraphView;
+
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
 import javafx.geometry.Rectangle2D;
@@ -15,51 +17,84 @@ import javafx.stage.Stage;
 
 public class HomeScreenController {
 
-    @FXML
-    private Hyperlink newProjectLink;
-    @FXML
-    private Hyperlink openFileLink;
+    // Liens de la page d'accueil (d'après HomeScreen.fxml)
+    @FXML private Hyperlink newProjectLink;
+    @FXML private Hyperlink openFileLink;
+
+    @FXML private Hyperlink example1;
+    @FXML private Hyperlink example2;
+    @FXML private Hyperlink example3;
+    @FXML private Hyperlink example4;
 
     @FXML
-    private void handleNewProject() {
-        try {
-            // Créer une instance de la classe Graph
-            GraphVue graph = new GraphVue();
-
-            // Définir le fichier à utiliser
-            File file = new File(System.getProperty("user.dir") + "/samples/iris.csv");
-            if (!file.exists()) {
-                System.err.println("Le fichier spécifié n'existe pas : " + file.getAbsolutePath());
-                return;
-            }
-
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
+    public void initialize() {
+        // Les onAction du menu principal sont déjà dans le FXML,
+        // mais on sécurise + on branche les exemples.
+        if (example1 != null) example1.setOnAction(e -> ouvrirFichierSample(example1.getText()));
+        if (example2 != null) example2.setOnAction(e -> ouvrirFichierSample(example2.getText()));
+        if (example3 != null) example3.setOnAction(e -> ouvrirFichierSample(example3.getText()));
+        if (example4 != null) example4.setOnAction(e -> ouvrirFichierSample(example4.getText()));
     }
 
     @FXML
-    private void handleOpenFile() {
+    void handleNewProject() {
+        System.out.println("Nouveau projet");
+        // TODO: logique nouveau projet
+    }
+
+    @FXML
+    void handleOpenProject() {
         FileChooser fileChooser = new FileChooser();
-        fileChooser.getExtensionFilters().add(
-                new FileChooser.ExtensionFilter("Fichiers Graphiques", "*.csv", "*.dot"));
-        Stage stage = (Stage) openFileLink.getScene().getWindow();
-        File selectedFile = fileChooser.showOpenDialog(stage);
+        fileChooser.setTitle("Ouvrir un fichier de graphe");
 
-        if (selectedFile != null) {
-            ouvrirFenetreGraphe(stage, selectedFile);
+        // D'après ton UI d'exemples: gexf + gml. (Ajoute csv si besoin.)
+        fileChooser.getExtensionFilters().addAll(
+                new FileChooser.ExtensionFilter("Graph files", "*.gexf", "*.gml", "*.csv"),
+                new FileChooser.ExtensionFilter("GEXF", "*.gexf"),
+                new FileChooser.ExtensionFilter("GML", "*.gml"),
+                new FileChooser.ExtensionFilter("CSV", "*.csv")
+        );
+
+        Stage stage = getStage();
+        File fichier = fileChooser.showOpenDialog(stage);
+        if (fichier != null) {
+            ouvrirFenetreGraphe(stage, fichier);
         }
     }
 
-    private void ouvrirFenetreGraphe(Stage stage, File fichier) {
+    private void ouvrirFichierSample(String nomFichier) {
+        // Tes exemples affichent des noms de fichiers, donc on tente direct dans samples/
+        File fichier = new File("samples/" + nomFichier);
+        if (fichier.exists()) {
+            ouvrirFenetreGraphe(getStage(), fichier);
+        } else {
+            System.err.println("Fichier sample introuvable : " + fichier.getAbsolutePath());
+        }
+    }
+
+    private Stage getStage() {
+        // On récupère un node sûr (openFileLink ou un exemple) pour remonter au Stage.
+        if (openFileLink != null && openFileLink.getScene() != null) {
+            return (Stage) openFileLink.getScene().getWindow();
+        }
+        if (newProjectLink != null && newProjectLink.getScene() != null) {
+            return (Stage) newProjectLink.getScene().getWindow();
+        }
+        if (example1 != null && example1.getScene() != null) {
+            return (Stage) example1.getScene().getWindow();
+        }
+        // Dernier recours: ça ne devrait pas arriver si le FXML est chargé correctement
+        throw new IllegalStateException("Impossible de récupérer le Stage (Scene non initialisée).");
+    }
+
+    void ouvrirFenetreGraphe(Stage stage, File fichier) {
         try {
-            FXMLLoader loader = new FXMLLoader(getClass().getResource("/fxml/Configurations.fxml"));
-
-            // Créer une instance du contrôleur avec le fichier
-            ConfigurationController configController = new ConfigurationController(fichier);
-            loader.setController(configController);
-
+            FXMLLoader loader = new FXMLLoader(getClass().getResource("/fxml/Visualisation.fxml"));
             Parent root = loader.load();
+
+            // Initialiser le contrôleur de visualisation avec le fichier (sans paramètres obligatoires)
+            GraphView graphView = loader.getController();
+            graphView.initData(fichier, null, 0.0, 0.0, null);
 
             // Créer une scène avec la taille de l'écran
             Rectangle2D screenBounds = Screen.getPrimary().getVisualBounds();
@@ -80,5 +115,4 @@ public class HomeScreenController {
             e.printStackTrace();
         }
     }
-
 }
