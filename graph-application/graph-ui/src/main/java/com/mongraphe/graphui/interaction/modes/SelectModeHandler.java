@@ -7,38 +7,32 @@ import com.mongraphe.graphui.app.UiState;
 import com.mongraphe.graphui.interfaces.InteractionModeHandler;
 import com.mongraphe.graphui.rendering.GraphEngine;
 
+import javafx.application.Platform;
+
 public final class SelectModeHandler implements InteractionModeHandler {
     private UiState state;
 
-    public SelectModeHandler(UiState state){
+    public SelectModeHandler(UiState state) {
         this.state = state;
     }
 
     @Override
-    public void onMousePressed(CommandBus<GraphEngine> bus,
-            int sx,
-            int sy,
-            int button) {
-
-        if (button != MouseEvent.BUTTON1)
+    public void onMousePressed(CommandBus<GraphEngine> bus, int sx, int sy, int button) {
+        if (button != MouseEvent.BUTTON1 || bus == null)
             return;
 
-        if (bus == null) {
-            return;
-        }
+        bus.dispatch(engine -> {
+            float wx = engine.camera().screenToWorldX(sx);
+            float wy = engine.camera().screenToWorldY(sy);
+            Vertex selected = engine.model().findVertexAt(wx, wy);
 
-        float wx = bus.dispatchSync(b -> b.camera().screenToWorldX(sx));
-        float wy = bus.dispatchSync(b -> b.camera().screenToWorldY(sy));
-        Vertex selected;
-
-        selected = bus.dispatchSync(b -> b.model().findVertexAt(wx, wy));
-
-        if (selected != null) {
-            state.setStatus(
-                    "Sélection: sommet " + selected.getId());
-        } else {
-            state.setStatus("Aucune sélection");
-        }
+            Platform.runLater(() -> {
+                if (selected != null)
+                    state.setStatus("Sélection: sommet " + selected.getId());
+                else
+                    state.setStatus("Aucune sélection");
+            });
+        });
     }
 
     @Override

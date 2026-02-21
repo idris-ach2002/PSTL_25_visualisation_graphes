@@ -38,14 +38,25 @@ public final class MainController {
     @FXML
     private void initialize() throws Exception {
 
+        graphHostPane.setMinSize(0, 0);
+        graphHostPane.setPrefSize(1024, 768);
+        graphHostPane.setMaxSize(Double.MAX_VALUE, Double.MAX_VALUE);
+
         GraphNativeEngine nativeEngine = new GraphNativeEngine();
         GraphEngine engine = new GraphEngine(nativeEngine);
         Camera2D camera = new Camera2D();
         GraphRenderer renderer = new GraphRenderer(engine, camera);
         GraphPanel panel = new GraphPanel(renderer);
+
+        // Ajouter le SwingNode dans le StackPane
         graphHostPane.getChildren().add(panel.canvas());
 
-        bus = new CommandBus<>(engine, new GLExecutor(panel.window()));
+        // Laisser le StackPane gérer la taille
+        panel.canvas().setManaged(true);
+        panel.canvas().setVisible(true);
+
+        panel.start();
+        // bus = new CommandBus<>(engine, new GLExecutor(panel.window()));
 
         FXMLLoader menuLoader = new FXMLLoader(getClass().getResource("/fxml/MainMenuView.fxml"));
         root.setTop(menuLoader.load());
@@ -89,14 +100,11 @@ public final class MainController {
         if (pendingFile == null)
             return;
 
-        bus.dispatch(e -> {
-            e.load(
-                    pendingFile.getPath(),
-                    type,
-                    similitude,
-                    community);
-
-            statsController.refresh();
-        });
+        bus.dispatchSync(e -> e.load(
+                pendingFile.getPath(),
+                type,
+                similitude,
+                community));
+        statsController.refresh();
     }
 }

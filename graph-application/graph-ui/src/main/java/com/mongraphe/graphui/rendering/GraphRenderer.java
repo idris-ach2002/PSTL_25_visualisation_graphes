@@ -49,6 +49,7 @@ public final class GraphRenderer implements GLEventListener {
 
     @Override
     public void display(GLAutoDrawable drawable) {
+        System.out.println("je suis la");
         render(drawable.getGL().getGL4());
     }
     

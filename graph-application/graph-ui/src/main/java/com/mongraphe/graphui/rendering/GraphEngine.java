@@ -86,16 +86,17 @@ public final class GraphEngine {
         this.visibility = new GraphVisibilityFilter();
     }
 
-    public void load(String path, GraphProject.SourceType type, GraphData.SimilitudeMode sim,
+    public boolean load(String path, GraphProject.SourceType type, GraphData.SimilitudeMode sim,
             GraphData.NodeCommunity communityMode) {
         switch (type) {
             case CSV:
                 loadCsv(path, sim, communityMode);
-                break;
+                return true;
             case DOT:
                 loadDot(path, communityMode);
-                break;
+                return true;
         }
+        return false;
     }
 
     public void loadCsv(String path,

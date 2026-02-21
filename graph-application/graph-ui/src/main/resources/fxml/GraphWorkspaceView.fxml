@@ -18,10 +18,10 @@
     <Label text="Mesure de similarité"/>
     <ComboBox fx:id="similarityCombo"/>
 
-    <Label text="Méthode de clustering"/>
-    <ComboBox fx:id="clusteringCombo"/>
-
     <Label text="Mode de communauté"/>
     <ComboBox fx:id="communityCombo"/>
+
+    <Label text="Méthode de clustering"/>
+    <ComboBox fx:id="repulsionCombo"/>
 
 </VBox>

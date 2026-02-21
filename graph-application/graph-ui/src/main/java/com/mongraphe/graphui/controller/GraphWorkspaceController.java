@@ -19,6 +19,9 @@ public final class GraphWorkspaceController
     @FXML
     private ComboBox<GraphData.NodeCommunity> communityCombo;
 
+    @FXML
+    private ComboBox<GraphData.RepulsionMode> repulsionCombo;
+
     public void setMainController(MainController controller) {
         this.mainController = controller;
     }
@@ -28,7 +31,7 @@ public final class GraphWorkspaceController
 
         similarityCombo.getItems().setAll(GraphData.SimilitudeMode.values());
         communityCombo.getItems().setAll(GraphData.NodeCommunity.values());
-
+        repulsionCombo.getItems().setAll(GraphData.RepulsionMode.values());
     }
 
     @FXML

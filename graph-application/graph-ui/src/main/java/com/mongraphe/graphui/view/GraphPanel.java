@@ -1,111 +1,102 @@
 package com.mongraphe.graphui.view;
 
-import com.jogamp.newt.javafx.NewtCanvasJFX;
-import com.jogamp.newt.opengl.GLWindow;
+import javax.swing.SwingUtilities;
+
 import com.jogamp.opengl.GLCapabilities;
 import com.jogamp.opengl.GLProfile;
+import com.jogamp.opengl.awt.GLJPanel;
 import com.jogamp.opengl.util.FPSAnimator;
 import com.mongraphe.graphui.export.OpenGLGraphImageExporter;
 import com.mongraphe.graphui.interfaces.GraphImageExporter;
 import com.mongraphe.graphui.rendering.GraphRenderer;
 
+import javafx.embed.swing.SwingNode;
+import javafx.scene.layout.Region;
+
 /**
- * Wrapper JOGL (GLWindow) + intégration JavaFX (NewtCanvasJFX).
- * Gère aussi l'Animator pour pouvoir arrêter proprement à la fermeture/reload.
+ * Wrapper JOGL (GLJPanel) + intégration JavaFX (SwingNode).
+ * L'animator JOGL est conservé pour FPS constant.
  */
 public final class GraphPanel {
 
-    private final GLWindow window;
-    private final NewtCanvasJFX canvas;
+    private final GLJPanel glPanel;
+    private final SwingNode swingNode;
     private final FPSAnimator animator;
     private final GraphRenderer renderer;
 
     public GraphPanel(GraphRenderer renderer) {
+        this.renderer = renderer;
 
+        // Configuration du profil OpenGL
         GLProfile profile = GLProfile.get(GLProfile.GL4);
         GLCapabilities caps = new GLCapabilities(profile);
         caps.setDoubleBuffered(true);
         caps.setHardwareAccelerated(true);
-        // Antialiasing pour un rendu plus lisse
         caps.setSampleBuffers(true);
-        caps.setNumSamples(4); // 4x MSAA
-        // Désactiver le stencil buffer (non nécessaire pour ce projet)
+        caps.setNumSamples(4);
         caps.setStencilBits(0);
-        // Désactiver le depth buffer (non nécessaire pour un rendu 2D)
         caps.setDepthBits(0);
 
-        // Important: créer le canvas AVANT de démarrer l'animator.
-        // Sinon la GLWindow peut être "réalisée" et apparaître comme une fenêtre
-        // séparée
-        // avant d'être reparentée dans le canvas JavaFX.
-        window = GLWindow.create(caps);
-        window.setUndecorated(true);
-        window.addGLEventListener(renderer);
-        this.renderer = renderer;
+        // Création du panel JOGL (Swing)
+        glPanel = new GLJPanel(caps);
+        glPanel.addGLEventListener(renderer);
 
-        // Intégration JavaFX (reparenting)
-        canvas = new NewtCanvasJFX(window);
-        canvas.setFocusTraversable(false);
+        // Animator pour le rendu FPS constant
+        animator = new FPSAnimator(glPanel, 60, true);
+        // Intégration dans JavaFX via SwingNode
+        swingNode = new SwingNode();
+        createAndSetSwingContent();
+    }
 
-        // Taille initiale (sera redimensionnée dynamiquement par GraphView)
-        window.setSize(1024, 768);
-
-        animator = new FPSAnimator(window, 60, true);
-        animator.start();
+    private void createAndSetSwingContent() {
+        SwingUtilities.invokeLater(() -> swingNode.setContent(glPanel));
     }
 
     public GraphImageExporter createExporter(GraphRenderer renderer) {
-        return new OpenGLGraphImageExporter(window, renderer);
+        return null; // TODO
     }
 
-    public GLWindow window() {
-        return window;
-    }
-
-    public NewtCanvasJFX canvas() {
-        return canvas;
+    public SwingNode canvas() {
+        return swingNode;
     }
 
     public GraphRenderer renderer() {
         return renderer;
     }
 
-    public void start(){
-        animator.start();
+    public void start() {
+        if (!animator.isStarted()) {
+            animator.start();
+        }
     }
 
     public void pause() {
-        animator.pause();
+        if (animator.isStarted()) {
+            animator.pause();
+        }
     }
 
-    /**
-     * Libération propre (évite les threads JOGL orphelins et les fuites).
-     */
     public void dispose() {
         try {
             if (animator != null && animator.isStarted()) {
                 animator.stop();
             }
-        } catch (Exception ignored) {
-        }
+        } catch (Exception ignored) { }
 
         try {
-            if (window != null) {
-                window.destroy();
-            }
-        } catch (Exception ignored) {
-        }
+            glPanel.removeGLEventListener(renderer);
+        } catch (Exception ignored) { }
     }
 
     /**
-     * Redimensionne la surface GL (appelé depuis JavaFX quand le viewport change).
+     * Redimensionne le panel JOGL via JavaFX
      */
     public void resize(int w, int h) {
-        if (w <= 0 || h <= 0)
-            return;
-        try {
-            window.setSize(w, h);
-        } catch (Exception ignored) {
+        if (w <= 0 || h <= 0) return;
+        glPanel.setSize(w, h);
+        glPanel.repaint();
+        if (swingNode.getParent() instanceof Region region) {
+            region.setPrefSize(w, h);
         }
     }
 }
