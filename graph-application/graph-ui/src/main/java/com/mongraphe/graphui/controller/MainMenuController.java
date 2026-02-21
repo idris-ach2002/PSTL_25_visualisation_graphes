@@ -8,10 +8,14 @@ import com.mongraphe.graphui.rendering.GraphEngine;
 
 import javafx.application.Platform;
 import javafx.scene.control.Alert;
+import javafx.scene.control.MenuBar;
 
 public final class MainMenuController implements CommandBusLinkedI<GraphEngine> {
 
     private CommandBus<GraphEngine> bus;
+
+    @FXML
+    private MenuBar menuController;
     
     @FXML
     private void handleQuit() {

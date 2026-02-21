@@ -1,90 +1,59 @@
 package com.mongraphe.graphui.controller;
 
-import com.mongraphe.graphui.app.CommandBus;
-import com.mongraphe.graphui.app.InteractionService;
-import com.mongraphe.graphui.app.InteractionService.Mode;
-import com.mongraphe.graphui.app.commands.SetBackgroundColorCommand;
+import com.mongraphe.graphui.GraphData;
+import com.mongraphe.graphui.app.GraphProject;
 import com.mongraphe.graphui.interfaces.CommandBusLinkedI;
 import com.mongraphe.graphui.rendering.GraphEngine;
-import com.mongraphe.graphui.view.GraphPanel;
 
 import javafx.fxml.FXML;
-import javafx.scene.control.ColorPicker;
-import javafx.scene.control.Toggle;
-import javafx.scene.control.ToggleGroup;
-import javafx.scene.layout.StackPane;
+import javafx.scene.control.ComboBox;
 
-public final class GraphWorkspaceController implements CommandBusLinkedI<GraphEngine> {
+public final class GraphWorkspaceController
+        implements CommandBusLinkedI<GraphEngine> {
+
+    private MainController mainController;
 
     @FXML
-    private StackPane graphContainer;
+    private ComboBox<GraphData.SimilitudeMode> similarityCombo;
+
     @FXML
-    private ToggleGroup toolToggleGroup;
-    @FXML
-    private ColorPicker canvasColorPicker;
+    private ComboBox<GraphData.NodeCommunity> communityCombo;
 
-    private CommandBus<GraphEngine> bus;
-    private InteractionService interaction;
-
-    public GraphWorkspaceController(GraphPanel panel, InteractionService interaction) {
-        this.interaction = interaction;
-        mountCanvas(panel);
-    }
-
-    private void mountCanvas(GraphPanel panel) {
-        if (bus == null)
-            return;
-
-        var canvasNode = panel.canvas();
-
-        if (canvasNode == null)
-            return;
-
-        graphContainer.getChildren().setAll(canvasNode);
-
-        graphContainer.widthProperty().addListener((obs, oldVal, newVal) -> {
-            bus.dispatch(g -> g.camera().resize(newVal.intValue(), (int) graphContainer.getHeight()));
-        });
-        graphContainer.heightProperty().addListener((obs, oldVal, newVal) -> {
-            bus.dispatch(g -> g.camera().resize((int) graphContainer.getWidth(), newVal.intValue()));
-        });
+    public void setMainController(MainController controller) {
+        this.mainController = controller;
     }
 
     @FXML
-    private void handleStartButton(){
-        
+    private void initialize() {
+
+        similarityCombo.getItems().setAll(GraphData.SimilitudeMode.values());
+        communityCombo.getItems().setAll(GraphData.NodeCommunity.values());
+
     }
 
     @FXML
-    private void handleToolChange() {
-        Toggle t = toolToggleGroup.getSelectedToggle();
-        if (t == null)
-            return;
+    private void handleStartButton() {
 
-        try {
-            interaction.setMode(Mode.valueOf(String.valueOf(t.getUserData())));
-        } catch (Exception e) {
-            interaction.setMode(Mode.RUN);
+        if (mainController == null) {
+            System.out.println("Main controller is null !");
+            return;
         }
-    }
 
-    @FXML
-    private void applyCanvasColor() {
-
-        if (bus == null)
+        if (similarityCombo.getValue() == null ||
+                communityCombo.getValue() == null) {
+            System.out.println("One of the box is empty !");
             return;
+        }
 
-        var c = canvasColorPicker.getValue();
+        GraphProject.SourceType type = GraphProject.SourceType.CSV;
 
-        bus.dispatch(new SetBackgroundColorCommand(
-                (float) c.getRed(),
-                (float) c.getGreen(),
-                (float) c.getBlue(),
-                (float) c.getOpacity()));
+        mainController.startGraph(
+                similarityCombo.getValue(),
+                communityCombo.getValue(),
+                type);
     }
 
     @Override
-    public void setBus(CommandBus<GraphEngine> bus) {
-        this.bus = bus;
+    public void setBus(com.mongraphe.graphui.app.CommandBus<GraphEngine> bus) {
     }
 }

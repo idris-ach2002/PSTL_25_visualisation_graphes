@@ -3,7 +3,7 @@ package com.mongraphe.graphui;
 import java.io.File;
 import java.io.IOException;
 
-import com.mongraphe.graphui.view.GraphView;
+import com.mongraphe.graphui.controller.MainController;
 
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
@@ -18,22 +18,32 @@ import javafx.stage.Stage;
 public class HomeScreenController {
 
     // Liens de la page d'accueil (d'après HomeScreen.fxml)
-    @FXML private Hyperlink newProjectLink;
-    @FXML private Hyperlink openFileLink;
+    @FXML
+    private Hyperlink newProjectLink;
+    @FXML
+    private Hyperlink openFileLink;
 
-    @FXML private Hyperlink example1;
-    @FXML private Hyperlink example2;
-    @FXML private Hyperlink example3;
-    @FXML private Hyperlink example4;
+    @FXML
+    private Hyperlink example1;
+    @FXML
+    private Hyperlink example2;
+    @FXML
+    private Hyperlink example3;
+    @FXML
+    private Hyperlink example4;
 
     @FXML
     public void initialize() {
         // Les onAction du menu principal sont déjà dans le FXML,
         // mais on sécurise + on branche les exemples.
-        if (example1 != null) example1.setOnAction(e -> ouvrirFichierSample(example1.getText()));
-        if (example2 != null) example2.setOnAction(e -> ouvrirFichierSample(example2.getText()));
-        if (example3 != null) example3.setOnAction(e -> ouvrirFichierSample(example3.getText()));
-        if (example4 != null) example4.setOnAction(e -> ouvrirFichierSample(example4.getText()));
+        if (example1 != null)
+            example1.setOnAction(e -> ouvrirFichierSample(example1.getText()));
+        if (example2 != null)
+            example2.setOnAction(e -> ouvrirFichierSample(example2.getText()));
+        if (example3 != null)
+            example3.setOnAction(e -> ouvrirFichierSample(example3.getText()));
+        if (example4 != null)
+            example4.setOnAction(e -> ouvrirFichierSample(example4.getText()));
     }
 
     @FXML
@@ -47,13 +57,9 @@ public class HomeScreenController {
         FileChooser fileChooser = new FileChooser();
         fileChooser.setTitle("Ouvrir un fichier de graphe");
 
-        // D'après ton UI d'exemples: gexf + gml. (Ajoute csv si besoin.)
         fileChooser.getExtensionFilters().addAll(
-                new FileChooser.ExtensionFilter("Graph files", "*.gexf", "*.gml", "*.csv"),
-                new FileChooser.ExtensionFilter("GEXF", "*.gexf"),
-                new FileChooser.ExtensionFilter("GML", "*.gml"),
-                new FileChooser.ExtensionFilter("CSV", "*.csv")
-        );
+                new FileChooser.ExtensionFilter("DOT", "*.dot"),
+                new FileChooser.ExtensionFilter("CSV", "*.csv"));
 
         Stage stage = getStage();
         File fichier = fileChooser.showOpenDialog(stage);
@@ -63,7 +69,8 @@ public class HomeScreenController {
     }
 
     private void ouvrirFichierSample(String nomFichier) {
-        // Tes exemples affichent des noms de fichiers, donc on tente direct dans samples/
+        // Tes exemples affichent des noms de fichiers, donc on tente direct dans
+        // samples/
         File fichier = new File("samples/" + nomFichier);
         if (fichier.exists()) {
             ouvrirFenetreGraphe(getStage(), fichier);
@@ -89,12 +96,11 @@ public class HomeScreenController {
 
     void ouvrirFenetreGraphe(Stage stage, File fichier) {
         try {
-            FXMLLoader loader = new FXMLLoader(getClass().getResource("/fxml/Visualisation.fxml"));
-            Parent root = loader.load();
+            FXMLLoader loader = new FXMLLoader(getClass().getResource("/fxml/MainView.fxml"));
 
-            // Initialiser le contrôleur de visualisation avec le fichier (sans paramètres obligatoires)
-            GraphView graphView = loader.getController();
-            graphView.initData(fichier, null, 0.0, 0.0, null);
+            Parent root = loader.load();
+            MainController controller = loader.getController();
+            controller.setFile(fichier);
 
             // Créer une scène avec la taille de l'écran
             Rectangle2D screenBounds = Screen.getPrimary().getVisualBounds();

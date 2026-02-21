@@ -9,15 +9,11 @@ import com.mongraphe.graphui.rendering.GraphEngine;
 import javafx.fxml.FXML;
 import javafx.scene.control.ComboBox;
 import javafx.scene.control.TextField;
+import javafx.scene.control.ColorPicker;
+import javafx.scene.paint.Color;
 
 public final class EngineOptionsController implements CommandBusLinkedI<GraphEngine> {
-
         private CommandBus<GraphEngine> bus;
-
-        @Override
-        public void setBus(CommandBus<GraphEngine> bus) {
-                this.bus = bus;
-        }
 
         @FXML
         private TextField degreeFactor;
@@ -43,8 +39,16 @@ public final class EngineOptionsController implements CommandBusLinkedI<GraphEng
         private TextField nbClusters;
         @FXML
         private TextField minimumDegree;
+
         @FXML
         private ComboBox<GraphData.RepulsionMode> repulsionModeComboBox;
+        @FXML
+        private ColorPicker canvasColorPicker;
+
+        @Override
+        public void setBus(CommandBus<GraphEngine> bus) {
+                this.bus = bus;
+        }
 
         @FXML
         private void applyOptions() {
@@ -71,9 +75,27 @@ public final class EngineOptionsController implements CommandBusLinkedI<GraphEng
 
                         bus.dispatchUndoable(new SetEngineOptionsCommand(options));
 
+                        applyCanvasColor();
+
                 } catch (NumberFormatException e) {
                         System.out.println("Valeur invalide: " + e.getMessage());
                 }
+        }
+
+        private void applyCanvasColor() {
+
+                if (canvasColorPicker == null)
+                        return;
+
+                Color c = canvasColorPicker.getValue();
+                if (c == null)
+                        return;
+
+                bus.dispatch(new SetBackgroundColorCommand(
+                                (float) c.getRed(),
+                                (float) c.getGreen(),
+                                (float) c.getBlue(),
+                                (float) c.getOpacity()));
         }
 
         private double parseDouble(TextField field) {
@@ -83,5 +105,4 @@ public final class EngineOptionsController implements CommandBusLinkedI<GraphEng
         private int parseInt(TextField field) {
                 return Integer.parseInt(field.getText());
         }
-
 }

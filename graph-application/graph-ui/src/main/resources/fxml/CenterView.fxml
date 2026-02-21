@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.layout.*?>
+<?import javafx.scene.control.*?>
+
+<BorderPane xmlns="http://javafx.com/javafx/8"
+            xmlns:fx="http://javafx.com/fxml/1"
+            fx:controller="com.mongraphe.graphui.controller.ViewSwitcherController">
+
+    <!-- Toggle bar -->
+    <top>
+        <HBox spacing="10">
+            <fx:define>
+                <ToggleGroup fx:id="viewToggleGroup"/>
+            </fx:define>
+
+            <ToggleButton text="Overview"
+                          toggleGroup="$viewToggleGroup"
+                          userData="overview"
+                          selected="true"
+                          onAction="#handleViewChange"/>
+
+            <ToggleButton text="Data"
+                          toggleGroup="$viewToggleGroup"
+                          userData="data"
+                          onAction="#handleViewChange"/>
+
+            <ToggleButton text="Preview"
+                          toggleGroup="$viewToggleGroup"
+                          userData="preview"
+                          onAction="#handleViewChange"/>
+        </HBox>
+    </top>
+
+    <!-- 3 views -->
+    <center>
+        <StackPane>
+
+            <Pane fx:id="overviewPane"/>
+            <Pane fx:id="dataPane" visible="false"/>
+            <Pane fx:id="previewPane" visible="false"/>
+
+        </StackPane>
+    </center>
+
+</BorderPane>

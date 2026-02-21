@@ -70,6 +70,14 @@ public final class GraphPanel {
         return renderer;
     }
 
+    public void start(){
+        animator.start();
+    }
+
+    public void pause() {
+        animator.pause();
+    }
+
     /**
      * Libération propre (évite les threads JOGL orphelins et les fuites).
      */

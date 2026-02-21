@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.layout.*?>
+<?import javafx.scene.control.*?>
+
+<VBox xmlns="http://javafx.com/javafx/8"
+      xmlns:fx="http://javafx.com/fxml/1"
+      fx:controller="com.mongraphe.graphui.controller.EngineOptionsController"
+      spacing="6"
+      styleClass="dock">
+
+    <Label text="Paramètres moteur"/>
+
+    <TextField fx:id="degreeFactor" promptText="Degree factor"/>
+    <TextField fx:id="initNodeSize" promptText="Initial node size"/>
+    <TextField fx:id="upScale" promptText="Up scale"/>
+    <TextField fx:id="stabilizedThreshold" promptText="Stabilized threshold"/>
+    <TextField fx:id="attractionThreshold" promptText="Attraction threshold"/>
+    <TextField fx:id="updatedFrequence" promptText="Cluster update freq"/>
+    <TextField fx:id="newFriction" promptText="Friction"/>
+    <TextField fx:id="attractionCoefficient" promptText="Attraction coef"/>
+    <TextField fx:id="repulsionThreshold" promptText="Repulsion threshold"/>
+    <TextField fx:id="newAmortissement" promptText="Amortissement"/>
+    <TextField fx:id="nbClusters" promptText="Clusters"/>
+    <TextField fx:id="minimumDegree" promptText="Minimum degree"/>
+
+    <ComboBox fx:id="repulsionModeComboBox"/>
+    <ColorPicker fx:id="canvasColorPicker"/>
+
+    <Button text="Appliquer"
+            onAction="#applyOptions"/>
+
+</VBox>

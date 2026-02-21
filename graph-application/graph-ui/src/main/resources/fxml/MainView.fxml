@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.layout.*?>
+
+<BorderPane xmlns="http://javafx.com/javafx/8"
+            xmlns:fx="http://javafx.com/fxml/1"
+            fx:controller="com.mongraphe.graphui.controller.MainController"
+            stylesheets="@styles/future.css"
+            styleClass="app-root"
+            fx:id="root">
+
+    <!-- CENTER GRAPH HOST -->
+    <center>
+        <StackPane fx:id="graphHostPane"/>
+    </center>
+
+</BorderPane>
