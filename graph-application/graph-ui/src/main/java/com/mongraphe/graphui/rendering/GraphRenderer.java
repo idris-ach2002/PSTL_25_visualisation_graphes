@@ -44,26 +44,27 @@ public final class GraphRenderer implements GLEventListener {
         gl.glEnable(GL4.GL_BLEND);
         gl.glBlendFunc(GL4.GL_SRC_ALPHA, GL4.GL_ONE_MINUS_SRC_ALPHA);
         gl.glEnable(GL4.GL_PROGRAM_POINT_SIZE);
-        gl.glClearColor(engine.getBackgroundColorR(), engine.getBackgroundColorG(), engine.getBackgroundColorB(), engine.getBackgroundColorA());
+        gl.glClearColor(engine.getBackgroundColorR(), engine.getBackgroundColorG(), engine.getBackgroundColorB(),
+                engine.getBackgroundColorA());
     }
 
     @Override
     public void display(GLAutoDrawable drawable) {
-        System.out.println("je suis la");
         render(drawable.getGL().getGL4());
     }
-    
+
     public void render(GL4 gl) {
 
-        gl.glClearColor(engine.getBackgroundColorR(), engine.getBackgroundColorG(), engine.getBackgroundColorB(), engine.getBackgroundColorA());
+        gl.glClearColor(engine.getBackgroundColorR(), engine.getBackgroundColorG(), engine.getBackgroundColorB(),
+                engine.getBackgroundColorA());
         gl.glClear(GL4.GL_COLOR_BUFFER_BIT);
 
         engine.update();
 
         GraphModel model = engine.model();
 
+        model.setZoom(engine.camera().getZoom());
         synchronized (model.mutex()) {
-            model.setZoom(engine.camera().getZoom());
             vertexBuffer.update(model);
             edgeBuffer.update(model);
         }

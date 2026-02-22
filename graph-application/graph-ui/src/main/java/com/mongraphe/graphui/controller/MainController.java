@@ -32,58 +32,46 @@ public final class MainController {
     private MainMenuController menuController;
     private GraphWorkspaceController workspaceController;
     private EngineOptionsController engineOptionsController;
-    private StatsController statsController;
+    private DataController dataController;
     private ViewSwitcherController viewSwitcherController;
 
     @FXML
     private void initialize() throws Exception {
-
-        graphHostPane.setMinSize(0, 0);
-        graphHostPane.setPrefSize(1024, 768);
-        graphHostPane.setMaxSize(Double.MAX_VALUE, Double.MAX_VALUE);
 
         GraphNativeEngine nativeEngine = new GraphNativeEngine();
         GraphEngine engine = new GraphEngine(nativeEngine);
         Camera2D camera = new Camera2D();
         GraphRenderer renderer = new GraphRenderer(engine, camera);
         GraphPanel panel = new GraphPanel(renderer);
+        bus = new CommandBus<>(engine, new GLExecutor());
 
-        // Ajouter le SwingNode dans le StackPane
-        graphHostPane.getChildren().add(panel.canvas());
+        FXMLLoader centerLoader = new FXMLLoader(getClass().getResource("/fxml/CenterView.fxml"));
+        centerLoader.load();
+        viewSwitcherController = centerLoader.getController();
+        viewSwitcherController.setBus(bus);
 
-        // Laisser le StackPane gérer la taille
-        panel.canvas().setManaged(true);
-        panel.canvas().setVisible(true);
+        viewSwitcherController.setGraphPanel(panel);
 
         panel.start();
-        // bus = new CommandBus<>(engine, new GLExecutor(panel.window()));
 
         FXMLLoader menuLoader = new FXMLLoader(getClass().getResource("/fxml/MainMenuView.fxml"));
-        root.setTop(menuLoader.load());
+        menuLoader.load();
         menuController = menuLoader.getController();
         menuController.setBus(bus);
 
         FXMLLoader workspaceLoader = new FXMLLoader(getClass().getResource("/fxml/GraphWorkspaceView.fxml"));
-        VBox leftBox = new VBox(15);
-        leftBox.getChildren().add(workspaceLoader.load());
+        workspaceLoader.load();
         workspaceController = workspaceLoader.getController();
 
         FXMLLoader engineOptionsLoader = new FXMLLoader(getClass().getResource("/fxml/EngineOptionsView.fxml"));
-        leftBox.getChildren().add(engineOptionsLoader.load());
+        engineOptionsLoader.load();
         engineOptionsController = engineOptionsLoader.getController();
         engineOptionsController.setBus(bus);
 
-        root.setLeft(leftBox);
-
-        FXMLLoader statsLoader = new FXMLLoader(getClass().getResource("/fxml/StatsView.fxml"));
-        root.setRight(statsLoader.load());
-        statsController = statsLoader.getController();
-        statsController.setBus(bus);
-
-        FXMLLoader centerLoader = new FXMLLoader(getClass().getResource("/fxml/CenterView.fxml"));
-        root.setCenter(centerLoader.load());
-        viewSwitcherController = centerLoader.getController();
-        viewSwitcherController.setBus(bus);
+        FXMLLoader statsLoader = new FXMLLoader(getClass().getResource("/fxml/DataView.fxml"));
+        statsLoader.load();
+        dataController = statsLoader.getController();
+        dataController.setBus(bus);
 
         workspaceController.setMainController(this);
     }
@@ -105,6 +93,6 @@ public final class MainController {
                 type,
                 similitude,
                 community));
-        statsController.refresh();
+        dataController.refresh();
     }
 }

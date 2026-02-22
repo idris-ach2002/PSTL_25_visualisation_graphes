@@ -5,13 +5,24 @@
 <BorderPane xmlns="http://javafx.com/javafx/8"
             xmlns:fx="http://javafx.com/fxml/1"
             fx:controller="com.mongraphe.graphui.controller.MainController"
-            stylesheets="@styles/future.css"
-            styleClass="app-root"
             fx:id="root">
 
-    <!-- CENTER GRAPH HOST -->
+    <!-- TOP -->
+    <top>
+        <fx:include source="MainMenuView.fxml"/>
+    </top>
+
+    <!-- LEFT -->
+    <left>
+        <VBox spacing="15">
+            <fx:include source="GraphWorkspaceView.fxml"/>
+            <fx:include source="EngineOptionsView.fxml"/>
+        </VBox>
+    </left>
+
+    <!-- CENTER -->
     <center>
-        <StackPane fx:id="graphHostPane"/>
+        <fx:include source="CenterView.fxml"/>
     </center>
 
 </BorderPane>

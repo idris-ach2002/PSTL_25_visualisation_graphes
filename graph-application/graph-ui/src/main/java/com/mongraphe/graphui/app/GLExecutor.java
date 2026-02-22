@@ -1,24 +1,22 @@
 package com.mongraphe.graphui.app;
 
-import java.util.concurrent.Executor;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
-import com.jogamp.newt.opengl.GLWindow;
+public final class GLExecutor implements java.util.concurrent.Executor {
 
-public final class GLExecutor implements Executor {
-
-    private final GLWindow window;
-
-    public GLExecutor(GLWindow window) {
-        this.window = window;
-    }
+    private final ExecutorService engineThread = Executors.newSingleThreadExecutor(r -> {
+        Thread t = new Thread(r, "graph-engine-thread");
+        t.setDaemon(true);
+        return t;
+    });
 
     @Override
     public void execute(Runnable task) {
-        if (window == null) return;
+        engineThread.submit(task);
+    }
 
-        window.invoke(false, drawable -> {
-            task.run();
-            return true;
-        });
+    public void shutdown() {
+        engineThread.shutdownNow();
     }
 }

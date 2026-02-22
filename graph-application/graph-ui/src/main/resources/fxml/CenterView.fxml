@@ -7,7 +7,6 @@
             xmlns:fx="http://javafx.com/fxml/1"
             fx:controller="com.mongraphe.graphui.controller.ViewSwitcherController">
 
-    <!-- Toggle bar -->
     <top>
         <HBox spacing="10">
             <fx:define>
@@ -32,12 +31,17 @@
         </HBox>
     </top>
 
-    <!-- 3 views -->
     <center>
-        <StackPane>
+        <StackPane fx:id="contentPane">
 
-            <Pane fx:id="overviewPane"/>
-            <Pane fx:id="dataPane" visible="false"/>
+            <!-- GRAPH -->
+            <StackPane fx:id="overviewPane"/>
+
+            <!-- DATA -->
+            <fx:include source="DataView.fxml"
+                        fx:id="dataPane" visible="false"/>
+
+            <!-- PREVIEW -->
             <Pane fx:id="previewPane" visible="false"/>
 
         </StackPane>

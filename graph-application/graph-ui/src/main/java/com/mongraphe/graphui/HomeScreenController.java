@@ -110,7 +110,7 @@ public class HomeScreenController {
             stage.setScene(scene);
 
             // Désactiver le redimensionnement et maximiser
-            stage.setResizable(false);
+            stage.setResizable(true);
             stage.setX(screenBounds.getMinX());
             stage.setY(screenBounds.getMinY());
             stage.setWidth(screenBounds.getWidth());

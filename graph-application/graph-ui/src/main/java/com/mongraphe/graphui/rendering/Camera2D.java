@@ -4,27 +4,27 @@ import java.nio.FloatBuffer;
 
 public final class Camera2D {
 
-    private float zoom = 1f;
+    private volatile float zoom = 1f;
     private float offsetX;
     private float offsetY;
 
     private int width = 1;
     private int height = 1;
 
-    private final FloatBuffer projection = FloatBuffer.allocate(16);
+    private volatile FloatBuffer projection = FloatBuffer.allocate(16);
 
-    public void resize(int w, int h) {
+    public synchronized void resize(int w, int h) {
         width = Math.max(1, w);
         height = Math.max(1, h);
         updateProjection();
     }
 
-    public void zoomAt(float amount) {
+    public synchronized void zoomAt(float amount) {
         zoom *= (amount > 0) ? 1.1f : 0.9f;
         updateProjection();
     }
 
-    public void zoomAt(float screenX, float screenY, float amount) {
+    public synchronized void zoomAt(float screenX, float screenY, float amount) {
 
         float worldX = screenToWorldX(screenX);
         float worldY = screenToWorldY(screenY);
@@ -37,7 +37,7 @@ public final class Camera2D {
         updateProjection();
     }
 
-    public void pan(float dx, float dy) {
+    public synchronized void pan(float dx, float dy) {
         offsetX -= dx / zoom;
         offsetY += dy / zoom;
         updateProjection();
@@ -46,7 +46,7 @@ public final class Camera2D {
     /**
      * Réinitialise le cadrage (zoom/pan).
      */
-    public void reset() {
+    public synchronized void reset() {
         zoom = 1f;
         offsetX = 0f;
         offsetY = 0f;
@@ -87,11 +87,11 @@ public final class Camera2D {
         return zoom;
     }
 
-    public float screenToWorldX(float screenX) {
+    public synchronized float screenToWorldX(float screenX) {
         return (screenX - width / 2f) / zoom + offsetX;
     }
 
-    public float screenToWorldY(float screenY) {
+    public synchronized float screenToWorldY(float screenY) {
         return (height / 2f - screenY) / zoom + offsetY;
     }
 }

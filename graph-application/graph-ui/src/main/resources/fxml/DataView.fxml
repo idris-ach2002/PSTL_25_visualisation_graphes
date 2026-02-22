@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.layout.*?>
+<?import javafx.scene.control.*?>
+
+<BorderPane xmlns="http://javafx.com/javafx/8"
+            xmlns:fx="http://javafx.com/fxml/1"
+            fx:controller="com.mongraphe.graphui.controller.DataController"
+            prefWidth="800"
+            prefHeight="600">
+
+    <!-- Top bar -->
+    <top>
+        <HBox spacing="10" style="-fx-padding: 8;">
+            <Label text="Données du Graphe"
+                   style="-fx-font-size: 16; -fx-font-weight: bold;"/>
+            <Region HBox.hgrow="ALWAYS"/>
+            <Label text="Total éléments:"/>
+            <Label fx:id="totalElementsLabel" text="0"/>
+        </HBox>
+    </top>
+
+    <!-- Center tables -->
+    <center>
+        <TabPane>
+
+            <!-- Vertex table -->
+            <Tab text="Sommets" closable="false">
+                <BorderPane>
+                    <center>
+                        <TableView fx:id="vertexTable">
+                            <columns>
+                                <TableColumn fx:id="vertexIdCol" text="ID" prefWidth="80"/>
+                                <TableColumn fx:id="vertexCommunityCol" text="Communauté" prefWidth="120"/>
+                                <TableColumn fx:id="vertexDegreeCol" text="Degré" prefWidth="80"/>
+                                <TableColumn fx:id="vertexXCol" text="X" prefWidth="100"/>
+                                <TableColumn fx:id="vertexYCol" text="Y" prefWidth="100"/>
+                                <TableColumn fx:id="vertexDiameterCol" text="Diamètre" prefWidth="100"/>
+                                <TableColumn fx:id="vertexDeletedCol" text="Supprimé ?" prefWidth="100"/>
+                            </columns>
+                        </TableView>
+                    </center>
+                </BorderPane>
+            </Tab>
+
+            <!-- Edge table -->
+            <Tab text="Arêtes" closable="false">
+                <BorderPane>
+                    <center>
+                        <TableView fx:id="edgeTable">
+                            <columns>
+                                <TableColumn fx:id="edgeStartCol" text="Début" prefWidth="120"/>
+                                <TableColumn fx:id="edgeEndCol" text="Fin" prefWidth="120"/>
+                                <TableColumn fx:id="edgeWeightCol" text="Poids" prefWidth="120"/>
+                            </columns>
+                        </TableView>
+                    </center>
+                </BorderPane>
+            </Tab>
+
+        </TabPane>
+    </center>
+
+</BorderPane>
