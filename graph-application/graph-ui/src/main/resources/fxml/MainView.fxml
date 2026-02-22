@@ -1,28 +1,39 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
 <?import javafx.scene.layout.*?>
+<?import javafx.scene.control.*?>
 
-<BorderPane xmlns="http://javafx.com/javafx/8"
-            xmlns:fx="http://javafx.com/fxml/1"
-            fx:controller="com.mongraphe.graphui.controller.MainController"
-            fx:id="root">
+<StackPane fx:controller="com.mongraphe.graphui.controller.MainController"
+           xmlns:fx="http://javafx.com/fxml">
 
-    <!-- TOP -->
-    <top>
-        <fx:include source="MainMenuView.fxml"/>
-    </top>
+    <!-- ===== MAIN APPLICATION LAYOUT ===== -->
+    <BorderPane fx:id="mainLayout">
 
-    <!-- LEFT -->
-    <left>
-        <VBox spacing="15">
-            <fx:include source="GraphWorkspaceView.fxml"/>
-            <fx:include source="EngineOptionsView.fxml"/>
-        </VBox>
-    </left>
+        <top>
+            <fx:include source="MainMenuView.fxml" fx:id="menuView"/>
+        </top>
 
-    <!-- CENTER -->
-    <center>
-        <fx:include source="CenterView.fxml"/>
-    </center>
+        <left>
+            <VBox spacing="15">
+                <fx:include source="GraphWorkspaceView.fxml" fx:id="workspaceView"/>
+                <fx:include source="EngineOptionsView.fxml" fx:id="engineOptionsView"/>
+            </VBox>
+        </left>
 
-</BorderPane>
+        <center>
+            <StackPane fx:id="graphHostPane"/>
+        </center>
+
+    </BorderPane>
+
+    <!-- ===== DATA FULLSCREEN ===== -->
+    <fx:include source="DataView.fxml"
+                fx:id="dataView"
+                visible="false"/>
+
+    <!-- ===== PREVIEW FULLSCREEN ===== -->
+    <Pane fx:id="previewPane"
+          visible="false"
+          style="-fx-background-color: white;"/>
+
+</StackPane>

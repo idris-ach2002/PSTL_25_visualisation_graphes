@@ -8,6 +8,7 @@ import com.mongraphe.graphui.view.GraphPanel;
 import javafx.fxml.FXML;
 import javafx.scene.control.Toggle;
 import javafx.scene.control.ToggleGroup;
+import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.Pane;
 
 public final class ViewSwitcherController implements CommandBusLinkedI<GraphEngine> {
@@ -22,26 +23,26 @@ public final class ViewSwitcherController implements CommandBusLinkedI<GraphEngi
     @FXML
     private ToggleGroup viewToggleGroup;
     @FXML
-    private Pane overviewPane;
+    private BorderPane mainLayout;
     @FXML
-    private Pane dataPane;
+    private Pane overview;
     @FXML
-    private Pane previewPane;
+    private Pane dataView;
+    @FXML
+    private Pane preview;
 
     public void setGraphPanel(GraphPanel panel) {
-        overviewPane.getChildren().add(panel.canvas());
+        overview.getChildren().add(panel.canvas());
     }
 
     @FXML
     private void handleViewChange() {
-        Toggle selected = viewToggleGroup.getSelectedToggle();
-        if (selected == null)
-            return;
 
-        String view = String.valueOf(selected.getUserData());
+        String view = String.valueOf(
+                viewToggleGroup.getSelectedToggle().getUserData());
 
-        overviewPane.setVisible("overview".equals(view));
-        dataPane.setVisible("data".equals(view));
-        previewPane.setVisible("preview".equals(view));
+        mainLayout.setVisible("overview".equals(view));
+        dataView.setVisible("data".equals(view));
+        preview.setVisible("preview".equals(view));
     }
 }

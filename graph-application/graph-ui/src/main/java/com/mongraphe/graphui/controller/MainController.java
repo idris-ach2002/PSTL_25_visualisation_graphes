@@ -16,64 +16,48 @@ import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.StackPane;
-import javafx.scene.layout.VBox;
 
 public final class MainController {
 
     private File pendingFile;
+    private GraphPanel panel;
     private CommandBus<GraphEngine> bus;
-
-    @FXML
-    private BorderPane root;
 
     @FXML
     private StackPane graphHostPane;
 
-    private MainMenuController menuController;
-    private GraphWorkspaceController workspaceController;
-    private EngineOptionsController engineOptionsController;
-    private DataController dataController;
-    private ViewSwitcherController viewSwitcherController;
+    @FXML
+    private MainMenuController menuViewController;
+    @FXML
+    private GraphWorkspaceController workspaceViewController;
+    @FXML
+    private EngineOptionsController engineOptionsViewController;
+    @FXML
+    private DataController dataViewController;
+
+    private ViewSwitcherController centerViewController;
 
     @FXML
     private void initialize() throws Exception {
-
         GraphNativeEngine nativeEngine = new GraphNativeEngine();
         GraphEngine engine = new GraphEngine(nativeEngine);
         Camera2D camera = new Camera2D();
         GraphRenderer renderer = new GraphRenderer(engine, camera);
-        GraphPanel panel = new GraphPanel(renderer);
-        bus = new CommandBus<>(engine, new GLExecutor());
+        panel = new GraphPanel(renderer);
+        CommandBus<GraphEngine> bus = new CommandBus<>(engine, new GLExecutor());
 
+        graphHostPane.getChildren().add(panel.canvas());
+
+        // Charger le FXML de la centerView
         FXMLLoader centerLoader = new FXMLLoader(getClass().getResource("/fxml/CenterView.fxml"));
-        centerLoader.load();
-        viewSwitcherController = centerLoader.getController();
-        viewSwitcherController.setBus(bus);
+        BorderPane centerView = centerLoader.load();
+        centerViewController = centerLoader.getController();
+        centerViewController.setBus(bus);
 
-        viewSwitcherController.setGraphPanel(panel);
-
-        panel.start();
-
-        FXMLLoader menuLoader = new FXMLLoader(getClass().getResource("/fxml/MainMenuView.fxml"));
-        menuLoader.load();
-        menuController = menuLoader.getController();
-        menuController.setBus(bus);
-
-        FXMLLoader workspaceLoader = new FXMLLoader(getClass().getResource("/fxml/GraphWorkspaceView.fxml"));
-        workspaceLoader.load();
-        workspaceController = workspaceLoader.getController();
-
-        FXMLLoader engineOptionsLoader = new FXMLLoader(getClass().getResource("/fxml/EngineOptionsView.fxml"));
-        engineOptionsLoader.load();
-        engineOptionsController = engineOptionsLoader.getController();
-        engineOptionsController.setBus(bus);
-
-        FXMLLoader statsLoader = new FXMLLoader(getClass().getResource("/fxml/DataView.fxml"));
-        statsLoader.load();
-        dataController = statsLoader.getController();
-        dataController.setBus(bus);
-
-        workspaceController.setMainController(this);
+        menuViewController.setBus(bus);
+        workspaceViewController.setMainController(this);
+        engineOptionsViewController.setBus(bus);
+        dataViewController.setBus(bus);
     }
 
     public void setFile(File file) {
@@ -93,6 +77,6 @@ public final class MainController {
                 type,
                 similitude,
                 community));
-        dataController.refresh();
+        dataViewController.refresh();
     }
 }

@@ -30,21 +30,4 @@
                           onAction="#handleViewChange"/>
         </HBox>
     </top>
-
-    <center>
-        <StackPane fx:id="contentPane">
-
-            <!-- GRAPH -->
-            <StackPane fx:id="overviewPane"/>
-
-            <!-- DATA -->
-            <fx:include source="DataView.fxml"
-                        fx:id="dataPane" visible="false"/>
-
-            <!-- PREVIEW -->
-            <Pane fx:id="previewPane" visible="false"/>
-
-        </StackPane>
-    </center>
-
 </BorderPane>
