@@ -59,11 +59,11 @@ public final class DataController implements CommandBusLinkedI<GraphEngine> {
         }
         GraphDataSnapshot snapshot = bus.dispatchSync(e -> e.getDataSnapshot());
 
-        nodesDisplayedLabel.setText(
+        /*nodesDisplayedLabel.setText(
                 String.valueOf(snapshot.getVisibleVertexCount()));
-
+        
         edgesDisplayedLabel.setText(
-                String.valueOf(snapshot.getVisibleEdgeCount()));
+                String.valueOf(snapshot.getVisibleEdgeCount()));*/
 
         totalElementsLabel.setText(
                 String.valueOf(

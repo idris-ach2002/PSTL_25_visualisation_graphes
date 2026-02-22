@@ -15,9 +15,7 @@ public final class GraphSimulation {
         if (!running)
             return;
 
-        if (!nativeEngine.updatePositions()) {
-            running = false;
-        }
+        nativeEngine.updatePositions();
 
         model.updateVertexPositions(nativeEngine.getPositions());
     }

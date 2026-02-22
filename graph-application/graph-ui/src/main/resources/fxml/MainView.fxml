@@ -3,37 +3,71 @@
 <?import javafx.scene.layout.*?>
 <?import javafx.scene.control.*?>
 
-<StackPane fx:controller="com.mongraphe.graphui.controller.MainController"
-           xmlns:fx="http://javafx.com/fxml">
+<BorderPane fx:controller="com.mongraphe.graphui.controller.MainController"
+            xmlns:fx="http://javafx.com/fxml">
 
-    <!-- ===== MAIN APPLICATION LAYOUT ===== -->
-    <BorderPane fx:id="mainLayout">
-
-        <top>
+    <!-- ================= TOP (FIXE) ================= -->
+    <top>
+        <VBox>
             <fx:include source="MainMenuView.fxml" fx:id="menuView"/>
-        </top>
 
-        <left>
-            <VBox spacing="15">
-                <fx:include source="GraphWorkspaceView.fxml" fx:id="workspaceView"/>
-                <fx:include source="EngineOptionsView.fxml" fx:id="engineOptionsView"/>
-            </VBox>
-        </left>
+            <HBox spacing="10" alignment="CENTER_LEFT" style="-fx-padding:5;">
+                <fx:define>
+                    <ToggleGroup fx:id="viewToggleGroup"/>
+                </fx:define>
 
-        <center>
-            <StackPane fx:id="graphHostPane"/>
-        </center>
+                <ToggleButton text="Overview"
+                              toggleGroup="$viewToggleGroup"
+                              userData="overview"
+                              selected="true"
+                              onAction="#handleViewChange"/>
 
-    </BorderPane>
+                <ToggleButton text="Data"
+                              toggleGroup="$viewToggleGroup"
+                              userData="data"
+                              onAction="#handleViewChange"/>
 
-    <!-- ===== DATA FULLSCREEN ===== -->
-    <fx:include source="DataView.fxml"
-                fx:id="dataView"
-                visible="false"/>
+                <ToggleButton text="Preview"
+                              toggleGroup="$viewToggleGroup"
+                              userData="preview"
+                              onAction="#handleViewChange"/>
+            </HBox>
+        </VBox>
+    </top>
 
-    <!-- ===== PREVIEW FULLSCREEN ===== -->
-    <Pane fx:id="previewPane"
-          visible="false"
-          style="-fx-background-color: white;"/>
+    <!-- ================= ZONE DYNAMIQUE ================= -->
+    <center>
+        <StackPane fx:id="rootStack">
 
-</StackPane>
+            <!-- Layout normal -->
+            <BorderPane fx:id="overview">
+
+                <left>
+                    <VBox spacing="15">
+                        <fx:include source="GraphWorkspaceView.fxml" fx:id="workspaceView"/>
+                        <fx:include source="EngineOptionsView.fxml" fx:id="engineOptionsView"/>
+                    </VBox>
+                </left>
+
+                <center>
+                    <StackPane fx:id="graphHostPane"/>
+                </center>
+
+            </BorderPane>
+
+            <!-- Overlay DATA -->
+            <fx:include source="DataView.fxml"
+                        fx:id="dataView"
+                        visible="false"
+                        managed="false"/>
+
+            <!-- Overlay PREVIEW -->
+            <Pane fx:id="preview"
+                  visible="false"
+                  managed="false"
+                  style="-fx-background-color:white;"/>
+
+        </StackPane>
+    </center>
+
+</BorderPane>

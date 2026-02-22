@@ -58,13 +58,10 @@ public final class GraphRenderer implements GLEventListener {
         gl.glClearColor(engine.getBackgroundColorR(), engine.getBackgroundColorG(), engine.getBackgroundColorB(),
                 engine.getBackgroundColorA());
         gl.glClear(GL4.GL_COLOR_BUFFER_BIT);
-
-        engine.update();
-
         GraphModel model = engine.model();
-
-        model.setZoom(engine.camera().getZoom());
         synchronized (model.mutex()) {
+            engine.update();
+            model.setZoom(engine.camera().getZoom());
             vertexBuffer.update(model);
             edgeBuffer.update(model);
         }

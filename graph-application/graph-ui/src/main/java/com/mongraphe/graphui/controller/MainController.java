@@ -13,8 +13,9 @@ import com.mongraphe.graphui.rendering.GraphRenderer;
 import com.mongraphe.graphui.view.GraphPanel;
 
 import javafx.fxml.FXML;
-import javafx.fxml.FXMLLoader;
+import javafx.scene.control.ToggleGroup;
 import javafx.scene.layout.BorderPane;
+import javafx.scene.layout.Pane;
 import javafx.scene.layout.StackPane;
 
 public final class MainController {
@@ -24,9 +25,6 @@ public final class MainController {
     private CommandBus<GraphEngine> bus;
 
     @FXML
-    private StackPane graphHostPane;
-
-    @FXML
     private MainMenuController menuViewController;
     @FXML
     private GraphWorkspaceController workspaceViewController;
@@ -34,8 +32,19 @@ public final class MainController {
     private EngineOptionsController engineOptionsViewController;
     @FXML
     private DataController dataViewController;
-
-    private ViewSwitcherController centerViewController;
+    
+    @FXML
+    private ToggleGroup viewToggleGroup;
+    @FXML
+    private StackPane rootStack;
+    @FXML
+    private BorderPane overview;
+    @FXML
+    private StackPane graphHostPane;
+    @FXML
+    private BorderPane dataView;
+    @FXML
+    private Pane preview;
 
     @FXML
     private void initialize() throws Exception {
@@ -44,20 +53,26 @@ public final class MainController {
         Camera2D camera = new Camera2D();
         GraphRenderer renderer = new GraphRenderer(engine, camera);
         panel = new GraphPanel(renderer);
-        CommandBus<GraphEngine> bus = new CommandBus<>(engine, new GLExecutor());
+        bus = new CommandBus<>(engine, new GLExecutor());
 
         graphHostPane.getChildren().add(panel.canvas());
-
-        // Charger le FXML de la centerView
-        FXMLLoader centerLoader = new FXMLLoader(getClass().getResource("/fxml/CenterView.fxml"));
-        BorderPane centerView = centerLoader.load();
-        centerViewController = centerLoader.getController();
-        centerViewController.setBus(bus);
+        panel.start();
 
         menuViewController.setBus(bus);
         workspaceViewController.setMainController(this);
         engineOptionsViewController.setBus(bus);
         dataViewController.setBus(bus);
+    }
+
+    @FXML
+    private void handleViewChange() {
+
+        String view = String.valueOf(
+                viewToggleGroup.getSelectedToggle().getUserData());
+
+        overview.setVisible("overview".equals(view));
+        dataView.setVisible("data".equals(view));
+        preview.setVisible("preview".equals(view));
     }
 
     public void setFile(File file) {
@@ -71,6 +86,8 @@ public final class MainController {
 
         if (pendingFile == null)
             return;
+
+        System.out.println("Dispatch !");
 
         bus.dispatchSync(e -> e.load(
                 pendingFile.getPath(),
