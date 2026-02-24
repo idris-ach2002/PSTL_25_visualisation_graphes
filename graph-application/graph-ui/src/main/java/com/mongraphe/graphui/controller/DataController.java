@@ -55,15 +55,17 @@ public final class DataController implements CommandBusLinkedI<GraphEngine> {
 
     public void refresh() {
         if (bus == null) {
+            System.out.println("Bus is null");
             return;
         }
         GraphDataSnapshot snapshot = bus.dispatchSync(e -> e.getDataSnapshot());
+        System.out.println("Refresh ! " + snapshot.getVisibleEdgeCount());
 
-        /*nodesDisplayedLabel.setText(
+        nodesDisplayedLabel.setText(
                 String.valueOf(snapshot.getVisibleVertexCount()));
         
         edgesDisplayedLabel.setText(
-                String.valueOf(snapshot.getVisibleEdgeCount()));*/
+                String.valueOf(snapshot.getVisibleEdgeCount()));
 
         totalElementsLabel.setText(
                 String.valueOf(

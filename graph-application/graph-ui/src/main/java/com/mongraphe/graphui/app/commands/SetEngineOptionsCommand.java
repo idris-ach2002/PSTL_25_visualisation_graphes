@@ -14,6 +14,7 @@ public class SetEngineOptionsCommand implements UndoableGraphCommand<GraphEngine
 
     @Override
     public void execute(GraphEngine context) {
+        context.stopSimulation();
         context.setDegreeScaleFactor(opts.degreeFactor);
         context.setInitialNodeSize(opts.initialNodeSize);
         context.setUpscale(opts.upScale);
@@ -22,7 +23,7 @@ public class SetEngineOptionsCommand implements UndoableGraphCommand<GraphEngine
         context.setNewFriction(opts.newFriction);
         context.setAttractionCoefficient(opts.attractionCoefficient);
         context.setRepulsionThreshold(opts.repulsionThreshold);
-        context.setNbClusters(opts.nbClusters);
+        //context.setNbClusters(opts.nbClusters); // TODO / C'EST BROKEN SEGFAULT DU C !
         context.setMinimumDegree(opts.minimumDegree);
         context.setRepulsionMode(opts.repulsionMode);
     }

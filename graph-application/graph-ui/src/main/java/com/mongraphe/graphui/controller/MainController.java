@@ -89,6 +89,7 @@ public final class MainController {
 
         System.out.println("Dispatch !");
 
+        bus.dispatch(e -> e.startSimulation());
         bus.dispatchSync(e -> e.load(
                 pendingFile.getPath(),
                 type,

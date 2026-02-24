@@ -90,7 +90,6 @@ public final class EngineOptionsController implements CommandBusLinkedI<GraphEng
                 Color c = canvasColorPicker.getValue();
                 if (c == null)
                         return;
-
                 bus.dispatch(new SetBackgroundColorCommand(
                                 (float) c.getRed(),
                                 (float) c.getGreen(),

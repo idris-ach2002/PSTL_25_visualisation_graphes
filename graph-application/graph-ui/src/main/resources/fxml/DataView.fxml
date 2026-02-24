@@ -5,9 +5,7 @@
 
 <BorderPane xmlns="http://javafx.com/javafx/8"
             xmlns:fx="http://javafx.com/fxml/1"
-            fx:controller="com.mongraphe.graphui.controller.DataController"
-            prefWidth="800"
-            prefHeight="600">
+            fx:controller="com.mongraphe.graphui.controller.DataController">
 
     <!-- Top bar -->
     <top>
@@ -17,6 +15,10 @@
             <Region HBox.hgrow="ALWAYS"/>
             <Label text="Total éléments:"/>
             <Label fx:id="totalElementsLabel" text="0"/>
+            <Label text= "Nombre de noeuds affichés:"/>
+            <Label fx:id="nodesDisplayedLabel"/>
+            <Label text= "Nombre d'arêtes affichés:"/> 
+            <Label fx:id="edgesDisplayedLabel"/>
         </HBox>
     </top>
 

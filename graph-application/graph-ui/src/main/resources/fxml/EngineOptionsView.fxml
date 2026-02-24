@@ -4,30 +4,54 @@
 <?import javafx.scene.control.*?>
 
 <VBox xmlns="http://javafx.com/javafx/8"
-      xmlns:fx="http://javafx.com/fxml/1"
-      fx:controller="com.mongraphe.graphui.controller.EngineOptionsController"
-      spacing="6"
-      styleClass="dock">
+  xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.mongraphe.graphui.controller.EngineOptionsController" spacing="6" styleClass="dock" style="-fx-padding: 10;">
 
-    <Label text="Paramètres moteur"/>
+  <Label text="Paramètres du graphe" style="-fx-font-weight: bold; -fx-padding: 10 0 0 0;" />
+  <GridPane hgap="10" vgap="5">
+    <Label text="Taille d'un noeud:" GridPane.rowIndex="0" GridPane.columnIndex="0" />
+    <TextField fx:id="initNodeSize" GridPane.rowIndex="0" GridPane.columnIndex="1" text="3" />
 
-    <TextField fx:id="degreeFactor" promptText="Degree factor"/>
-    <TextField fx:id="initNodeSize" promptText="Initial node size"/>
-    <TextField fx:id="upScale" promptText="Up scale"/>
-    <TextField fx:id="stabilizedThreshold" promptText="Stabilized threshold"/>
-    <TextField fx:id="attractionThreshold" promptText="Attraction threshold"/>
-    <TextField fx:id="updatedFrequence" promptText="Cluster update freq"/>
-    <TextField fx:id="newFriction" promptText="Friction"/>
-    <TextField fx:id="attractionCoefficient" promptText="Attraction coef"/>
-    <TextField fx:id="repulsionThreshold" promptText="Repulsion threshold"/>
-    <TextField fx:id="newAmortissement" promptText="Amortissement"/>
-    <TextField fx:id="nbClusters" promptText="Clusters"/>
-    <TextField fx:id="minimumDegree" promptText="Minimum degree"/>
+    <Label text="Agrandissement par degré:" GridPane.rowIndex="1" GridPane.columnIndex="0" />
+    <TextField fx:id="degreeFactor" GridPane.rowIndex="1" GridPane.columnIndex="1" text="0.3" />
 
-    <ComboBox fx:id="repulsionModeComboBox"/>
-    <ColorPicker fx:id="canvasColorPicker"/>
+    <Label text="Agrandissement total:" GridPane.rowIndex="2" GridPane.columnIndex="0" />
+    <TextField fx:id="upScale" GridPane.rowIndex="2" GridPane.columnIndex="1" text="5" />
 
-    <Button text="Appliquer"
-            onAction="#applyOptions"/>
+    <Label text="Seuil de stabilité:" GridPane.rowIndex="3" GridPane.columnIndex="0" />
+    <TextField fx:id="stabilizedThreshold" text="0" GridPane.rowIndex="3" GridPane.columnIndex="1" />
+
+    <Label text="Seuil d'attraction:" GridPane.rowIndex="4" GridPane.columnIndex="0" />
+    <TextField fx:id="attractionThreshold" text="0" GridPane.rowIndex="4" GridPane.columnIndex="1" />
+
+    <Label text="Fréquence des clusters:" GridPane.rowIndex="5" GridPane.columnIndex="0" />
+    <TextField fx:id="updatedFrequence" text="0" GridPane.rowIndex="5" GridPane.columnIndex="1" />
+
+    <Label text="Friction:" GridPane.rowIndex="6" GridPane.columnIndex="0" />
+    <TextField fx:id="newFriction" text="0" GridPane.rowIndex="6" GridPane.columnIndex="1" />
+
+    <Label text="Coefficient d'attraction:" GridPane.rowIndex="7" GridPane.columnIndex="0" />
+    <TextField fx:id="attractionCoefficient" text="0" GridPane.rowIndex="7" GridPane.columnIndex="1" />
+
+    <Label text="Seuil de répulsion:" GridPane.rowIndex="8" GridPane.columnIndex="0" />
+    <TextField fx:id="repulsionThreshold" text="0" GridPane.rowIndex="8" GridPane.columnIndex="1" />
+
+    <Label text="Amortissement:" GridPane.rowIndex="9" GridPane.columnIndex="0" />
+    <TextField fx:id="newAmortissement" text="0" GridPane.rowIndex="9" GridPane.columnIndex="1" />
+
+    <Label text="Nombre de clusters:" GridPane.rowIndex="10" GridPane.columnIndex="0" />
+    <TextField fx:id="nbClusters" text="0" GridPane.rowIndex="10" GridPane.columnIndex="1" />
+
+    <Label text="Degré minimum:" GridPane.rowIndex="11" GridPane.columnIndex="0" />
+    <TextField fx:id="minimumDegree" text="0" GridPane.rowIndex="11" GridPane.columnIndex="1" />
+
+    <Label text="Poids min arêtes:" GridPane.rowIndex="12" GridPane.columnIndex="0" />
+    <TextField fx:id="minEdgeWeight" text="0" GridPane.rowIndex="12" GridPane.columnIndex="1" />
+
+
+    <Label text="Mode de répulsion:" GridPane.rowIndex="13" GridPane.columnIndex="0" />
+    <ComboBox fx:id="repulsionModeComboBox" prefWidth="200" GridPane.rowIndex="13" GridPane.columnIndex="1"/>
+
+    <Button text="Appliquer" onAction="#applyOptions" styleClass="button-8" GridPane.rowIndex="14" GridPane.columnIndex="1" />
+  </GridPane>
 
 </VBox>
