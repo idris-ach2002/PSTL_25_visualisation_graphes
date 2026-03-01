@@ -34,6 +34,28 @@ public final class GraphEngine {
      */
     private int clusterUpdateFrequency = 1;
 
+    public interface GraphEngineListener {
+        /** Appelé lorsque la simulation démarre réellement */
+        void onSimulationStarted();
+
+        /** Appelé lorsque la simulation se termine */
+        void onSimulationStopped();
+    }
+
+    private final List<GraphEngineListener> listeners = new ArrayList<>();
+
+    public void addListener(GraphEngineListener listener) {
+        synchronized (listeners) {
+            listeners.add(listener);
+        }
+    }
+
+    public void removeListener(GraphEngineListener listener) {
+        synchronized (listeners) {
+            listeners.remove(listener);
+        }
+    }
+
     public static class GraphDataSnapshot {
         private final List<Vertex> vertices = new ArrayList<>();
         private final List<Edge> edges = new ArrayList<>();
@@ -345,10 +367,24 @@ public final class GraphEngine {
      */
     public void startSimulation() {
         simulation.start();
+
+        // Notifier les listeners que la simulation a démarré
+        synchronized (listeners) {
+            for (GraphEngineListener listener : listeners) {
+                listener.onSimulationStarted();
+            }
+        }
     }
 
     public void stopSimulation() {
         simulation.stop();
+
+        // Notifier que la simulation s'est arrêtée
+        synchronized (listeners) {
+            for (GraphEngineListener listener : listeners) {
+                listener.onSimulationStopped();
+            }
+        }
     }
 
     public boolean isSimulationRunning() {

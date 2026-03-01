@@ -1,17 +1,18 @@
 package com.mongraphe.graphui.controller;
 
 import java.io.File;
-
 import com.mongraphe.graphui.GraphData;
 import com.mongraphe.graphui.app.CommandBus;
 import com.mongraphe.graphui.app.GLExecutor;
 import com.mongraphe.graphui.app.GraphProject;
 import com.mongraphe.graphui.rendering.Camera2D;
 import com.mongraphe.graphui.rendering.GraphEngine;
+import com.mongraphe.graphui.rendering.GraphEngine.GraphEngineListener;
 import com.mongraphe.graphui.rendering.GraphNativeEngine;
 import com.mongraphe.graphui.rendering.GraphRenderer;
 import com.mongraphe.graphui.view.GraphPanel;
 
+import javafx.application.Platform;
 import javafx.fxml.FXML;
 import javafx.scene.control.ToggleGroup;
 import javafx.scene.layout.BorderPane;
@@ -32,7 +33,7 @@ public final class MainController {
     private EngineOptionsController engineOptionsViewController;
     @FXML
     private DataController dataViewController;
-    
+
     @FXML
     private ToggleGroup viewToggleGroup;
     @FXML
@@ -73,6 +74,10 @@ public final class MainController {
         overview.setVisible("overview".equals(view));
         dataView.setVisible("data".equals(view));
         preview.setVisible("preview".equals(view));
+
+        if ("data".equals(view)) {
+            Platform.runLater(() -> dataViewController.refresh());
+        }
     }
 
     public void setFile(File file) {
@@ -89,12 +94,12 @@ public final class MainController {
 
         System.out.println("Dispatch !");
 
-        bus.dispatch(e -> e.startSimulation());
-        bus.dispatchSync(e -> e.load(
-                pendingFile.getPath(),
-                type,
-                similitude,
-                community));
-        dataViewController.refresh();
+        bus.dispatchSyncVoid(e -> {
+            e.load(pendingFile.getPath(), type, similitude, community);
+        });
+
+        bus.dispatch(e -> {
+            e.startSimulation();
+        });
     }
 }

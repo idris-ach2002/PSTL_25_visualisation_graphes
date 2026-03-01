@@ -1,6 +1,8 @@
 package com.mongraphe.graphui.app;
 
 import java.util.concurrent.Executor;
+import java.util.concurrent.FutureTask;
+import java.util.function.Consumer;
 
 import com.mongraphe.graphui.interaction.UndoManager;
 import com.mongraphe.graphui.interfaces.GraphCommand;
@@ -19,6 +21,19 @@ public final class CommandBus<C> {
 
     public void dispatch(GraphCommand<C> command) {
         executor.execute(() -> command.execute(context));
+    }
+
+    public void dispatchSyncVoid(Consumer<C> command) {
+        FutureTask<Void> task = new FutureTask<>(() -> {
+            command.accept(context);
+            return null;
+        });
+        executor.execute(task);
+        try {
+            task.get();
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
     }
 
     public <R> R dispatchSync(java.util.function.Function<C, R> query) {

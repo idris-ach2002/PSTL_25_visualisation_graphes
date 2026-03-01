@@ -59,12 +59,11 @@
             <fx:include source="DataView.fxml"
                         fx:id="dataView"
                         visible="false"
-                        managed="false"/>
+                       />
 
             <!-- Overlay PREVIEW -->
             <Pane fx:id="preview"
                   visible="false"
-                  managed="false"
                   style="-fx-background-color:white;"/>
 
         </StackPane>

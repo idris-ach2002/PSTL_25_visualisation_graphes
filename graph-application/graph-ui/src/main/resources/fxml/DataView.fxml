@@ -7,7 +7,6 @@
             xmlns:fx="http://javafx.com/fxml/1"
             fx:controller="com.mongraphe.graphui.controller.DataController">
 
-    <!-- Top bar -->
     <top>
         <HBox spacing="10" style="-fx-padding: 8;">
             <Label text="Données du Graphe"
@@ -15,47 +14,42 @@
             <Region HBox.hgrow="ALWAYS"/>
             <Label text="Total éléments:"/>
             <Label fx:id="totalElementsLabel" text="0"/>
-            <Label text= "Nombre de noeuds affichés:"/>
+            <Label text="Nombre de noeuds affichés:"/>
             <Label fx:id="nodesDisplayedLabel"/>
-            <Label text= "Nombre d'arêtes affichés:"/> 
+            <Label text="Nombre d'arêtes affichés:"/>
             <Label fx:id="edgesDisplayedLabel"/>
         </HBox>
     </top>
 
-    <!-- Center tables -->
     <center>
         <TabPane>
 
-            <!-- Vertex table -->
+            <!-- Vertex -->
             <Tab text="Sommets" closable="false">
                 <BorderPane>
+                    <top>
+                        <HBox spacing="5" style="-fx-padding: 5;">
+                            <Label text="Page :"/>
+                            <TextField fx:id="vertexPageField" prefWidth="50"/>
+                        </HBox>
+                    </top>
                     <center>
-                        <TableView fx:id="vertexTable">
-                            <columns>
-                                <TableColumn fx:id="vertexIdCol" text="ID" prefWidth="80"/>
-                                <TableColumn fx:id="vertexCommunityCol" text="Communauté" prefWidth="120"/>
-                                <TableColumn fx:id="vertexDegreeCol" text="Degré" prefWidth="80"/>
-                                <TableColumn fx:id="vertexXCol" text="X" prefWidth="100"/>
-                                <TableColumn fx:id="vertexYCol" text="Y" prefWidth="100"/>
-                                <TableColumn fx:id="vertexDiameterCol" text="Diamètre" prefWidth="100"/>
-                                <TableColumn fx:id="vertexDeletedCol" text="Supprimé ?" prefWidth="100"/>
-                            </columns>
-                        </TableView>
+                        <Pagination fx:id="vertexPagination"/>
                     </center>
                 </BorderPane>
             </Tab>
 
-            <!-- Edge table -->
+            <!-- Edge -->
             <Tab text="Arêtes" closable="false">
                 <BorderPane>
+                    <top>
+                        <HBox spacing="5" style="-fx-padding: 5;">
+                            <Label text="Page :"/>
+                            <TextField fx:id="edgePageField" prefWidth="50"/>
+                        </HBox>
+                    </top>
                     <center>
-                        <TableView fx:id="edgeTable">
-                            <columns>
-                                <TableColumn fx:id="edgeStartCol" text="Début" prefWidth="120"/>
-                                <TableColumn fx:id="edgeEndCol" text="Fin" prefWidth="120"/>
-                                <TableColumn fx:id="edgeWeightCol" text="Poids" prefWidth="120"/>
-                            </columns>
-                        </TableView>
+                        <Pagination fx:id="edgePagination"/>
                     </center>
                 </BorderPane>
             </Tab>

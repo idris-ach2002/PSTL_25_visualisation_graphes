@@ -18,8 +18,9 @@ public class Edge {
 
     /**
      * Crée une arête à partir de ses deux sommets
-     * @param start : sommet de départ de l'arête
-     * @param end : sommet d'arrivée de l'arête
+     * 
+     * @param start  : sommet de départ de l'arête
+     * @param end    : sommet d'arrivée de l'arête
      * @param weight : poids de l'arête
      */
     public Edge(Vertex start, Vertex end, double weight) {
@@ -45,13 +46,13 @@ public class Edge {
         this.weight = initial_edge_weight * weight;
     }
 
-
     /**
      * @return le sommet de départ de l'arête
      */
     public Vertex getStart() {
         return start;
     }
+
     /**
      * @return le sommet d'arrivée de l'arête
      */
@@ -59,6 +60,13 @@ public class Edge {
         return end;
     }
 
+    public int getStartId() {
+        return start.getId();
+    }
+
+    public int getEndId() {
+        return end.getId();
+    }
 
     /**
      * @return l'épaisseur de l'arête
@@ -66,7 +74,6 @@ public class Edge {
     public double getWeight() {
         return weight;
     }
-
 
     /**
      * @return la composante rouge de la couleur de l'arête
@@ -88,7 +95,6 @@ public class Edge {
     public float getB() {
         return color_b;
     }
-
 
     /**
      * @return une représentation textuelle de l'arête (pour le débogage)

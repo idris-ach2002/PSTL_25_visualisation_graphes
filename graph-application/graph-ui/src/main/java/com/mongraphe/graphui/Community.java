@@ -62,4 +62,8 @@ public class Community {
         return "Communauté " + id + " (R : " + String.format("%.2f", color_r) + ", G : " + String.format("%.2f", color_g) + ", B : " + String.format("%.2f", color_b) + ")";
     }
 
+    public String getName(){
+        return "" + id;
+    }
+
 }

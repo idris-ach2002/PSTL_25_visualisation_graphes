@@ -7,7 +7,7 @@ import java.util.ArrayList;
  */
 public class Vertex {
 
-	public static int upscale = 8;
+    public static int upscale = 8;
     public static double initial_node_size = 1;
     public static double degree_scale_factor = 0;
 
@@ -18,18 +18,17 @@ public class Vertex {
     private final ArrayList<Edge> edges = new ArrayList<>();
     private Community community;
 
-
     /**
      * Crée un sommet à partir de ses coordonnées
+     * 
      * @param x : abscisse du centre du sommet
      * @param y : ordonnée du centre du sommet
      */
     public Vertex(double x, double y) {
-    	this.x = x * upscale;
-    	this.y = y * upscale;
-    	this.diameter = initial_node_size;
+        this.x = x * upscale;
+        this.y = y * upscale;
+        this.diameter = initial_node_size;
     }
-
 
     /**
      * @return identifiant du sommet
@@ -41,8 +40,10 @@ public class Vertex {
     public void setDiameter(double diameter) {
         this.diameter = diameter;
     }
+
     /**
      * Modifie l'identifiant du sommet
+     * 
      * @param id : identifiant du sommet
      */
     public void setId(int id) {
@@ -55,6 +56,7 @@ public class Vertex {
     public double getX() {
         return x;
     }
+
     /**
      * @return la coordonnée y du centre du sommet dans le repère modifié (JavaFX)
      */
@@ -64,6 +66,7 @@ public class Vertex {
 
     /**
      * Modifie la position du sommet
+     * 
      * @param x : nouvelle coordonnée x du centre du sommet
      * @param y : nouvelle coordonnée y du centre du sommet
      */
@@ -76,9 +79,9 @@ public class Vertex {
      * Modifie la visibilité du sommet
      */
     public void setVisibility(boolean visibility) {
-    	isVisible = visibility;
+        isVisible = visibility;
     }
-    
+
     /**
      * @return true si le sommet est visible, false sinon
      */
@@ -107,6 +110,7 @@ public class Vertex {
         isVisible = true;
         updateDiameter();
     }
+
     /**
      * @return true si le sommet a été supprimé, false sinon
      */
@@ -120,8 +124,14 @@ public class Vertex {
     public Community getCommunity() {
         return community;
     }
+
+    public String getCommunityName() {
+        return community != null ? community.getName() : "";
+    }
+
     /**
      * Modifie la communauté à laquelle appartient le sommet
+     * 
      * @param c : communauté du sommet
      */
     public void setCommunity(Community c) {
@@ -143,9 +153,10 @@ public class Vertex {
             degree_scale_factor = 0;
         diameter = initial_node_size + degree_scale_factor * getDegree();
     }
-    
+
     /**
      * Ajoute une arête à la liste des arêtes rattachées au sommet
+     * 
      * @param edge : arête à ajouter
      */
     public void addEdge(Edge edge) {
