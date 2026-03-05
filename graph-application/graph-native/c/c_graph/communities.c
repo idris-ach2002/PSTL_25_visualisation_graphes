@@ -429,36 +429,32 @@ int pop(int** next_nodes, int* size, int* capacity) {
 
 void mark_component(int node, int component) {
 
-    // we simulate the stack of recursive function with this array
     int length_next = 4;
-    int * next_nodes = (int*) calloc(length_next, sizeof(int));
-    next_nodes[0] = node;
-    int size = 1;
+    int *next_nodes = calloc(length_next, sizeof(int));
+    int size = 0;
 
+    push(&next_nodes, &size, &length_next, node);
+    node_community_map[node].component = component;
 
-    while ( size > 0 ) {
+    while (size > 0) {
+
         int next_node = pop(&next_nodes, &size, &length_next);
-        node_community_map[next_node].component = component;
-        component_sizes[component]++;  // Incrémenter la taille de la composante
+        component_sizes[component]++;
 
         Neighbor* neighbor = adjacency_list[next_node].head;
-        if ( neighbor != NULL ) {
-            int neighbor_node = neighbor->node;
 
-            while ( neighbor->next != NULL ) {
-                neighbor = neighbor->next;
-                int next_neighbor = neighbor->node;
-                if ( node_community_map[next_neighbor].component == -1 ) {
-                    push(&next_nodes, &size, &length_next, next_neighbor);
-                }
+        while (neighbor != NULL) {
+
+            int next_neighbor = neighbor->node;
+
+            if (node_community_map[next_neighbor].component == -1) {
+                node_community_map[next_neighbor].component = component; 
+                push(&next_nodes, &size, &length_next, next_neighbor);
+
             }
 
-            if ( node_community_map[neighbor_node].component == -1 ) {
-                push(&next_nodes, &size, &length_next, neighbor_node);
-            }
-
+            neighbor = neighbor->next;
         }
-              
     }
 
     free(next_nodes);

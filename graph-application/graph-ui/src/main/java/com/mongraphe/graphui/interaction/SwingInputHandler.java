@@ -1,17 +1,18 @@
 package com.mongraphe.graphui.interaction;
 
-import com.jogamp.newt.event.KeyEvent;
-import com.jogamp.newt.event.KeyListener;
-import com.jogamp.newt.event.MouseEvent;
-import com.jogamp.newt.event.MouseListener;
+import java.awt.event.*;
+
 import com.mongraphe.graphui.app.InteractionService;
 
-public final class OpenGLInputHandler
-        implements MouseListener, KeyListener {
+public final class SwingInputHandler implements
+        MouseListener,
+        MouseMotionListener,
+        MouseWheelListener,
+        KeyListener {
 
     private final InteractionService interaction;
 
-    public OpenGLInputHandler(InteractionService interaction) {
+    public SwingInputHandler(InteractionService interaction) {
         this.interaction = interaction;
     }
 
@@ -40,23 +41,11 @@ public final class OpenGLInputHandler
     }
 
     @Override
-    public void mouseWheelMoved(MouseEvent e) {
+    public void mouseWheelMoved(MouseWheelEvent e) {
         interaction.onMouseWheel(
                 e.getX(),
                 e.getY(),
-                e.getRotation()[1]);
-    }
-
-    @Override
-    public void mouseMoved(MouseEvent e) {
-    }
-
-    @Override
-    public void mouseEntered(MouseEvent e) {
-    }
-
-    @Override
-    public void mouseExited(MouseEvent e) {
+                e.getWheelRotation());
     }
 
     @Override
@@ -66,11 +55,11 @@ public final class OpenGLInputHandler
                 e.isControlDown());
     }
 
-    @Override
-    public void keyReleased(KeyEvent e) {
-    }
-
-    @Override
-    public void mouseClicked(MouseEvent e) {
-    }
+    // Méthodes inutilisées
+    @Override public void mouseMoved(MouseEvent e) {}
+    @Override public void mouseEntered(MouseEvent e) {}
+    @Override public void mouseExited(MouseEvent e) {}
+    @Override public void mouseClicked(MouseEvent e) {}
+    @Override public void keyReleased(KeyEvent e) {}
+    @Override public void keyTyped(KeyEvent e) {}
 }

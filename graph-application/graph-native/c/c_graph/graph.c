@@ -274,26 +274,40 @@ double update_position_forces(double(*forces)[2], double PasMaxX, double PasMaxY
     double half_Ly = Ly / 2.0;
 
     double new_max_movement = 0.0;
-    for (int i = 0; i < num_nodes; i++) {
-        if ( vertices[i].deleted == 0 ) {
-            velocities[i][0] = (velocities[i][0] + forces[i][0]) * friction;
-            velocities[i][1] = (velocities[i][1] + forces[i][1]) * friction;
-            velocities[i][0] = fmin(fmax(velocities[i][0], -PasMaxX), PasMaxX); // Capper la force en x à 1
-            velocities[i][1] = fmin(fmax(velocities[i][1], -PasMaxY), PasMaxY); // Capper la force en y à 1
 
+    for (int i = 0; i < num_nodes; i++) {
+        if (vertices[i].deleted == 0) {
+
+            // Appliquer les forces aux vitesses
+            velocities[i][0] += forces[i][0];
+            velocities[i][1] += forces[i][1];
+
+            // Capper les vitesses avant friction
+            velocities[i][0] = fmin(fmax(velocities[i][0], -PasMaxX), PasMaxX);
+            velocities[i][1] = fmin(fmax(velocities[i][1], -PasMaxY), PasMaxY);
+
+            // Appliquer friction
+            velocities[i][0] *= friction;
+            velocities[i][1] *= friction;
+
+            // Mettre à jour la position
             double x = vertices[i].x + velocities[i][0];
             double y = vertices[i].y + velocities[i][1];
-            // Appliquer les conditions aux limites toroïdales
 
-            if ( x < -half_Lx) { x = -half_Lx; }
-            if ( x > half_Lx)  { x = half_Lx; }
-            if ( y < -half_Ly) { y = -half_Ly; }
-            if ( y > half_Ly)  { y = half_Ly; }
+            // Gestion toroïdale
+            while (x < -half_Lx) x += Lx;
+            while (x >  half_Lx) x -= Lx;
+            while (y < -half_Ly) y += Ly;
+            while (y >  half_Ly) y -= Ly;
 
             vertices[i].x = x;
             vertices[i].y = y;
 
-            new_max_movement = fmax(Max_movement, velocities[i][0] * velocities[i][0] + velocities[i][0] * velocities[i][0]);
+            // Calculer le déplacement maximum
+            double movement_sq = velocities[i][0] * velocities[i][0] + velocities[i][1] * velocities[i][1];
+            if (movement_sq > new_max_movement) {
+                new_max_movement = movement_sq;
+            }
         }
     }
 

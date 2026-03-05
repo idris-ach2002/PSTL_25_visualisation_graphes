@@ -2,29 +2,36 @@ package com.mongraphe.graphui.rendering;
 
 import java.nio.FloatBuffer;
 
+import com.jogamp.common.nio.Buffers;
+
 public final class Camera2D {
 
-    private volatile float zoom = 1f;
+    private float zoom = 1f;
     private float offsetX;
     private float offsetY;
 
     private int width = 1;
     private int height = 1;
 
-    private volatile FloatBuffer projection = FloatBuffer.allocate(16);
+    private final FloatBuffer bufferA = Buffers.newDirectFloatBuffer(16);
+    private final FloatBuffer bufferB = Buffers.newDirectFloatBuffer(16);
 
-    public synchronized void resize(int w, int h) {
+    private volatile FloatBuffer projection = bufferA;
+    private FloatBuffer writeBuffer = bufferB;
+
+    public void resize(int w, int h) {
         width = Math.max(1, w);
         height = Math.max(1, h);
         updateProjection();
     }
 
-    public synchronized void zoomAt(float amount) {
-        zoom *= (amount > 0) ? 1.1f : 0.9f;
+    public void pan(float dx, float dy) {
+        offsetX -= dx / zoom;
+        offsetY += dy / zoom;
         updateProjection();
     }
 
-    public synchronized void zoomAt(float screenX, float screenY, float amount) {
+    public void zoomAt(float screenX, float screenY, float amount) {
 
         float worldX = screenToWorldX(screenX);
         float worldY = screenToWorldY(screenY);
@@ -37,16 +44,12 @@ public final class Camera2D {
         updateProjection();
     }
 
-    public synchronized void pan(float dx, float dy) {
-        offsetX -= dx / zoom;
-        offsetY += dy / zoom;
+    public void setZoom(float zoom) {
+        this.zoom = zoom;
         updateProjection();
     }
 
-    /**
-     * Réinitialise le cadrage (zoom/pan).
-     */
-    public synchronized void reset() {
+    public void reset() {
         zoom = 1f;
         offsetX = 0f;
         offsetY = 0f;
@@ -72,26 +75,27 @@ public final class Camera2D {
                 0, 1
         };
 
-        projection.clear();
-        projection.put(ortho).flip();
+        writeBuffer.clear();
+        writeBuffer.put(ortho).flip();
+
+        FloatBuffer oldRead = projection;
+        projection = writeBuffer;
+        writeBuffer = oldRead;
     }
 
     public FloatBuffer getProjection() {
         return projection;
     }
 
-    /**
-     * Zoom courant (1.0 = neutre). Utile pour la sélection sous zoom.
-     */
-    public float getZoom() {
-        return zoom;
-    }
-
-    public synchronized float screenToWorldX(float screenX) {
+    public float screenToWorldX(float screenX) {
         return (screenX - width / 2f) / zoom + offsetX;
     }
 
-    public synchronized float screenToWorldY(float screenY) {
+    public float screenToWorldY(float screenY) {
         return (height / 2f - screenY) / zoom + offsetY;
+    }
+
+    public float getZoom() {
+        return zoom;
     }
 }

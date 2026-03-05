@@ -8,32 +8,37 @@ import com.mongraphe.graphui.rendering.GraphEngine;
 import javafx.scene.input.KeyCode;
 
 public final class RunModeHandler implements InteractionModeHandler {
-    
-    public RunModeHandler(UiState state){
 
-    }
+    private int lastX;
+    private int lastY;
+
+    public RunModeHandler(UiState state) {}
 
     @Override
     public void onMousePressed(CommandBus<GraphEngine> bus, int sx, int sy, int button) {
-        // Ne rien faire, le mode "Run" ne gère pas les interactions de la souris
+        lastX = sx;
+        lastY = sy;
     }
 
     @Override
     public void onMouseDragged(CommandBus<GraphEngine> bus, int sx, int sy, int button) {
-        // Déplacement de la caméra pour faire du "panning"
+
+        int dx = sx - lastX;
+        int dy = sy - lastY;
+
+        lastX = sx;
+        lastY = sy;
+
         if (bus != null) {
-            bus.dispatch(b -> b.camera().pan(sx, sy));
+            bus.dispatch(b -> b.camera().pan(dx, dy));
         }
     }
 
     @Override
-    public void onMouseReleased(CommandBus<GraphEngine> bus, int sx, int sy, int button) {
-        // Ne rien faire, le mode "Run" ne gère pas les interactions de la souris
-    }
+    public void onMouseReleased(CommandBus<GraphEngine> bus, int sx, int sy, int button) {}
 
     @Override
     public void onMouseWheel(CommandBus<GraphEngine> bus, int sx, int sy, float rotation) {
-        // Zoom de la caméra
         if (bus != null) {
             bus.dispatch(b -> b.camera().zoomAt(sx, sy, rotation));
         }
@@ -43,6 +48,7 @@ public final class RunModeHandler implements InteractionModeHandler {
     public void onKeyPressed(CommandBus<GraphEngine> bus, int keyCode, boolean ctrlDown) {
         if (bus != null && keyCode == KeyCode.SPACE.getCode()) {
             boolean run = bus.dispatchSync(b -> b.isSimulationRunning());
+
             if (run) {
                 bus.dispatch(b -> b.stopSimulation());
             } else {

@@ -5,6 +5,8 @@ import com.mongraphe.graphui.GraphData;
 import com.mongraphe.graphui.app.CommandBus;
 import com.mongraphe.graphui.app.GLExecutor;
 import com.mongraphe.graphui.app.GraphProject;
+import com.mongraphe.graphui.app.InteractionService;
+import com.mongraphe.graphui.app.UiState;
 import com.mongraphe.graphui.rendering.Camera2D;
 import com.mongraphe.graphui.rendering.GraphEngine;
 import com.mongraphe.graphui.rendering.GraphEngine.GraphEngineListener;
@@ -53,8 +55,8 @@ public final class MainController {
         GraphEngine engine = new GraphEngine(nativeEngine);
         Camera2D camera = new Camera2D();
         GraphRenderer renderer = new GraphRenderer(engine, camera);
-        panel = new GraphPanel(renderer);
         bus = new CommandBus<>(engine, new GLExecutor());
+        panel = new GraphPanel(renderer, new InteractionService(bus, new UiState()));
 
         graphHostPane.getChildren().add(panel.canvas());
         panel.start();

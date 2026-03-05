@@ -1,9 +1,6 @@
 package com.mongraphe.graphui.app;
 
 import java.util.Objects;
-
-import com.jogamp.newt.opengl.GLWindow;
-import com.mongraphe.graphui.interaction.OpenGLInputHandler;
 import com.mongraphe.graphui.interfaces.InteractionModeHandler;
 import com.mongraphe.graphui.interaction.modes.*;
 import com.mongraphe.graphui.rendering.GraphEngine;
@@ -25,10 +22,9 @@ public final class InteractionService {
     private final InteractionModeHandler deleteHandler;
     private final InteractionModeHandler runHandler;
 
-    public InteractionService(CommandBus<GraphEngine> bus, GLWindow window, UiState state) {
+    public InteractionService(CommandBus<GraphEngine> bus, UiState state) {
 
         Objects.requireNonNull(bus);
-        Objects.requireNonNull(window);
 
         this.bus = bus;
 
@@ -37,10 +33,7 @@ public final class InteractionService {
         this.deleteHandler = new DeleteModeHandler(state);
         this.runHandler = new RunModeHandler(state);
 
-
         this.current = runHandler;
-
-        attach(window);
     }
 
     public void setMode(Mode mode) {
@@ -52,12 +45,6 @@ public final class InteractionService {
             case DELETE -> current = deleteHandler;
             case RUN -> current = runHandler;
         }
-    }
-
-    private void attach(GLWindow window) {
-        OpenGLInputHandler handler = new OpenGLInputHandler(this);
-        window.addMouseListener(handler);
-        window.addKeyListener(handler);
     }
 
     public void onMousePressed(int x, int y, int b) {

@@ -65,9 +65,9 @@ JNIEXPORT jboolean JNICALL Java_com_mongraphe_graphui_rendering_GraphNativeEngin
 
     ++iteration;
 
-    if (Max_movement == Max_movementOld) {
-        friction *= 0.7;
-    }
+  if (fabs(Max_movement - Max_movementOld) < 1e-6) {
+    friction *= 0.7;
+  }
           
     Max_movementOld = Max_movement;
     friction *= amortissement;

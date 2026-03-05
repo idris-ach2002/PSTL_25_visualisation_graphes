@@ -6,7 +6,9 @@ import com.jogamp.opengl.GLCapabilities;
 import com.jogamp.opengl.GLProfile;
 import com.jogamp.opengl.awt.GLJPanel;
 import com.jogamp.opengl.util.FPSAnimator;
+import com.mongraphe.graphui.app.InteractionService;
 import com.mongraphe.graphui.export.OpenGLGraphImageExporter;
+import com.mongraphe.graphui.interaction.SwingInputHandler;
 import com.mongraphe.graphui.interfaces.GraphImageExporter;
 import com.mongraphe.graphui.rendering.GraphRenderer;
 
@@ -24,26 +26,26 @@ public final class GraphPanel {
     private final FPSAnimator animator;
     private final GraphRenderer renderer;
 
-    public GraphPanel(GraphRenderer renderer) {
+    public GraphPanel(GraphRenderer renderer, InteractionService interaction) {
         this.renderer = renderer;
 
-        // Configuration du profil OpenGL
         GLProfile profile = GLProfile.get(GLProfile.GL4);
         GLCapabilities caps = new GLCapabilities(profile);
-        caps.setDoubleBuffered(true);
-        caps.setHardwareAccelerated(true);
-        caps.setSampleBuffers(true);
-        caps.setNumSamples(4);
-        caps.setStencilBits(0);
-        caps.setDepthBits(0);
 
-        // Création du panel JOGL (Swing)
         glPanel = new GLJPanel(caps);
         glPanel.addGLEventListener(renderer);
+        
+        SwingInputHandler input = new SwingInputHandler(interaction);
 
-        // Animator pour le rendu FPS constant
+        glPanel.addMouseListener(input);
+        glPanel.addMouseMotionListener(input);
+        glPanel.addMouseWheelListener(input);
+        glPanel.addKeyListener(input);
+
+        glPanel.setFocusable(true);
+
         animator = new FPSAnimator(glPanel, 60, true);
-        // Intégration dans JavaFX via SwingNode
+
         swingNode = new SwingNode();
         createAndSetSwingContent();
     }
@@ -81,18 +83,21 @@ public final class GraphPanel {
             if (animator != null && animator.isStarted()) {
                 animator.stop();
             }
-        } catch (Exception ignored) { }
+        } catch (Exception ignored) {
+        }
 
         try {
             glPanel.removeGLEventListener(renderer);
-        } catch (Exception ignored) { }
+        } catch (Exception ignored) {
+        }
     }
 
     /**
      * Redimensionne le panel JOGL via JavaFX
      */
     public void resize(int w, int h) {
-        if (w <= 0 || h <= 0) return;
+        if (w <= 0 || h <= 0)
+            return;
         glPanel.setSize(w, h);
         glPanel.repaint();
         if (swingNode.getParent() instanceof Region region) {
