@@ -5,12 +5,12 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import com.mongraphe.graphui.app.GraphProject;
 import com.mongraphe.graphui.model.Community;
 import com.mongraphe.graphui.model.Edge;
 import com.mongraphe.graphui.model.EdgeC;
 import com.mongraphe.graphui.model.GraphData;
 import com.mongraphe.graphui.model.GraphModel;
+import com.mongraphe.graphui.model.GraphProject;
 import com.mongraphe.graphui.model.Vertex;
 
 /**

@@ -2,9 +2,9 @@ package com.mongraphe.graphui.interaction.commands;
 
 import java.io.File;
 
-import com.mongraphe.graphui.app.GraphProject;
 import com.mongraphe.graphui.interfaces.GraphCommand;
 import com.mongraphe.graphui.model.GraphData;
+import com.mongraphe.graphui.model.GraphProject;
 import com.mongraphe.graphui.rendering.GraphEngine;
 
 public final class LoadGraphCommand

@@ -5,10 +5,11 @@ import java.util.concurrent.FutureTask;
 import java.util.function.Consumer;
 
 import com.mongraphe.graphui.interaction.UndoManager;
+import com.mongraphe.graphui.interfaces.CommandBusI;
 import com.mongraphe.graphui.interfaces.GraphCommand;
 import com.mongraphe.graphui.interfaces.UndoableGraphCommand;
 
-public final class CommandBus<C> {
+public final class CommandBus<C> implements CommandBusI<C> {
 
     private final C context;
     private final Executor executor;

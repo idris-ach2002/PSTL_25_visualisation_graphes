@@ -1,4 +1,4 @@
-package com.mongraphe.graphui.app;
+package com.mongraphe.graphui.model;
 
 import java.io.File;
 import java.util.Objects;

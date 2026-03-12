@@ -1,12 +1,13 @@
 package com.mongraphe.graphui.controller;
 
-import com.mongraphe.graphui.app.GraphProject;
 import com.mongraphe.graphui.interfaces.CommandBusLinkedI;
 import com.mongraphe.graphui.model.GraphData;
 import com.mongraphe.graphui.rendering.GraphEngine;
 
 import javafx.fxml.FXML;
 import javafx.scene.control.ComboBox;
+import javafx.scene.control.Control;
+import javafx.scene.control.Tooltip;
 
 public final class GraphWorkspaceController
         implements CommandBusLinkedI<GraphEngine> {
@@ -34,6 +35,21 @@ public final class GraphWorkspaceController
         repulsionCombo.getItems().setAll(GraphData.RepulsionMode.values());
     }
 
+    private void showTooltip(Control control, String message) {
+
+        Tooltip tooltip = new Tooltip(message);
+        tooltip.setAutoHide(true);
+
+        tooltip.show(
+                control,
+                control.localToScreen(0, 0).getX(),
+                control.localToScreen(0, 0).getY() - 30);
+
+        // fermeture automatique après 2 secondes
+        new javafx.animation.PauseTransition(javafx.util.Duration.seconds(2))
+                .setOnFinished(e -> tooltip.hide());
+    }
+
     @FXML
     private void handleStartButton() {
 
@@ -41,17 +57,21 @@ public final class GraphWorkspaceController
             return;
         }
 
-        if (similarityCombo.getValue() == null ||
-                communityCombo.getValue() == null) {
+        if (similarityCombo.getValue() == null || communityCombo.getValue() == null) {
+
+            if (similarityCombo.getValue() == null) {
+                showTooltip(similarityCombo, "Sélectionnez une mesure de similarité");
+            }
+
+            if (communityCombo.getValue() == null) {
+                showTooltip(communityCombo, "Sélectionnez une méthode de communauté");
+            }
+
             return;
         }
-
-        GraphProject.SourceType type = GraphProject.SourceType.CSV;
-
         mainController.startGraph(
                 similarityCombo.getValue(),
-                communityCombo.getValue(),
-                type);
+                communityCombo.getValue());
     }
 
     @Override

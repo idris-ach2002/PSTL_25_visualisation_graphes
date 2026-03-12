@@ -3,6 +3,8 @@ package com.mongraphe.graphui.controller;
 import java.io.File;
 import java.io.IOException;
 
+import com.mongraphe.graphui.model.GraphProject;
+
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
 import javafx.geometry.Rectangle2D;
@@ -92,13 +94,24 @@ public class HomeScreenController {
         throw new IllegalStateException("Impossible de récupérer le Stage (Scene non initialisée).");
     }
 
+    private GraphProject.SourceType detectType(File file) {
+        String name = file.getName().toLowerCase();
+
+        if (name.endsWith(".csv"))
+            return GraphProject.SourceType.CSV;
+        if (name.endsWith(".dot"))
+            return GraphProject.SourceType.DOT;
+
+        throw new IllegalArgumentException("Type de fichier inconnu : " + name);
+    }
+
     void ouvrirFenetreGraphe(Stage stage, File fichier) {
         try {
             FXMLLoader loader = new FXMLLoader(getClass().getResource("/fxml/MainView.fxml"));
 
             Parent root = loader.load();
             MainGraphController controller = loader.getController();
-            controller.setFile(fichier);
+            controller.setProject(new GraphProject(fichier, detectType(fichier)));
 
             // Créer une scène avec la taille de l'écran
             Rectangle2D screenBounds = Screen.getPrimary().getVisualBounds();

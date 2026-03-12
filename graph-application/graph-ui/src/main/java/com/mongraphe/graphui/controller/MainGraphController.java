@@ -1,12 +1,10 @@
 package com.mongraphe.graphui.controller;
 
-import java.io.File;
-
 import com.mongraphe.graphui.app.CommandBus;
-import com.mongraphe.graphui.app.GraphProject;
 import com.mongraphe.graphui.app.UiState;
 import com.mongraphe.graphui.interaction.InteractionService;
 import com.mongraphe.graphui.model.GraphData;
+import com.mongraphe.graphui.model.GraphProject;
 import com.mongraphe.graphui.rendering.Camera2D;
 import com.mongraphe.graphui.rendering.EngineExecutor;
 import com.mongraphe.graphui.rendering.GraphEngine;
@@ -24,7 +22,7 @@ import javafx.stage.Stage;
 
 public final class MainGraphController {
 
-    private File pendingFile;
+    private GraphProject project;
     private GraphPanel panel;
     private CommandBus<GraphEngine> bus;
 
@@ -104,20 +102,19 @@ public final class MainGraphController {
         }
     }
 
-    public void setFile(File file) {
-        this.pendingFile = file;
+    public void setProject(GraphProject project) {
+        this.project = project;
     }
 
     public void startGraph(
             GraphData.SimilitudeMode similitude,
-            GraphData.NodeCommunity community,
-            GraphProject.SourceType type) {
+            GraphData.NodeCommunity community) {
 
-        if (pendingFile == null)
+        if (project == null)
             return;
 
         bus.dispatchSyncVoid(e -> {
-            e.load(pendingFile.getPath(), type, similitude, community);
+            e.load(project.sourceFile().getPath(), project.sourceType(), similitude, community);
         });
 
         bus.dispatch(e -> {
