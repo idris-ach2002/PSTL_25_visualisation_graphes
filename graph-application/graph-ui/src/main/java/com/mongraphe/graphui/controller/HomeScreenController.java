@@ -1,9 +1,7 @@
-package com.mongraphe.graphui;
+package com.mongraphe.graphui.controller;
 
 import java.io.File;
 import java.io.IOException;
-
-import com.mongraphe.graphui.controller.MainController;
 
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
@@ -99,7 +97,7 @@ public class HomeScreenController {
             FXMLLoader loader = new FXMLLoader(getClass().getResource("/fxml/MainView.fxml"));
 
             Parent root = loader.load();
-            MainController controller = loader.getController();
+            MainGraphController controller = loader.getController();
             controller.setFile(fichier);
 
             // Créer une scène avec la taille de l'écran

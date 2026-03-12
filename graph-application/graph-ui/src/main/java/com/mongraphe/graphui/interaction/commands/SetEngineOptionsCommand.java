@@ -1,4 +1,4 @@
-package com.mongraphe.graphui.app.commands;
+package com.mongraphe.graphui.interaction.commands;
 
 import com.mongraphe.graphui.controller.EngineOptions;
 import com.mongraphe.graphui.interfaces.UndoableGraphCommand;

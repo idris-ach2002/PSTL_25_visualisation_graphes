@@ -1,4 +1,6 @@
-package com.mongraphe.graphui;
+package com.mongraphe.graphui.app;
+
+import com.mongraphe.graphui.rendering.GraphNativeEngine;
 
 import javafx.application.Application;
 import javafx.fxml.FXMLLoader;

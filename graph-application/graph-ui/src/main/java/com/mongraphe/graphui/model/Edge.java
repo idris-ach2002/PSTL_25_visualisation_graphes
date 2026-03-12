@@ -1,4 +1,4 @@
-package com.mongraphe.graphui;
+package com.mongraphe.graphui.model;
 
 /**
  * Représente une arête du graphe

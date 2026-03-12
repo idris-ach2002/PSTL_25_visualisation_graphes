@@ -5,13 +5,13 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import com.mongraphe.graphui.Community;
-import com.mongraphe.graphui.Edge;
-import com.mongraphe.graphui.EdgeC;
-import com.mongraphe.graphui.GraphData;
-import com.mongraphe.graphui.Vertex;
 import com.mongraphe.graphui.app.GraphProject;
+import com.mongraphe.graphui.model.Community;
+import com.mongraphe.graphui.model.Edge;
+import com.mongraphe.graphui.model.EdgeC;
+import com.mongraphe.graphui.model.GraphData;
 import com.mongraphe.graphui.model.GraphModel;
+import com.mongraphe.graphui.model.Vertex;
 
 /**
  * Façade Java côté UI pour piloter le moteur natif via JNI et maintenir
@@ -357,10 +357,6 @@ public final class GraphEngine {
         return clusterUpdateFrequency;
     }
 
-    public void setDimensions(double width, double height) {
-        nativeEngine.setDimension(width, height);
-    }
-
     /**
      * Libère la mémoire allouée côté C (structures du graphe, buffers, etc.).
      * À appeler lors d'un reload ou à la fermeture.
@@ -389,9 +385,5 @@ public final class GraphEngine {
 
     public boolean isSimulationRunning() {
         return simulation.isRunning();
-    }
-
-    public void freeNativeMemory() {
-        nativeEngine.freeAllocatedMemory();
     }
 }

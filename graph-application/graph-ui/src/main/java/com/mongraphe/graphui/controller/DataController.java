@@ -1,9 +1,9 @@
 package com.mongraphe.graphui.controller;
 
-import com.mongraphe.graphui.Vertex;
-import com.mongraphe.graphui.Edge;
 import com.mongraphe.graphui.app.CommandBus;
 import com.mongraphe.graphui.interfaces.CommandBusLinkedI;
+import com.mongraphe.graphui.model.Edge;
+import com.mongraphe.graphui.model.Vertex;
 import com.mongraphe.graphui.rendering.GraphEngine;
 import com.mongraphe.graphui.rendering.GraphEngine.GraphDataSnapshot;
 

@@ -28,7 +28,8 @@ static void init_engine() {
 static int run_layout() {
   int iter = 0;
 
-  double forces[MAX_NODES][2] = {0};
+  double (*forces)[2] = malloc(sizeof(double[2]) * MAX_NODES);
+  memset(forces, 0, sizeof(double[2]) * MAX_NODES);
 
   while (iter < 2000) {
     repulsion_edges(forces);
@@ -46,6 +47,7 @@ static int run_layout() {
 
     iter++;
   }
+  free(forces);
 
   return iter;
 }

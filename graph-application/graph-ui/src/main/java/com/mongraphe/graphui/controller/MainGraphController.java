@@ -1,15 +1,15 @@
 package com.mongraphe.graphui.controller;
 
 import java.io.File;
-import com.mongraphe.graphui.GraphData;
+
 import com.mongraphe.graphui.app.CommandBus;
-import com.mongraphe.graphui.app.GLExecutor;
 import com.mongraphe.graphui.app.GraphProject;
-import com.mongraphe.graphui.app.InteractionService;
 import com.mongraphe.graphui.app.UiState;
+import com.mongraphe.graphui.interaction.InteractionService;
+import com.mongraphe.graphui.model.GraphData;
 import com.mongraphe.graphui.rendering.Camera2D;
+import com.mongraphe.graphui.rendering.EngineExecutor;
 import com.mongraphe.graphui.rendering.GraphEngine;
-import com.mongraphe.graphui.rendering.GraphEngine.GraphEngineListener;
 import com.mongraphe.graphui.rendering.GraphNativeEngine;
 import com.mongraphe.graphui.rendering.GraphRenderer;
 import com.mongraphe.graphui.view.GraphPanel;
@@ -20,8 +20,9 @@ import javafx.scene.control.ToggleGroup;
 import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.Pane;
 import javafx.scene.layout.StackPane;
+import javafx.stage.Stage;
 
-public final class MainController {
+public final class MainGraphController {
 
     private File pendingFile;
     private GraphPanel panel;
@@ -55,7 +56,7 @@ public final class MainController {
         GraphEngine engine = new GraphEngine(nativeEngine);
         Camera2D camera = new Camera2D();
         GraphRenderer renderer = new GraphRenderer(engine, camera);
-        bus = new CommandBus<>(engine, new GLExecutor());
+        bus = new CommandBus<>(engine, new EngineExecutor());
         panel = new GraphPanel(renderer, new InteractionService(bus, new UiState()));
 
         graphHostPane.getChildren().add(panel.canvas());
@@ -65,6 +66,27 @@ public final class MainController {
         workspaceViewController.setMainController(this);
         engineOptionsViewController.setBus(bus);
         dataViewController.setBus(bus);
+
+        setupCloseWindowListener(nativeEngine);
+    }
+
+    private void setupCloseWindowListener(GraphNativeEngine nat) {
+        rootStack.sceneProperty().addListener((obs, oldScene, scene) -> {
+            if (scene != null) {
+
+                scene.windowProperty().addListener((obsW, oldWindow, window) -> {
+                    if (window != null) {
+                        Stage stage = (Stage) window;
+
+                        stage.setOnCloseRequest(e -> {
+                            panel.stop();
+                            nat.freeAllocatedMemory();
+                        });
+                    }
+                });
+
+            }
+        });
     }
 
     @FXML
@@ -93,8 +115,6 @@ public final class MainController {
 
         if (pendingFile == null)
             return;
-
-        System.out.println("Dispatch !");
 
         bus.dispatchSyncVoid(e -> {
             e.load(pendingFile.getPath(), type, similitude, community);

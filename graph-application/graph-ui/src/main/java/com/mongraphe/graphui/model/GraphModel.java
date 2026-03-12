@@ -5,10 +5,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import com.mongraphe.graphui.Edge;
-import com.mongraphe.graphui.EdgeC;
-import com.mongraphe.graphui.Vertex;
-
 public class GraphModel {
 
     /**

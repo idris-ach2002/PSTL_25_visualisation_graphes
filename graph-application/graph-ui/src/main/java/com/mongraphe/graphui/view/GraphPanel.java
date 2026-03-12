@@ -6,8 +6,8 @@ import com.jogamp.opengl.GLCapabilities;
 import com.jogamp.opengl.GLProfile;
 import com.jogamp.opengl.awt.GLJPanel;
 import com.jogamp.opengl.util.FPSAnimator;
-import com.mongraphe.graphui.app.InteractionService;
 import com.mongraphe.graphui.export.OpenGLGraphImageExporter;
+import com.mongraphe.graphui.interaction.InteractionService;
 import com.mongraphe.graphui.interaction.SwingInputHandler;
 import com.mongraphe.graphui.interfaces.GraphImageExporter;
 import com.mongraphe.graphui.rendering.GraphRenderer;
@@ -70,6 +70,10 @@ public final class GraphPanel {
         if (!animator.isStarted()) {
             animator.start();
         }
+    }
+
+    public void stop(){
+        animator.stop();
     }
 
     public void pause() {

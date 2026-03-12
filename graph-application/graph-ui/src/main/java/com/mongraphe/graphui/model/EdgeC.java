@@ -1,4 +1,4 @@
-package com.mongraphe.graphui;
+package com.mongraphe.graphui.model;
 
 /**
  * Représente une arête reçue par un appel JNI depuis le programme C, en attendant de la convertir en arête du graphe

@@ -1,9 +1,9 @@
-package com.mongraphe.graphui.app;
+package com.mongraphe.graphui.rendering;
 
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
-public final class GLExecutor implements java.util.concurrent.Executor {
+public final class EngineExecutor implements java.util.concurrent.Executor {
 
     private final ExecutorService engineThread = Executors.newSingleThreadExecutor(r -> {
         Thread t = new Thread(r, "graph-engine-thread");

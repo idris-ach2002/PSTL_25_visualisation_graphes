@@ -1,10 +1,10 @@
 package com.mongraphe.graphui.interaction.modes;
 
 import com.jogamp.newt.event.MouseEvent;
-import com.mongraphe.graphui.Vertex;
 import com.mongraphe.graphui.app.CommandBus;
 import com.mongraphe.graphui.app.UiState;
 import com.mongraphe.graphui.interfaces.InteractionModeHandler;
+import com.mongraphe.graphui.model.Vertex;
 import com.mongraphe.graphui.rendering.GraphEngine;
 
 import javafx.application.Platform;

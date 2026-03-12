@@ -65,7 +65,7 @@ JNIEXPORT jboolean JNICALL Java_com_mongraphe_graphui_rendering_GraphNativeEngin
 
     ++iteration;
 
-  if (fabs(Max_movement - Max_movementOld) < 1e-6) {
+  if (Max_movement == Max_movementOld) {
     friction *= 0.7;
   }
           
@@ -115,7 +115,7 @@ JNIEXPORT jobjectArray JNICALL Java_com_mongraphe_graphui_rendering_GraphNativeE
   (JNIEnv * env, jobject obj)
 {
     // remplacer "backendinterface/Edge" par "[packageName]/[nomClasse]"
-    jclass obj_class = (*env)->FindClass(env, "Lcom/mongraphe/graphui/EdgeC;");
+    jclass obj_class = (*env)->FindClass(env, "Lcom/mongraphe/graphui/model/EdgeC;");
     jmethodID edge_constructor = (*env)->GetMethodID(env, obj_class, "<init>", "(IID)V");
     jobject initial_elem = (*env)->NewObject(env, obj_class, edge_constructor, 0, 0, 0.);
     
@@ -137,7 +137,7 @@ JNIEXPORT jobjectArray JNICALL Java_com_mongraphe_graphui_rendering_GraphNativeE
 JNIEXPORT jobjectArray JNICALL Java_com_mongraphe_graphui_rendering_GraphNativeEngine_getPositions
   (JNIEnv * env, jobject obj)
 {
-  jclass obj_class = (*env)->FindClass(env, "Lcom/mongraphe/graphui/Vertex;");
+  jclass obj_class = (*env)->FindClass(env, "Lcom/mongraphe/graphui/model/Vertex;");
   jmethodID point_constructor = (*env)->GetMethodID(env, obj_class, "<init>", "(DD)V");
 
   jobject initial_elem = (*env)->NewObject(env, obj_class, point_constructor, 0., 0.);
@@ -211,7 +211,7 @@ JNIEXPORT jobject JNICALL Java_com_mongraphe_graphui_rendering_GraphNativeEngine
 
     calculate_threshold(modeSimilitude, 10*num_nodes, &threshold, &antiseuil, similarities);
 
-    jclass res_class = (*env)->FindClass(env, "com/mongraphe/graphui/Metadata");
+    jclass res_class = (*env)->FindClass(env, "com/mongraphe/graphui/model/Metadata");
     jmethodID constructor = (*env)->GetMethodID(env, res_class, "<init>", "(IDDD)V");
     jobject res = (*env)->NewObject(env, res_class, constructor, num_nodes, threshold, antiseuil, means_similitude);
 
@@ -264,7 +264,7 @@ JNIEXPORT jobject JNICALL Java_com_mongraphe_graphui_rendering_GraphNativeEngine
     assign_cluster_colors();
     calculate_node_degrees();
 
-    jclass res_class = (*env)->FindClass(env, "com/mongraphe/graphui/Metadata");
+    jclass res_class = (*env)->FindClass(env, "com/mongraphe/graphui/model/Metadata");
     jmethodID constructor = (*env)->GetMethodID(env, res_class, "<init>", "(IDDIII)V");
     jobject res = (*env)->NewObject(env, res_class, constructor, num_nodes, thresh, anti_thresh, num_edges, num_antiedges, n_clusters);
 
@@ -326,7 +326,7 @@ JNIEXPORT jobject JNICALL Java_com_mongraphe_graphui_rendering_GraphNativeEngine
   assign_cluster_colors();
   calculate_node_degrees();
 
-  jclass res_class = (*env)->FindClass(env, "com/mongraphe/graphui/Metadata");
+  jclass res_class = (*env)->FindClass(env, "com/mongraphe/graphui/model/Metadata");
   jmethodID constructor = (*env)->GetMethodID(env, res_class, "<init>", "(IDDD)V");
   jobject res = (*env)->NewObject(env, res_class, constructor, num_nodes, 0., 0., 0.);
 
@@ -371,44 +371,6 @@ JNIEXPORT void JNICALL Java_com_mongraphe_graphui_rendering_GraphNativeEngine_fr
     }
     freeNodeNames();
     FreePool(&pool);
-
-    num_nodes = 0;
-    live_nodes = 0;
-    num_edges = 0;
-    num_antiedges = 0;
-}
-
-JNIEXPORT void JNICALL Java_com_mongraphe_graphui_rendering_GraphNativeEngine_freeProgramMemory
-  (JNIEnv * env, jobject obj)
-{
-
-    // Libérer la mémoire allouée pour les voisins
-    for (int i = 0; i < num_nodes; i++) {
-    	Neighbor* neighbor = adjacency_list[i].head;
-        while (neighbor != NULL) {
-           Neighbor* next = neighbor->next;
-           free(neighbor);
-           neighbor = next;
-        }
-        adjacency_list[i].head = NULL;
-    }
-    free_clusters();
-    if ( similarity_matrix != NULL ) {
-      for (int i = 0; i < num_rows; i++) {
-        free(similarity_matrix[i]);
-      }
-      free(similarity_matrix);
-    }
-
-    freeNodeNames();
-    FreePool(&pool);
-
-    if ( data != NULL ) {
-      for (int i = 0; i < num_rows; ++i) {
-        free(data[i]);
-      }
-      free(data);
-    }
 
     num_nodes = 0;
     live_nodes = 0;

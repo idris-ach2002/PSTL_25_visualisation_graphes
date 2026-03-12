@@ -47,6 +47,9 @@ SRC := \
     $(wildcard $(SRC_DIR)/pretraitement/*.c) \
     $(SRC_DIR)/forceatlasV4_CSV.c
 
+.PHONY: all
+all: $(LIB)
+
 test: $(TEST_BIN)
 	@echo "Running tests"
 	$(TEST_BIN) c/tests/graphs/triangle.dot
@@ -75,5 +78,3 @@ $(TEST_BIN): $(OBJ) $(TEST_SRC)
 
 clean:
 	rm -rf out
-
-.PHONY: all clean

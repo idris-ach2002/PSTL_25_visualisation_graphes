@@ -74,7 +74,7 @@
                 <artifactId>javafx-maven-plugin</artifactId>
                 <version>0.0.8</version>
                 <configuration>
-                    <mainClass>com.mongraphe.graphui.MainApp</mainClass>
+                    <mainClass>com.mongraphe.graphui.app.MainApp</mainClass>
                     <options>
                         <!-- JNI -->
                         <option>-Djava.library.path=${project.basedir}/../graph-native/out</option>

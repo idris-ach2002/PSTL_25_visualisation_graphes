@@ -3,7 +3,7 @@ package com.mongraphe.graphui.rendering;
 import java.nio.FloatBuffer;
 
 import com.jogamp.opengl.GL4;
-import com.mongraphe.graphui.Edge;
+import com.mongraphe.graphui.model.Edge;
 import com.mongraphe.graphui.model.GraphModel;
 
 public class EdgeGpuBuffer {

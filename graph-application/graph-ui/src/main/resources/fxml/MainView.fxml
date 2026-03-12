@@ -3,7 +3,7 @@
 <?import javafx.scene.layout.*?>
 <?import javafx.scene.control.*?>
 
-<BorderPane fx:controller="com.mongraphe.graphui.controller.MainController"
+<BorderPane fx:controller="com.mongraphe.graphui.controller.MainGraphController"
             xmlns:fx="http://javafx.com/fxml">
 
     <!-- ================= TOP (FIXE) ================= -->

@@ -1,6 +1,6 @@
 package com.mongraphe.graphui.controller;
 
-import com.mongraphe.graphui.GraphData;
+import com.mongraphe.graphui.model.GraphData;
 
 public final class EngineOptions {
 

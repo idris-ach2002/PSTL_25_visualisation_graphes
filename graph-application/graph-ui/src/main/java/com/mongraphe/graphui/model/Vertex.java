@@ -1,4 +1,4 @@
-package com.mongraphe.graphui;
+package com.mongraphe.graphui.model;
 
 import java.util.ArrayList;
 

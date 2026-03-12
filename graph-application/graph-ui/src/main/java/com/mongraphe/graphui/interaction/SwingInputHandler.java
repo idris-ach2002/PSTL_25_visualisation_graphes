@@ -2,8 +2,6 @@ package com.mongraphe.graphui.interaction;
 
 import java.awt.event.*;
 
-import com.mongraphe.graphui.app.InteractionService;
-
 public final class SwingInputHandler implements
         MouseListener,
         MouseMotionListener,

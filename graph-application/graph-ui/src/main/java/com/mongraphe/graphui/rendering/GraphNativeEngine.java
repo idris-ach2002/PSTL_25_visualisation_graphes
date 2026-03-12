@@ -1,9 +1,9 @@
 package com.mongraphe.graphui.rendering;
 
-import com.mongraphe.graphui.EdgeC;
-import com.mongraphe.graphui.GraphData;
-import com.mongraphe.graphui.Metadata;
-import com.mongraphe.graphui.Vertex;
+import com.mongraphe.graphui.model.EdgeC;
+import com.mongraphe.graphui.model.GraphData;
+import com.mongraphe.graphui.model.Metadata;
+import com.mongraphe.graphui.model.Vertex;
 
 /**
  * Classe centrale pour interfacer avec le moteur natif C.

@@ -1,8 +1,8 @@
 package com.mongraphe.graphui.controller;
 
-import com.mongraphe.graphui.GraphData;
 import com.mongraphe.graphui.app.GraphProject;
 import com.mongraphe.graphui.interfaces.CommandBusLinkedI;
+import com.mongraphe.graphui.model.GraphData;
 import com.mongraphe.graphui.rendering.GraphEngine;
 
 import javafx.fxml.FXML;
@@ -11,7 +11,7 @@ import javafx.scene.control.ComboBox;
 public final class GraphWorkspaceController
         implements CommandBusLinkedI<GraphEngine> {
 
-    private MainController mainController;
+    private MainGraphController mainController;
 
     @FXML
     private ComboBox<GraphData.SimilitudeMode> similarityCombo;
@@ -22,7 +22,7 @@ public final class GraphWorkspaceController
     @FXML
     private ComboBox<GraphData.RepulsionMode> repulsionCombo;
 
-    public void setMainController(MainController controller) {
+    public void setMainController(MainGraphController controller) {
         this.mainController = controller;
     }
 
@@ -38,13 +38,11 @@ public final class GraphWorkspaceController
     private void handleStartButton() {
 
         if (mainController == null) {
-            System.out.println("Main controller is null !");
             return;
         }
 
         if (similarityCombo.getValue() == null ||
                 communityCombo.getValue() == null) {
-            System.out.println("One of the box is empty !");
             return;
         }
 

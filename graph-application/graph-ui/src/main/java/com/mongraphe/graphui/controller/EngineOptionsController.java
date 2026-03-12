@@ -1,9 +1,9 @@
 package com.mongraphe.graphui.controller;
 
-import com.mongraphe.graphui.GraphData;
 import com.mongraphe.graphui.app.CommandBus;
-import com.mongraphe.graphui.app.commands.*;
+import com.mongraphe.graphui.interaction.commands.*;
 import com.mongraphe.graphui.interfaces.CommandBusLinkedI;
+import com.mongraphe.graphui.model.GraphData;
 import com.mongraphe.graphui.rendering.GraphEngine;
 
 import javafx.fxml.FXML;

@@ -1,8 +1,8 @@
 package com.mongraphe.graphui.rendering;
 
-import com.mongraphe.graphui.Edge;
-import com.mongraphe.graphui.Vertex;
+import com.mongraphe.graphui.model.Edge;
 import com.mongraphe.graphui.model.GraphModel;
+import com.mongraphe.graphui.model.Vertex;
 
 public class GraphVisibilityFilter {
 
