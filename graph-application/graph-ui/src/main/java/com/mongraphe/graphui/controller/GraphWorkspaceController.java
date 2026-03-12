@@ -36,7 +36,6 @@ public final class GraphWorkspaceController
     }
 
     private void showTooltip(Control control, String message) {
-
         Tooltip tooltip = new Tooltip(message);
         tooltip.setAutoHide(true);
 
@@ -45,9 +44,13 @@ public final class GraphWorkspaceController
                 control.localToScreen(0, 0).getX(),
                 control.localToScreen(0, 0).getY() - 30);
 
-        // fermeture automatique après 2 secondes
-        new javafx.animation.PauseTransition(javafx.util.Duration.seconds(2))
-                .setOnFinished(e -> tooltip.hide());
+        // Ajouter une bordure rouge
+        control.setStyle("-fx-border-color: red; -fx-border-width: 2px;");
+
+        // Fermer le tooltip et enlever la bordure après 2 secondes
+        javafx.animation.PauseTransition delay = new javafx.animation.PauseTransition(javafx.util.Duration.seconds(2));
+        delay.setOnFinished(e -> control.setStyle(""));
+        delay.play();
     }
 
     @FXML
