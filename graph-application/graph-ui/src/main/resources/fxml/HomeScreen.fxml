@@ -6,7 +6,7 @@
 
 <VBox xmlns="http://javafx.com/javafx/8.0.171"
       xmlns:fx="http://javafx.com/fxml/1"
-      fx:controller="com.mongraphe.graphui.HomeScreenController"
+      fx:controller="com.mongraphe.graphui.controller.HomeScreenController"
       stylesheets="@styles/future.css"
       styleClass="app-root"
       spacing="15" style="-fx-padding: 20px;">
