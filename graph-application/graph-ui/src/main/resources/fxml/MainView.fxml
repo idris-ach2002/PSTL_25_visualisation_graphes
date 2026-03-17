@@ -39,10 +39,10 @@
                 </fx:define>
 
                 <Label text="Outils:"/>
-                <ToggleButton fx:id="toolRun" text="Run" toggleGroup="$toolToggleGroup" userData="RUN" selected="true"/>
-                <ToggleButton fx:id="toolSelect" text="Select" toggleGroup="$toolToggleGroup" userData="SELECT"/>
-                <ToggleButton fx:id="toolMove" text="Move" toggleGroup="$toolToggleGroup" userData="MOVE"/>
-                <ToggleButton fx:id="toolDelete" text="Delete" toggleGroup="$toolToggleGroup" userData="DELETE"/>
+                <ToggleButton text="Run" toggleGroup="$toolToggleGroup" userData="RUN" selected="true"/>
+                <ToggleButton text="Select" toggleGroup="$toolToggleGroup" userData="SELECT"/>
+                <ToggleButton text="Move" toggleGroup="$toolToggleGroup" userData="MOVE"/>
+                <ToggleButton text="Delete" toggleGroup="$toolToggleGroup" userData="DELETE"/>
             </HBox>
         </VBox>
     </top>
@@ -65,52 +65,7 @@
                 </center>
 
                 <right>
-                    <VBox fx:id="statsPane" spacing="8" style="-fx-padding: 10; -fx-border-color: lightgray; -fx-border-width: 0 0 0 1;" prefWidth="280">
-                        <Label text="Statistiques" style="-fx-font-size: 15; -fx-font-weight: bold;"/>
-
-                        <GridPane hgap="8" vgap="4">
-                            <Label text="Nœuds affichés:" GridPane.rowIndex="0" GridPane.columnIndex="0"/>
-                            <Label fx:id="nodesDisplayedLabel" text="0" GridPane.rowIndex="0" GridPane.columnIndex="1"/>
-
-                            <Label text="Nœuds cachés:" GridPane.rowIndex="1" GridPane.columnIndex="0"/>
-                            <Label fx:id="nodesHiddenLabel" text="0" GridPane.rowIndex="1" GridPane.columnIndex="1"/>
-
-                            <Label text="Nœuds supprimés:" GridPane.rowIndex="2" GridPane.columnIndex="0"/>
-                            <Label fx:id="nodesDeletedLabel" text="0" GridPane.rowIndex="2" GridPane.columnIndex="1"/>
-
-                            <Label text="Arêtes affichées:" GridPane.rowIndex="3" GridPane.columnIndex="0"/>
-                            <Label fx:id="edgesDisplayedLabel" text="0" GridPane.rowIndex="3" GridPane.columnIndex="1"/>
-
-                            <Label text="Arêtes cachées:" GridPane.rowIndex="4" GridPane.columnIndex="0"/>
-                            <Label fx:id="edgesHiddenLabel" text="0" GridPane.rowIndex="4" GridPane.columnIndex="1"/>
-
-                            <Label text="Total éléments:" GridPane.rowIndex="5" GridPane.columnIndex="0"/>
-                            <Label fx:id="totalElementsLabel" text="0" GridPane.rowIndex="5" GridPane.columnIndex="1"/>
-                        </GridPane>
-
-                        <Separator/>
-                        <Label text="Seuils" style="-fx-font-weight: bold;"/>
-                        <GridPane hgap="8" vgap="4">
-                            <Label text="Seuil conseillé:" GridPane.rowIndex="0" GridPane.columnIndex="0"/>
-                            <Label fx:id="recommendedThresholdLabel" text="-" GridPane.rowIndex="0" GridPane.columnIndex="1"/>
-
-                            <Label text="Anti-seuil conseillé:" GridPane.rowIndex="1" GridPane.columnIndex="0"/>
-                            <Label fx:id="recommendedAntiThresholdLabel" text="-" GridPane.rowIndex="1" GridPane.columnIndex="1"/>
-                        </GridPane>
-
-                        <Separator/>
-                        <Label text="Sélection" style="-fx-font-weight: bold;"/>
-                        <GridPane hgap="8" vgap="4">
-                            <Label text="ID:" GridPane.rowIndex="0" GridPane.columnIndex="0"/>
-                            <Label fx:id="selectedVertexIdLabel" text="-" GridPane.rowIndex="0" GridPane.columnIndex="1"/>
-
-                            <Label text="X:" GridPane.rowIndex="1" GridPane.columnIndex="0"/>
-                            <Label fx:id="selectedVertexXLabel" text="-" GridPane.rowIndex="1" GridPane.columnIndex="1"/>
-
-                            <Label text="Y:" GridPane.rowIndex="2" GridPane.columnIndex="0"/>
-                            <Label fx:id="selectedVertexYLabel" text="-" GridPane.rowIndex="2" GridPane.columnIndex="1"/>
-                        </GridPane>
-                    </VBox>
+                    <fx:include source="GraphStats.fxml" fx:id="graphStats" visible="true"/>
                 </right>
             </BorderPane>
 
