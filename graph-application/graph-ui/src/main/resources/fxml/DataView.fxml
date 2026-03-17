@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.layout.*?>
+<?import javafx.scene.control.*?>
+
+<BorderPane xmlns="http://javafx.com/javafx/8"
+            xmlns:fx="http://javafx.com/fxml/1"
+            fx:controller="com.mongraphe.graphui.controller.DataController">
+
+    <top>
+        <HBox spacing="10" style="-fx-padding: 8;">
+            <Label text="Données du Graphe"
+                   style="-fx-font-size: 16; -fx-font-weight: bold;"/>
+            <Region HBox.hgrow="ALWAYS"/>
+            <Label text="Total éléments:"/>
+            <Label fx:id="totalElementsLabel" text="0"/>
+            <Label text="Nombre de noeuds affichés:"/>
+            <Label fx:id="nodesDisplayedLabel"/>
+            <Label text="Nombre d'arêtes affichés:"/>
+            <Label fx:id="edgesDisplayedLabel"/>
+        </HBox>
+    </top>
+
+    <center>
+        <TabPane>
+
+            <!-- Vertex -->
+            <Tab text="Sommets" closable="false">
+                <BorderPane>
+                    <top>
+                        <HBox spacing="5" style="-fx-padding: 5;">
+                            <Label text="Page :"/>
+                            <TextField fx:id="vertexPageField" prefWidth="50"/>
+                        </HBox>
+                    </top>
+                    <center>
+                        <Pagination fx:id="vertexPagination"/>
+                    </center>
+                </BorderPane>
+            </Tab>
+
+            <!-- Edge -->
+            <Tab text="Arêtes" closable="false">
+                <BorderPane>
+                    <top>
+                        <HBox spacing="5" style="-fx-padding: 5;">
+                            <Label text="Page :"/>
+                            <TextField fx:id="edgePageField" prefWidth="50"/>
+                        </HBox>
+                    </top>
+                    <center>
+                        <Pagination fx:id="edgePagination"/>
+                    </center>
+                </BorderPane>
+            </Tab>
+
+        </TabPane>
+    </center>
+
+</BorderPane>

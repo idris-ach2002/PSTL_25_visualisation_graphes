@@ -6,11 +6,11 @@
 
 <VBox xmlns="http://javafx.com/javafx/8.0.171"
       xmlns:fx="http://javafx.com/fxml/1"
-      fx:controller="com.mongraphe.graphui.HomeScreenController"
-      stylesheets="@styles/future.css"
+      fx:controller="com.mongraphe.graphui.controller.HomeScreenController"
+      stylesheets="@../styles/future.css"
       styleClass="app-root"
       spacing="15" style="-fx-padding: 20px;">
-      
+
     <Label text="Bienvenue dans MonGraphe" styleClass="accent" style="-fx-font-size: 18px; -fx-font-weight: bold;" />
 
     <VBox spacing="8" styleClass="dock">
@@ -20,10 +20,8 @@
 
     <VBox spacing="8" styleClass="dock">
         <Label text="Exemples" styleClass="dock-title" />
-        <Hyperlink text="Les Miserables.gexf" fx:id="example1"/>
-        <Hyperlink text="Java.gexf" fx:id="example2"/>
-        <Hyperlink text="Power Grid.gml" fx:id="example3"/>
-        <Hyperlink text="US Airports.gexf" fx:id="example4"/>
+        <Hyperlink text="iris.csv" fx:id="example1"/>
+        <Hyperlink text="predicancerNUadd9239.csv" fx:id="example2"/>
     </VBox>
 
     <CheckBox text="Ouvrir au démarrage" fx:id="openAtStartup" selected="true"/>

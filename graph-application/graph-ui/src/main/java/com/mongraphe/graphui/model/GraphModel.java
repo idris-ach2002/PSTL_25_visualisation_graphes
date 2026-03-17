@@ -1,17 +1,12 @@
 package com.mongraphe.graphui.model;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
-
-import com.mongraphe.graphui.Edge;
-import com.mongraphe.graphui.EdgeC;
-import com.mongraphe.graphui.Vertex;
+import java.util.Map;
 
 public class GraphModel {
 
-    /**
-     * Mode de coloration des nœuds (Appearance).
-     */
     public enum ColoringMode {
         COMMUNITY,
         DEGREE,
@@ -20,25 +15,11 @@ public class GraphModel {
 
     private final Object mutex = new Object();
 
-    public Object mutex() { return mutex; }
-
-
     private double zoom = 1.0;
-
-    // =========================
-    // === Selection
-    // =========================
     private int selectedVertexId = -1;
-
-    // =========================
-    // === Filters (Gephi-like)
-    // =========================
     private int filterMinDegree = 0;
     private double filterMinEdgeWeight = 0.0;
 
-    // =========================
-    // === Appearance
-    // =========================
     private float uniformNodeR = 0.82f;
     private float uniformNodeG = 0.82f;
     private float uniformNodeB = 0.86f;
@@ -46,50 +27,26 @@ public class GraphModel {
     private ColoringMode coloringMode = ColoringMode.COMMUNITY;
     private final List<Vertex> vertices = new ArrayList<>();
     private final List<Edge> edges = new ArrayList<>();
+    private final Map<Integer, Vertex> verticesById = new HashMap<>();
 
     private int visibleVertexCount;
     private int visibleEdgeCount;
     private int maxDegree = 1;
 
-    public void setZoom(double z) {
-        this.zoom = z;
-    }
-
-    public double getZoom() {
-        return zoom;
-    }
-
-    public int getSelectedVertexId() {
-        return selectedVertexId;
-    }
-
-    public void setSelectedVertexId(int id) {
-        this.selectedVertexId = id;
-    }
-
-    public ColoringMode getColoringMode() {
-        return coloringMode;
-    }
-
-    public void setColoringMode(ColoringMode mode) {
-        this.coloringMode = (mode == null) ? ColoringMode.COMMUNITY : mode;
-    }
-
-    public int getMaxDegree() {
-        return maxDegree;
-    }
-
-    public int getFilterMinDegree() {
-        return filterMinDegree;
-    }
+    public Object mutex() { return mutex; }
+    public void setZoom(double z) { this.zoom = z; }
+    public double getZoom() { return zoom; }
+    public int getSelectedVertexId() { return selectedVertexId; }
+    public void setSelectedVertexId(int id) { this.selectedVertexId = id; }
+    public ColoringMode getColoringMode() { return coloringMode; }
+    public void setColoringMode(ColoringMode mode) { this.coloringMode = mode == null ? ColoringMode.COMMUNITY : mode; }
+    public int getMaxDegree() { return maxDegree; }
+    public int getFilterMinDegree() { return filterMinDegree; }
+    public double getFilterMinEdgeWeight() { return filterMinEdgeWeight; }
 
     public void setFilterMinDegree(int minDegree) {
         this.filterMinDegree = Math.max(0, minDegree);
         applyFilters();
-    }
-
-    public double getFilterMinEdgeWeight() {
-        return filterMinEdgeWeight;
     }
 
     public void setFilterMinEdgeWeight(double minEdgeWeight) {
@@ -107,19 +64,15 @@ public class GraphModel {
     public float getUniformNodeG() { return uniformNodeG; }
     public float getUniformNodeB() { return uniformNodeB; }
 
-    private static float clamp01(float v) {
-        return Math.max(0f, Math.min(1f, v));
-    }
+    private static float clamp01(float v) { return Math.max(0f, Math.min(1f, v)); }
 
     public Vertex findVertexAt(double x, double y) {
         for (Vertex v : vertices) {
-            if (v.isDeleted()) continue;
-
+            if (v.isDeleted() || !v.isVisible()) continue;
             double dx = x - v.getX();
             double dy = y - v.getY();
             double dist = Math.sqrt(dx * dx + dy * dy);
             double r = (v.getDiameter() / 2.0) / zoom;
-
             if (dist <= r) return v;
         }
         return null;
@@ -127,23 +80,18 @@ public class GraphModel {
 
     public void buildFromData(Vertex[] verticesArray, EdgeC[] edgesArray) {
         clear();
-
-        for (Vertex v : verticesArray) {
-            addVertex(v);
-        }
-
+        for (Vertex v : verticesArray) addVertex(v);
         for (EdgeC ec : edgesArray) {
             Vertex start = vertices.get(ec.getStart());
             Vertex end = vertices.get(ec.getEnd());
-            Edge e = new Edge(start, end, ec.getWeight());
-            addEdge(e);
+            addEdge(new Edge(start, end, ec.getWeight()));
         }
-
         applyFilters();
     }
 
     public void updateVertexPositions(Vertex[] verticesArray) {
-        for (int i = 0; i < vertices.size(); i++) {
+        int limit = Math.min(vertices.size(), verticesArray.length);
+        for (int i = 0; i < limit; i++) {
             Vertex v = vertices.get(i);
             Vertex newV = verticesArray[i];
             v.updatePosition(newV.getX(), newV.getY());
@@ -151,32 +99,22 @@ public class GraphModel {
         applyFilters();
     }
 
-    public List<Edge> edges() {
-        return edges;
-    }
-
-    public List<Vertex> vertices() {
-        return vertices;
-    }
-
-    public int vertexCount() {
-        return vertices.size();
-    }
-
-    public int edgeCount() {
-        return edges.size();
-    }
+    public List<Edge> edges() { return edges; }
+    public List<Vertex> vertices() { return vertices; }
+    public int vertexCount() { return vertices.size(); }
+    public int edgeCount() { return edges.size(); }
 
     public void addVertex(Vertex v) {
         vertices.add(v);
+        verticesById.put(v.getId(), v);
     }
 
-    public void addEdge(Edge e) {
-        edges.add(e);
-    }
+    public Vertex vertexById(int id) { return verticesById.get(id); }
+    public void addEdge(Edge e) { edges.add(e); }
 
     public void removeVertex(Vertex v) {
         vertices.remove(v);
+        verticesById.remove(v.getId());
         edges.removeIf(e -> e.getStart() == v || e.getEnd() == v);
         applyFilters();
     }
@@ -184,15 +122,14 @@ public class GraphModel {
     public void clear() {
         vertices.clear();
         edges.clear();
+        verticesById.clear();
+        selectedVertexId = -1;
+        visibleVertexCount = 0;
+        visibleEdgeCount = 0;
+        maxDegree = 1;
     }
 
-    /**
-     * Applique les filtres "min degree" et "min edge weight" sur le modèle.
-     *
-     * On évite de supprimer physiquement les objets pour préserver les index / ids.
-     */
     public void applyFilters() {
-        // Sommets: visible si non supprimé et degree >= min
         for (Vertex v : vertices) {
             if (v.isDeleted()) {
                 v.setVisible(false);
@@ -201,7 +138,6 @@ public class GraphModel {
             v.setVisible(v.getDegree() >= filterMinDegree);
         }
 
-        // Arêtes: visible si poids >= min et endpoints visibles
         for (Edge e : edges) {
             boolean endpointsOk = e.getStart().isVisible() && e.getEnd().isVisible();
             boolean wOk = e.getWeight() >= filterMinEdgeWeight;
@@ -217,27 +153,23 @@ public class GraphModel {
         maxDegree = 1;
 
         for (Vertex v : vertices) {
-            if (!v.isDeleted() && v.isVisible())
-                visibleVertexCount++;
+            if (!v.isDeleted() && v.isVisible()) visibleVertexCount++;
             maxDegree = Math.max(maxDegree, v.getDegree());
         }
 
         for (Edge e : edges) {
-            if (e.isVisible())
-                visibleEdgeCount++;
+            if (e.isVisible()) visibleEdgeCount++;
         }
     }
 
-    public int getVisibleVertexCount() {
-        return visibleVertexCount;
-    }
-
-    public int getVisibleEdgeCount() {
-        return visibleEdgeCount;
-    }
+    public int getVisibleVertexCount() { return visibleVertexCount; }
+    public int getVisibleEdgeCount() { return visibleEdgeCount; }
 
     public void deleteVertex(Vertex v) {
         v.delete();
+        if (selectedVertexId == v.getId()) {
+            selectedVertexId = -1;
+        }
         applyFilters();
     }
 }

@@ -2,7 +2,6 @@ CC := gcc
 CSTD := -std=c11
 UNAME_S := $(shell uname -s)
 
-# Extension selon OS (pour simplifier le chargement de la librairie en Java)
 ifeq ($(UNAME_S),Linux)
     EXT := so
     JNI_OS := linux
@@ -15,12 +14,10 @@ else
 endif
 
 ifeq ($(OS),Windows_NT)
-    # Windows : on prend JAVA_HOME s'il est défini
     ifndef JAVA_HOME
         $(error "Please set JAVA_HOME environment variable on Windows")
     endif
 else
-    # Linux / macOS : on peut détecter java dans le PATH
     ifndef JAVA_HOME
         JAVA_BIN := $(shell which java)
         ifeq ($(JAVA_BIN),)
@@ -32,10 +29,12 @@ endif
 
 JNI_INC := -I$(JAVA_HOME)/include -I$(JAVA_HOME)/include/$(JNI_OS)
 
-JNI_INC := -I$(JAVA_HOME)/include -I$(JAVA_HOME)/include/$(JNI_OS)
-
 SRC_DIR := c
 OUT_DIR := out
+OUT_OS_DIR := $(OUT_DIR)/$(JNI_OS)
+
+TEST_SRC := c/tests/test_engine.c c/tests/test_utils.c
+TEST_BIN := $(OUT_DIR)/test_engine
 
 SRC := \
     $(wildcard $(SRC_DIR)/c_graph/*.c) \
@@ -45,24 +44,36 @@ SRC := \
     $(SRC_DIR)/forceatlasV4_CSV.c
 
 OBJ := $(patsubst $(SRC_DIR)/%.c,$(OUT_DIR)/%.o,$(SRC))
-
 LIB := $(OUT_DIR)/libnative.$(EXT)
+LIB_OS := $(OUT_OS_DIR)/libnative.$(EXT)
 
 CFLAGS := -Wall -Wextra -O2 -fPIC $(CSTD) $(COMPILER_FLAGS) $(JNI_INC)
+LDFLAGS := -lm
 
-all: $(LIB)
+.PHONY: all test clean
+all: $(LIB) $(LIB_OS)
+
+test: $(TEST_BIN)
+	@echo "Running tests"
+	$(TEST_BIN) c/tests/graphs/triangle.dot
 
 $(LIB): $(OBJ)
 	@echo "🔗 Linking $@"
 	@mkdir -p $(dir $@)
-	$(CC) -shared $^ -o $@
+	$(CC) -shared $^ -o $@ $(LDFLAGS)
+
+$(LIB_OS): $(LIB)
+	@mkdir -p $(dir $@)
+	cp $(LIB) $(LIB_OS)
 
 $(OUT_DIR)/%.o: $(SRC_DIR)/%.c
 	@echo "⚙️  $<"
 	@mkdir -p $(dir $@)
 	$(CC) $(CFLAGS) -c $< -o $@
 
+$(TEST_BIN): $(OBJ) $(TEST_SRC)
+	@echo "🧪 Building test binary"
+	$(CC) $(CFLAGS) $^ $(LDFLAGS) -o $@
+
 clean:
 	rm -rf out
-
-.PHONY: all clean

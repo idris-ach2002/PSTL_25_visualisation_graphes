@@ -2,6 +2,8 @@ package com.mongraphe.graphui.rendering;
 
 import java.nio.FloatBuffer;
 
+import com.jogamp.common.nio.Buffers;
+
 public final class Camera2D {
 
     private float zoom = 1f;
@@ -11,7 +13,11 @@ public final class Camera2D {
     private int width = 1;
     private int height = 1;
 
-    private final FloatBuffer projection = FloatBuffer.allocate(16);
+    private final FloatBuffer bufferA = Buffers.newDirectFloatBuffer(16);
+    private final FloatBuffer bufferB = Buffers.newDirectFloatBuffer(16);
+
+    private volatile FloatBuffer projection = bufferA;
+    private FloatBuffer writeBuffer = bufferB;
 
     public void resize(int w, int h) {
         width = Math.max(1, w);
@@ -19,8 +25,9 @@ public final class Camera2D {
         updateProjection();
     }
 
-    public void zoomAt(float amount) {
-        zoom *= (amount > 0) ? 1.1f : 0.9f;
+    public void pan(float dx, float dy) {
+        offsetX -= dx / zoom;
+        offsetY += dy / zoom;
         updateProjection();
     }
 
@@ -37,15 +44,11 @@ public final class Camera2D {
         updateProjection();
     }
 
-    public void pan(float dx, float dy) {
-        offsetX -= dx / zoom;
-        offsetY += dy / zoom;
+    public void setZoom(float zoom) {
+        this.zoom = zoom;
         updateProjection();
     }
 
-    /**
-     * Réinitialise le cadrage (zoom/pan).
-     */
     public void reset() {
         zoom = 1f;
         offsetX = 0f;
@@ -72,19 +75,16 @@ public final class Camera2D {
                 0, 1
         };
 
-        projection.clear();
-        projection.put(ortho).flip();
+        writeBuffer.clear();
+        writeBuffer.put(ortho).flip();
+
+        FloatBuffer oldRead = projection;
+        projection = writeBuffer;
+        writeBuffer = oldRead;
     }
 
     public FloatBuffer getProjection() {
         return projection;
-    }
-
-    /**
-     * Zoom courant (1.0 = neutre). Utile pour la sélection sous zoom.
-     */
-    public float getZoom() {
-        return zoom;
     }
 
     public float screenToWorldX(float screenX) {
@@ -93,5 +93,9 @@ public final class Camera2D {
 
     public float screenToWorldY(float screenY) {
         return (height / 2f - screenY) / zoom + offsetY;
+    }
+
+    public float getZoom() {
+        return zoom;
     }
 }

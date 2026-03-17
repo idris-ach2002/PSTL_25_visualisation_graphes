@@ -1,0 +1,76 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.layout.*?>
+<?import javafx.scene.control.*?>
+
+<VBox xmlns="http://javafx.com/javafx/8"
+  xmlns:fx="http://javafx.com/fxml/1"
+  fx:controller="com.mongraphe.graphui.controller.EngineOptionsController"
+  spacing="8"
+  styleClass="dock"
+  style="-fx-padding: 10;">
+
+  <Label text="Paramètres du graphe" style="-fx-font-weight: bold; -fx-padding: 10 0 0 0;" />
+  <GridPane hgap="10" vgap="5">
+    <Label text="Taille d'un noeud:" GridPane.rowIndex="0" GridPane.columnIndex="0" />
+    <TextField fx:id="initNodeSize" GridPane.rowIndex="0" GridPane.columnIndex="1" text="3" />
+
+    <Label text="Agrandissement par degré:" GridPane.rowIndex="1" GridPane.columnIndex="0" />
+    <TextField fx:id="degreeFactor" GridPane.rowIndex="1" GridPane.columnIndex="1" text="0.3" />
+
+    <Label text="Agrandissement total:" GridPane.rowIndex="2" GridPane.columnIndex="0" />
+    <TextField fx:id="upScale" GridPane.rowIndex="2" GridPane.columnIndex="1" text="5" />
+
+    <Label text="Seuil de stabilité:" GridPane.rowIndex="3" GridPane.columnIndex="0" />
+    <TextField fx:id="stabilizedThreshold" promptText="auto" GridPane.rowIndex="3" GridPane.columnIndex="1" />
+
+    <Label text="Seuil d'attraction:" GridPane.rowIndex="4" GridPane.columnIndex="0" />
+    <TextField fx:id="attractionThreshold" promptText="auto" GridPane.rowIndex="4" GridPane.columnIndex="1" />
+
+    <Label text="Fréquence des clusters:" GridPane.rowIndex="5" GridPane.columnIndex="0" />
+    <TextField fx:id="updatedFrequence" text="1" GridPane.rowIndex="5" GridPane.columnIndex="1" />
+
+    <Label text="Friction:" GridPane.rowIndex="6" GridPane.columnIndex="0" />
+    <TextField fx:id="newFriction" promptText="auto" GridPane.rowIndex="6" GridPane.columnIndex="1" />
+
+    <Label text="Coefficient d'attraction:" GridPane.rowIndex="7" GridPane.columnIndex="0" />
+    <TextField fx:id="attractionCoefficient" promptText="auto" GridPane.rowIndex="7" GridPane.columnIndex="1" />
+
+    <Label text="Seuil de répulsion:" GridPane.rowIndex="8" GridPane.columnIndex="0" />
+    <TextField fx:id="repulsionThreshold" promptText="auto" GridPane.rowIndex="8" GridPane.columnIndex="1" />
+
+    <Label text="Amortissement:" GridPane.rowIndex="9" GridPane.columnIndex="0" />
+    <TextField fx:id="newAmortissement" promptText="auto" GridPane.rowIndex="9" GridPane.columnIndex="1" />
+
+    <Label text="Nombre de clusters:" GridPane.rowIndex="10" GridPane.columnIndex="0" />
+    <TextField fx:id="nbClusters" promptText="désactivé" GridPane.rowIndex="10" GridPane.columnIndex="1" />
+
+    <Label text="Degré minimum:" GridPane.rowIndex="11" GridPane.columnIndex="0" />
+    <TextField fx:id="minimumDegree" text="0" GridPane.rowIndex="11" GridPane.columnIndex="1" />
+
+    <Label text="Poids min arêtes:" GridPane.rowIndex="12" GridPane.columnIndex="0" />
+    <TextField fx:id="minEdgeWeight" text="0" GridPane.rowIndex="12" GridPane.columnIndex="1" />
+
+    <Label text="Mode de répulsion:" GridPane.rowIndex="13" GridPane.columnIndex="0" />
+    <ComboBox fx:id="repulsionModeComboBox" prefWidth="200" GridPane.rowIndex="13" GridPane.columnIndex="1"/>
+  </GridPane>
+
+  <Separator/>
+  <Label text="Apparence" style="-fx-font-weight: bold;"/>
+  <GridPane hgap="10" vgap="5">
+    <Label text="Couleur du canvas:" GridPane.rowIndex="0" GridPane.columnIndex="0" />
+    <ColorPicker fx:id="canvasColorPicker" GridPane.rowIndex="0" GridPane.columnIndex="1" />
+
+    <Label text="Coloration des nœuds:" GridPane.rowIndex="1" GridPane.columnIndex="0" />
+    <ComboBox fx:id="coloringModeCombo" prefWidth="200" GridPane.rowIndex="1" GridPane.columnIndex="1"/>
+
+    <Label text="Couleur uniforme:" GridPane.rowIndex="2" GridPane.columnIndex="0" />
+    <ColorPicker fx:id="uniformNodeColorPicker" GridPane.rowIndex="2" GridPane.columnIndex="1" />
+  </GridPane>
+
+  <CheckBox fx:id="enableKmeans" text="Activer K-Means"/>
+
+  <HBox spacing="8" alignment="CENTER_RIGHT">
+    <Button text="Appliquer" onAction="#applyOptions" styleClass="button-8"/>
+  </HBox>
+</VBox>

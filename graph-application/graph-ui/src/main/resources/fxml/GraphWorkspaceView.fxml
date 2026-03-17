@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.layout.*?>
+<?import javafx.scene.control.*?>
+
+<VBox xmlns="http://javafx.com/javafx/8"
+      xmlns:fx="http://javafx.com/fxml/1"
+      fx:controller="com.mongraphe.graphui.controller.GraphWorkspaceController"
+      spacing="10"
+      styleClass="dock"
+      style="-fx-padding: 10;">
+
+    <HBox spacing="5">
+        <Label text="Configuration projet" style="-fx-font-weight: bold;"/>
+        <Region HBox.hgrow="ALWAYS"/>
+        <Button text="▶ Démarrer" onAction="#handleStartButton"/>
+    </HBox>
+
+    <Label text="Mesure de similarité"/>
+    <ComboBox fx:id="similarityCombo" prefWidth="220"/>
+
+    <Label text="Mode de communauté"/>
+    <ComboBox fx:id="communityCombo" prefWidth="220"/>
+
+    <Label text="Méthode de répulsion"/>
+    <ComboBox fx:id="repulsionCombo" prefWidth="220"/>
+
+</VBox>

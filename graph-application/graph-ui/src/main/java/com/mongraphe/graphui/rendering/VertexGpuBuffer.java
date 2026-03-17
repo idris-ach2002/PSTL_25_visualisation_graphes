@@ -3,9 +3,9 @@ package com.mongraphe.graphui.rendering;
 import java.nio.FloatBuffer;
 
 import com.jogamp.opengl.GL4;
-import com.mongraphe.graphui.Community;
-import com.mongraphe.graphui.Vertex;
+import com.mongraphe.graphui.model.Community;
 import com.mongraphe.graphui.model.GraphModel;
+import com.mongraphe.graphui.model.Vertex;
 import com.mongraphe.graphui.model.GraphModel.ColoringMode;
 
 /**

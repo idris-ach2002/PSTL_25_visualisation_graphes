@@ -1,74 +1,216 @@
 package com.mongraphe.graphui.rendering;
 
-import com.mongraphe.graphui.EdgeC;
-import com.mongraphe.graphui.GraphData;
-import com.mongraphe.graphui.Metadata;
-import com.mongraphe.graphui.Vertex;
+import java.io.File;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.util.ArrayList;
+import java.util.LinkedHashSet;
+import java.util.List;
+import java.util.Locale;
+import java.util.Set;
+
+import com.mongraphe.graphui.model.EdgeC;
+import com.mongraphe.graphui.model.GraphData;
+import com.mongraphe.graphui.model.Metadata;
+import com.mongraphe.graphui.model.Vertex;
 
 /**
- * Classe centrale pour interfacer avec le moteur natif C.
- * Toutes les fonctions JNI sont regroupées ici.
+ * Pont JNI avec le moteur natif C.
+ *
+ * La bibliothèque n'est pas chargée dans un bloc statique pour éviter de
+ * faire échouer brutalement tout le chargement FXML avec un
+ * ExceptionInInitializerError. On charge explicitement la librairie au moment
+ * de construire le moteur, avec plusieurs chemins de repli et un message clair.
  */
-public class GraphNativeEngine {
+public final class GraphNativeEngine {
 
-    private Metadata metadata;        // Metadata du graphe courant
-    private Metadata init_metadata;   // Metadata après le calcul des seuils
+    private static final String LIB_BASENAME = "native";
 
-    static {
-        System.loadLibrary("native"); // Charger la bibliothèque native "libnative"
+    private static volatile boolean nativeLoaded;
+    private static volatile String loadedFrom;
+    private static volatile Throwable nativeLoadError;
+
+    private Metadata metadata;
+    private Metadata initMetadata;
+
+    public GraphNativeEngine() {
+        ensureNativeLoaded();
+    }
+
+    public static boolean isNativeLoaded() {
+        return nativeLoaded;
+    }
+
+    public static String getLoadedFrom() {
+        return loadedFrom;
+    }
+
+    public static String getNativeLoadErrorMessage() {
+        if (nativeLoadError == null) {
+            return null;
+        }
+        String message = nativeLoadError.getMessage();
+        return message == null || message.isBlank() ? nativeLoadError.toString() : message;
+    }
+
+    public static synchronized void ensureNativeLoaded() {
+        if (nativeLoaded) {
+            return;
+        }
+        if (nativeLoadError != null) {
+            throw nativeLoadException(nativeLoadError);
+        }
+
+        Throwable lastError = null;
+
+        for (Path candidate : nativeCandidates()) {
+            try {
+                if (candidate != null && Files.isRegularFile(candidate)) {
+                    System.load(candidate.toAbsolutePath().normalize().toString());
+                    nativeLoaded = true;
+                    loadedFrom = candidate.toAbsolutePath().normalize().toString();
+                    nativeLoadError = null;
+                    return;
+                }
+            } catch (Throwable t) {
+                lastError = t;
+            }
+        }
+
+        try {
+            System.loadLibrary(LIB_BASENAME);
+            nativeLoaded = true;
+            loadedFrom = "java.library.path";
+            nativeLoadError = null;
+            return;
+        } catch (Throwable t) {
+            lastError = t;
+        }
+
+        nativeLoadError = lastError == null ? new UnsatisfiedLinkError("Impossible de charger la bibliothèque native") : lastError;
+        throw nativeLoadException(nativeLoadError);
+    }
+
+    private static UnsatisfiedLinkError nativeLoadException(Throwable cause) {
+        StringBuilder sb = new StringBuilder();
+        sb.append("Impossible de charger la bibliothèque native 'lib")
+          .append(LIB_BASENAME)
+          .append(nativeFileExtension())
+          .append("'.\n")
+          .append("Chemins essayés :\n");
+        for (Path candidate : nativeCandidates()) {
+            sb.append(" - ").append(candidate.toAbsolutePath().normalize()).append('\n');
+        }
+        String libPath = System.getProperty("java.library.path", "");
+        if (!libPath.isBlank()) {
+            sb.append("java.library.path = ").append(libPath).append('\n');
+        }
+        sb.append("Construis d'abord la librairie avec : cd graph-native && make");
+
+        UnsatisfiedLinkError err = new UnsatisfiedLinkError(sb.toString());
+        if (cause != null) {
+            err.initCause(cause);
+        }
+        return err;
+    }
+
+    private static List<Path> nativeCandidates() {
+        Set<Path> candidates = new LinkedHashSet<>();
+        String ext = nativeFileExtension();
+        Path cwd = Paths.get("").toAbsolutePath().normalize();
+
+        addIfPresent(candidates, System.getProperty("mongraphe.native.path"));
+        addIfPresent(candidates, System.getProperty("graph.native.path"));
+
+        candidates.add(cwd.resolve("../graph-native/out/lib" + LIB_BASENAME + ext));
+        candidates.add(cwd.resolve("graph-native/out/lib" + LIB_BASENAME + ext));
+        candidates.add(cwd.resolve("../graph-native/out/linux/lib" + LIB_BASENAME + ext));
+        candidates.add(cwd.resolve("graph-native/out/linux/lib" + LIB_BASENAME + ext));
+        candidates.add(cwd.resolve("out/lib" + LIB_BASENAME + ext));
+        candidates.add(cwd.resolve("out/linux/lib" + LIB_BASENAME + ext));
+
+        String libraryPath = System.getProperty("java.library.path", "");
+        if (!libraryPath.isBlank()) {
+            for (String token : libraryPath.split(File.pathSeparator)) {
+                if (token == null || token.isBlank()) {
+                    continue;
+                }
+                Path dir = Paths.get(token.trim());
+                candidates.add(dir.resolve("lib" + LIB_BASENAME + ext));
+                candidates.add(dir.resolve(LIB_BASENAME + ext));
+            }
+        }
+
+        return new ArrayList<>(candidates);
+    }
+
+    private static void addIfPresent(Set<Path> candidates, String rawPath) {
+        if (rawPath == null || rawPath.isBlank()) {
+            return;
+        }
+        candidates.add(Paths.get(rawPath.trim()));
+    }
+
+    private static String nativeFileExtension() {
+        String os = System.getProperty("os.name", "").toLowerCase(Locale.ROOT);
+        if (os.contains("win")) {
+            return ".dll";
+        }
+        if (os.contains("mac") || os.contains("darwin")) {
+            return ".dylib";
+        }
+        return ".so";
     }
 
     public double[][] initGraph(String path, GraphData.SimilitudeMode sim, GraphData.NodeCommunity community) {
-        if (path == null || path.isEmpty())
-            throw new RuntimeException("initGraph : Chemin du fichier non spécifié.");
+        if (path == null || path.isBlank()) {
+            throw new IllegalArgumentException("initGraph: chemin du fichier non spécifié.");
+        }
 
         double[][] csvData = startsProgram(path);
-
         int modeSimilitude = getModeSimilitude(sim);
-        init_metadata = computeThreshold(modeSimilitude, 50); // edge_factor = 50
-        if (init_metadata == null)
-            throw new RuntimeException("initGraph : Erreur lors du calcul des seuils.");
+        initMetadata = computeThreshold(modeSimilitude, 50);
+        if (initMetadata == null) {
+            throw new IllegalStateException("initGraph: impossible de calculer les seuils.");
+        }
 
-        double threshold = init_metadata.getEdgeThreshold();
-        double antiThreshold = init_metadata.getAntiThreshold();
-        System.out.println("Seuil recommandé : " + threshold + ", Anti-seuil : " + antiThreshold);
-
-        int modeCommunity = getModeCommunity(community);
-        metadata = initializeGraph(modeCommunity, threshold, antiThreshold);
-
+        double threshold = initMetadata.getEdgeThreshold();
+        double antiThreshold = initMetadata.getAntiThreshold();
+        metadata = initializeGraph(getModeCommunity(community), threshold, antiThreshold);
         return csvData;
     }
 
     public double[][] initGraphCsv(String path, GraphData.SimilitudeMode sim, GraphData.NodeCommunity community) {
-        if (path == null || path.isEmpty())
-            throw new RuntimeException("initGraphCsv : Chemin du fichier non spécifié.");
+        if (path == null || path.isBlank()) {
+            throw new IllegalArgumentException("initGraphCsv: chemin du fichier non spécifié.");
+        }
 
         double[][] csvData = startsProgram(path);
-
         int modeSimilitude = getModeSimilitude(sim);
-        init_metadata = computeThreshold(modeSimilitude, 5); // edge_factor = 5 pour CSV
-        if (init_metadata == null)
-            throw new RuntimeException("initGraphCsv : Erreur lors du calcul des seuils.");
+        initMetadata = computeThreshold(modeSimilitude, 5);
+        if (initMetadata == null) {
+            throw new IllegalStateException("initGraphCsv: impossible de calculer les seuils.");
+        }
 
-        double threshold = init_metadata.getEdgeThreshold();
-        double antiThreshold = init_metadata.getAntiThreshold();
-        System.out.println("Seuil recommandé : " + threshold + ", Anti-seuil : " + antiThreshold);
-
-        int modeCommunity = getModeCommunity(community);
-        metadata = initializeGraph(modeCommunity, threshold, antiThreshold);
-
+        double threshold = initMetadata.getEdgeThreshold();
+        double antiThreshold = initMetadata.getAntiThreshold();
+        metadata = initializeGraph(getModeCommunity(community), threshold, antiThreshold);
         return csvData;
     }
 
     public void initGraphDot(String path, GraphData.NodeCommunity community) {
-        if (path == null || path.isEmpty())
-            throw new RuntimeException("initGraphDot : Chemin du fichier non spécifié.");
-
-        int modeCommunity = getModeCommunity(community);
-        metadata = initializeDot(path, modeCommunity);
+        if (path == null || path.isBlank()) {
+            throw new IllegalArgumentException("initGraphDot: chemin du fichier non spécifié.");
+        }
+        metadata = initializeDot(path, getModeCommunity(community));
+        initMetadata = null;
     }
 
     private int getModeCommunity(GraphData.NodeCommunity community) {
+        if (community == null) {
+            throw new IllegalArgumentException("Le mode de communauté ne peut pas être nul.");
+        }
         return switch (community) {
             case LOUVAIN -> 0;
             case LOUVAIN_PAR_COMPOSANTE -> 1;
@@ -79,6 +221,9 @@ public class GraphNativeEngine {
     }
 
     private int getModeSimilitude(GraphData.SimilitudeMode mode) {
+        if (mode == null) {
+            throw new IllegalArgumentException("Le mode de similarité ne peut pas être nul.");
+        }
         return switch (mode) {
             case CORRELATION -> 0;
             case DISTANCE_COSINE -> 1;
@@ -94,35 +239,34 @@ public class GraphNativeEngine {
     }
 
     public Metadata getInitMetadata() {
-        return init_metadata;
+        return initMetadata;
     }
 
-    // Méthodes JNI
-    public native Metadata initializeDot(String filepath, int md);
-    public native Metadata initializeGraph(int modeCommunity, double threshold, double antiThreshold);
-    public native double[][] startsProgram(String filename);
-    public native Metadata computeThreshold(int modeSimilitude, int edge_factor);
-    public native void setDimension(double width, double height);
-    public native boolean updatePositions();
-    public native Vertex[] getPositions();
-    public native void setNodePosition(int index, double x, double y);
-    public native EdgeC[] getEdges();
-    public native int[] getCommunities();
-    public native float[][] getClusterColors();
-    public native void setSaut(int saut);
-    public native void setThresholdS(double thresholdS);
-    public native void setFriction(double friction);
-    public native void setModeRepulsion(int mode);
-    public native void setAntiRepulsion(double antiedge_repulsion);
-    public native void setAttractionCoeff(double attraction_coeff);
-    public native void setThresholdA(double thresholdA);
-    public native void setSeuilRep(double seuilrep);
-    public native void setAmortissement(double amortissement);
-    public native void SetNumberClusters(int new_number_of_clusters);
-    public native void setKmeansMode(boolean md);
-    public native void setInitialNodeSize(double size);
-    public native void setDegreeScaleFactor(double factor);
-    public native void deleteNode(int index);
-    public native void restoreNode(int index);
-    public native void freeAllocatedMemory();
+    public synchronized native Metadata initializeDot(String filepath, int md);
+    public synchronized native Metadata initializeGraph(int modeCommunity, double threshold, double antiThreshold);
+    public synchronized native double[][] startsProgram(String filename);
+    public synchronized native Metadata computeThreshold(int modeSimilitude, int edgeFactor);
+    public synchronized native void setDimension(double width, double height);
+    public synchronized native boolean updatePositions();
+    public synchronized native Vertex[] getPositions();
+    public synchronized native void setNodePosition(int index, double x, double y);
+    public synchronized native EdgeC[] getEdges();
+    public synchronized native int[] getCommunities();
+    public synchronized native float[][] getClusterColors();
+    public synchronized native void setSaut(int saut);
+    public synchronized native void setThresholdS(double thresholdS);
+    public synchronized native void setFriction(double friction);
+    public synchronized native void setModeRepulsion(int mode);
+    public synchronized native void setAntiRepulsion(double antiedgeRepulsion);
+    public synchronized native void setAttractionCoeff(double attractionCoeff);
+    public synchronized native void setThresholdA(double thresholdA);
+    public synchronized native void setSeuilRep(double seuilrep);
+    public synchronized native void setAmortissement(double amortissement);
+    public synchronized native void SetNumberClusters(int newNumberOfClusters);
+    public synchronized native void setKmeansMode(boolean md);
+    public synchronized native void setInitialNodeSize(double size);
+    public synchronized native void setDegreeScaleFactor(double factor);
+    public synchronized native void deleteNode(int index);
+    public synchronized native void restoreNode(int index);
+    public synchronized native void freeAllocatedMemory();
 }

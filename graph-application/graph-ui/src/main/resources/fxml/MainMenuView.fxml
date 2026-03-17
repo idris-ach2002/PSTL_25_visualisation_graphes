@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.control.*?>
+
+<MenuBar xmlns="http://javafx.com/javafx/8"
+         xmlns:fx="http://javafx.com/fxml/1"
+         fx:controller="com.mongraphe.graphui.controller.MainMenuController">
+
+    <Menu text="Fichier">
+        <MenuItem text="Nouveau projet" onAction="#handleNewProject"/>
+        <MenuItem text="Ouvrir..." onAction="#handleOpen"/>
+        <MenuItem text="Enregistrer le projet..." onAction="#handleSaveProject"/>
+        <MenuItem text="Exporter en PNG..." onAction="#handleExportPng"/>
+        <SeparatorMenuItem/>
+        <MenuItem text="Fermer l'espace de travail" onAction="#handleCloseWorkspace"/>
+        <MenuItem text="Quitter" onAction="#handleQuit"/>
+    </Menu>
+
+    <Menu text="Édition">
+        <MenuItem text="Annuler" onAction="#handleUndo"/>
+        <MenuItem text="Rétablir" onAction="#handleRedo"/>
+    </Menu>
+
+    <Menu text="Affichage">
+        <MenuItem text="Plein écran" onAction="#handleFullScreen"/>
+        <CheckMenuItem fx:id="showStatsMenuItem" text="Afficher les statistiques" selected="true" onAction="#handleToggleStats"/>
+    </Menu>
+
+    <Menu text="Outils">
+        <MenuItem text="Réinitialiser la vue" onAction="#handleLayoutReset"/>
+        <MenuItem text="Aide rapide" onAction="#handleOptions"/>
+    </Menu>
+
+    <Menu text="Aide">
+        <MenuItem text="Documentation" onAction="#handleDocumentation"/>
+        <MenuItem text="À propos" onAction="#handleAbout"/>
+    </Menu>
+
+</MenuBar>

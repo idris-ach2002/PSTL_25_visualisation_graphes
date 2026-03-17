@@ -65,9 +65,9 @@ JNIEXPORT jboolean JNICALL Java_com_mongraphe_graphui_rendering_GraphNativeEngin
 
     ++iteration;
 
-    if (Max_movement == Max_movementOld) {
-        friction *= 0.7;
-    }
+  if (Max_movement == Max_movementOld) {
+    friction *= 0.7;
+  }
           
     Max_movementOld = Max_movement;
     friction *= amortissement;
@@ -88,38 +88,66 @@ JNIEXPORT jboolean JNICALL Java_com_mongraphe_graphui_rendering_GraphNativeEngin
 }
 
 JNIEXPORT jintArray JNICALL Java_com_mongraphe_graphui_rendering_GraphNativeEngine_getCommunities(JNIEnv *env, jobject obj) {
-    jintArray result = (*env)->NewIntArray(env, MAX_NODES);
-    (*env)->SetIntArrayRegion(env, result, 0, MAX_NODES,(const jint *) communities);
+    jintArray result = (*env)->NewIntArray(env, num_nodes);
+    if (result == NULL) {
+        return NULL;
+    }
 
+    if (num_nodes > 0) {
+        (*env)->SetIntArrayRegion(env, result, 0, num_nodes, (const jint *) communities);
+    }
     return result;
 }
 
 JNIEXPORT jobjectArray JNICALL Java_com_mongraphe_graphui_rendering_GraphNativeEngine_getClusterColors
   (JNIEnv * env, jobject obj)
 {
-    jclass obj_class = (*env)->FindClass(env, "[F");
-    jobjectArray result = (*env)->NewObjectArray(env, MAX_NODES, obj_class, 0);
-
-    for (int i = 0; i < MAX_NODES; ++i)
-    {
-        jfloatArray float_array = (*env)->NewFloatArray(env, 3);
-        (*env)->SetFloatArrayRegion(env, float_array, 0, 3, cluster_colors[i]);
-
-        (*env)->SetObjectArrayElement(env, result, i, float_array);
+    jclass float_array_class = (*env)->FindClass(env, "[F");
+    if (float_array_class == NULL) {
+        return NULL;
     }
 
+    jobjectArray result = (*env)->NewObjectArray(env, num_nodes, float_array_class, NULL);
+    if (result == NULL) {
+        (*env)->DeleteLocalRef(env, float_array_class);
+        return NULL;
+    }
+
+    for (int i = 0; i < num_nodes; ++i)
+    {
+        jfloatArray float_array = (*env)->NewFloatArray(env, 3);
+        if (float_array == NULL) {
+            break;
+        }
+
+        (*env)->SetFloatArrayRegion(env, float_array, 0, 3, cluster_colors[i]);
+        (*env)->SetObjectArrayElement(env, result, i, float_array);
+        (*env)->DeleteLocalRef(env, float_array);
+    }
+
+    (*env)->DeleteLocalRef(env, float_array_class);
     return result;
 }
 
 JNIEXPORT jobjectArray JNICALL Java_com_mongraphe_graphui_rendering_GraphNativeEngine_getEdges
   (JNIEnv * env, jobject obj)
 {
-    // remplacer "backendinterface/Edge" par "[packageName]/[nomClasse]"
-    jclass obj_class = (*env)->FindClass(env, "Lcom/mongraphe/graphui/EdgeC;");
+    jclass obj_class = (*env)->FindClass(env, "com/mongraphe/graphui/model/EdgeC");
+    if (obj_class == NULL) {
+        return NULL;
+    }
+
     jmethodID edge_constructor = (*env)->GetMethodID(env, obj_class, "<init>", "(IID)V");
-    jobject initial_elem = (*env)->NewObject(env, obj_class, edge_constructor, 0, 0, 0.);
-    
-    jobjectArray result = (*env)->NewObjectArray(env, num_edges, obj_class, initial_elem);
+    if (edge_constructor == NULL) {
+        (*env)->DeleteLocalRef(env, obj_class);
+        return NULL;
+    }
+
+    jobjectArray result = (*env)->NewObjectArray(env, num_edges, obj_class, NULL);
+    if (result == NULL) {
+        (*env)->DeleteLocalRef(env, obj_class);
+        return NULL;
+    }
 
     for (int i = 0; i < num_edges; ++i)
     {
@@ -127,32 +155,52 @@ JNIEXPORT jobjectArray JNICALL Java_com_mongraphe_graphui_rendering_GraphNativeE
         int node2 = edges[i].node2;
         double weight = edges[i].weight;
         jobject edge = (*env)->NewObject(env, obj_class, edge_constructor, node1, node2, weight);
-    
+        if (edge == NULL) {
+            break;
+        }
+
         (*env)->SetObjectArrayElement(env, result, i, edge);
+        (*env)->DeleteLocalRef(env, edge);
     }
 
+    (*env)->DeleteLocalRef(env, obj_class);
     return result;
 }
 
 JNIEXPORT jobjectArray JNICALL Java_com_mongraphe_graphui_rendering_GraphNativeEngine_getPositions
   (JNIEnv * env, jobject obj)
 {
-  jclass obj_class = (*env)->FindClass(env, "Lcom/mongraphe/graphui/Vertex;");
+  jclass obj_class = (*env)->FindClass(env, "com/mongraphe/graphui/model/Vertex");
+  if (obj_class == NULL) {
+    return NULL;
+  }
+
   jmethodID point_constructor = (*env)->GetMethodID(env, obj_class, "<init>", "(DD)V");
+  if (point_constructor == NULL) {
+    (*env)->DeleteLocalRef(env, obj_class);
+    return NULL;
+  }
 
-  jobject initial_elem = (*env)->NewObject(env, obj_class, point_constructor, 0., 0.);
-
-  jobjectArray result = (*env)->NewObjectArray(env, num_nodes, obj_class, initial_elem);
+  jobjectArray result = (*env)->NewObjectArray(env, num_nodes, obj_class, NULL);
+  if (result == NULL) {
+    (*env)->DeleteLocalRef(env, obj_class);
+    return NULL;
+  }
 
   for (int i = 0; i < num_nodes; ++i) {
     double x = vertices[i].x;
     double y = vertices[i].y;
 
     jobject point = (*env)->NewObject(env, obj_class, point_constructor, x, y);
+    if (point == NULL) {
+      break;
+    }
 
     (*env)->SetObjectArrayElement(env, result, i, point);
+    (*env)->DeleteLocalRef(env, point);
   }
 
+  (*env)->DeleteLocalRef(env, obj_class);
   return result;
 }
 
@@ -177,6 +225,7 @@ JNIEXPORT jobject JNICALL Java_com_mongraphe_graphui_rendering_GraphNativeEngine
         (*env)->SetDoubleArrayRegion(env, double_array, 0, num_columns, data[i]);
 
         (*env)->SetObjectArrayElement(env, result, i, double_array);
+        (*env)->DeleteLocalRef(env, double_array);
     }
 
     (*env)->ReleaseStringUTFChars(env, filepath, str); 
@@ -211,7 +260,7 @@ JNIEXPORT jobject JNICALL Java_com_mongraphe_graphui_rendering_GraphNativeEngine
 
     calculate_threshold(modeSimilitude, 10*num_nodes, &threshold, &antiseuil, similarities);
 
-    jclass res_class = (*env)->FindClass(env, "com/mongraphe/graphui/Metadata");
+    jclass res_class = (*env)->FindClass(env, "com/mongraphe/graphui/model/Metadata");
     jmethodID constructor = (*env)->GetMethodID(env, res_class, "<init>", "(IDDD)V");
     jobject res = (*env)->NewObject(env, res_class, constructor, num_nodes, threshold, antiseuil, means_similitude);
 
@@ -264,7 +313,7 @@ JNIEXPORT jobject JNICALL Java_com_mongraphe_graphui_rendering_GraphNativeEngine
     assign_cluster_colors();
     calculate_node_degrees();
 
-    jclass res_class = (*env)->FindClass(env, "com/mongraphe/graphui/Metadata");
+    jclass res_class = (*env)->FindClass(env, "com/mongraphe/graphui/model/Metadata");
     jmethodID constructor = (*env)->GetMethodID(env, res_class, "<init>", "(IDDIII)V");
     jobject res = (*env)->NewObject(env, res_class, constructor, num_nodes, thresh, anti_thresh, num_edges, num_antiedges, n_clusters);
 
@@ -326,7 +375,7 @@ JNIEXPORT jobject JNICALL Java_com_mongraphe_graphui_rendering_GraphNativeEngine
   assign_cluster_colors();
   calculate_node_degrees();
 
-  jclass res_class = (*env)->FindClass(env, "com/mongraphe/graphui/Metadata");
+  jclass res_class = (*env)->FindClass(env, "com/mongraphe/graphui/model/Metadata");
   jmethodID constructor = (*env)->GetMethodID(env, res_class, "<init>", "(IDDD)V");
   jobject res = (*env)->NewObject(env, res_class, constructor, num_nodes, 0., 0., 0.);
 
@@ -371,44 +420,6 @@ JNIEXPORT void JNICALL Java_com_mongraphe_graphui_rendering_GraphNativeEngine_fr
     }
     freeNodeNames();
     FreePool(&pool);
-
-    num_nodes = 0;
-    live_nodes = 0;
-    num_edges = 0;
-    num_antiedges = 0;
-}
-
-JNIEXPORT void JNICALL Java_com_mongraphe_graphui_rendering_GraphNativeEngine_freeProgramMemory
-  (JNIEnv * env, jobject obj)
-{
-
-    // Libérer la mémoire allouée pour les voisins
-    for (int i = 0; i < num_nodes; i++) {
-    	Neighbor* neighbor = adjacency_list[i].head;
-        while (neighbor != NULL) {
-           Neighbor* next = neighbor->next;
-           free(neighbor);
-           neighbor = next;
-        }
-        adjacency_list[i].head = NULL;
-    }
-    free_clusters();
-    if ( similarity_matrix != NULL ) {
-      for (int i = 0; i < num_rows; i++) {
-        free(similarity_matrix[i]);
-      }
-      free(similarity_matrix);
-    }
-
-    freeNodeNames();
-    FreePool(&pool);
-
-    if ( data != NULL ) {
-      for (int i = 0; i < num_rows; ++i) {
-        free(data[i]);
-      }
-      free(data);
-    }
 
     num_nodes = 0;
     live_nodes = 0;
