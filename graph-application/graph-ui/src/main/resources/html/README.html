@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="" xml:lang="">
+<head>
+  <meta charset="utf-8" />
+  <meta name="generator" content="pandoc" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
+  <title>Documentation</title>
+  <style>
+    code{white-space: pre-wrap;}
+    span.smallcaps{font-variant: small-caps;}
+    div.columns{display: flex; gap: min(4vw, 1.5em);}
+    div.column{flex: auto; overflow-x: auto;}
+    div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+    /* The extra [class] is a hack that increases specificity enough to
+       override a similar rule in reveal.js */
+    ul.task-list[class]{list-style: none;}
+    ul.task-list li input[type="checkbox"] {
+      font-size: inherit;
+      width: 0.8em;
+      margin: 0 0.8em 0.2em -1.6em;
+      vertical-align: middle;
+    }
+    .display.math{display: block; text-align: center; margin: 0.5rem auto;}
+    /* CSS for syntax highlighting */
+    pre > code.sourceCode { white-space: pre; position: relative; }
+    pre > code.sourceCode > span { line-height: 1.25; }
+    pre > code.sourceCode > span:empty { height: 1.2em; }
+    .sourceCode { overflow: visible; }
+    code.sourceCode > span { color: inherit; text-decoration: inherit; }
+    div.sourceCode { margin: 1em 0; }
+    pre.sourceCode { margin: 0; }
+    @media screen {
+    div.sourceCode { overflow: auto; }
+    }
+    @media print {
+    pre > code.sourceCode { white-space: pre-wrap; }
+    pre > code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
+    }
+    pre.numberSource code
+      { counter-reset: source-line 0; }
+    pre.numberSource code > span
+      { position: relative; left: -4em; counter-increment: source-line; }
+    pre.numberSource code > span > a:first-child::before
+      { content: counter(source-line);
+        position: relative; left: -1em; text-align: right; vertical-align: baseline;
+        border: none; display: inline-block;
+        -webkit-touch-callout: none; -webkit-user-select: none;
+        -khtml-user-select: none; -moz-user-select: none;
+        -ms-user-select: none; user-select: none;
+        padding: 0 4px; width: 4em;
+        color: #aaaaaa;
+      }
+    pre.numberSource { margin-left: 3em; border-left: 1px solid #aaaaaa;  padding-left: 4px; }
+    div.sourceCode
+      {   }
+    @media screen {
+    pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+    }
+    code span.al { color: #ff0000; font-weight: bold; } /* Alert */
+    code span.an { color: #60a0b0; font-weight: bold; font-style: italic; } /* Annotation */
+    code span.at { color: #7d9029; } /* Attribute */
+    code span.bn { color: #40a070; } /* BaseN */
+    code span.bu { color: #008000; } /* BuiltIn */
+    code span.cf { color: #007020; font-weight: bold; } /* ControlFlow */
+    code span.ch { color: #4070a0; } /* Char */
+    code span.cn { color: #880000; } /* Constant */
+    code span.co { color: #60a0b0; font-style: italic; } /* Comment */
+    code span.cv { color: #60a0b0; font-weight: bold; font-style: italic; } /* CommentVar */
+    code span.do { color: #ba2121; font-style: italic; } /* Documentation */
+    code span.dt { color: #902000; } /* DataType */
+    code span.dv { color: #40a070; } /* DecVal */
+    code span.er { color: #ff0000; font-weight: bold; } /* Error */
+    code span.ex { } /* Extension */
+    code span.fl { color: #40a070; } /* Float */
+    code span.fu { color: #06287e; } /* Function */
+    code span.im { color: #008000; font-weight: bold; } /* Import */
+    code span.in { color: #60a0b0; font-weight: bold; font-style: italic; } /* Information */
+    code span.kw { color: #007020; font-weight: bold; } /* Keyword */
+    code span.op { color: #666666; } /* Operator */
+    code span.ot { color: #007020; } /* Other */
+    code span.pp { color: #bc7a00; } /* Preprocessor */
+    code span.sc { color: #4070a0; } /* SpecialChar */
+    code span.ss { color: #bb6688; } /* SpecialString */
+    code span.st { color: #4070a0; } /* String */
+    code span.va { color: #19177c; } /* Variable */
+    code span.vs { color: #4070a0; } /* VerbatimString */
+    code span.wa { color: #60a0b0; font-weight: bold; font-style: italic; } /* Warning */
+  </style>
+  <link rel="stylesheet" href="github-markdown.css" />
+</head>
+<body>
+<h1
+id="pstl_25_visualisation_graphes">PSTL_25_visualisation_graphes</h1>
+<p>Application de <strong>visualisation de graphes</strong>
+utilisant :</p>
+<ul>
+<li><strong>Java / JavaFX</strong> : interface graphique</li>
+<li><strong>JOGL (OpenGL)</strong> : rendu graphique accéléré</li>
+<li><strong>C / JNI</strong> : calculs lourds (clustering, layout)</li>
+</ul>
+<p>Le projet est découpé en deux modules :</p>
+<ul>
+<li><code>graph-native</code> : code C / JNI compilé en bibliothèque
+partagée</li>
+<li><code>graph-ui</code> : application Java (JavaFX + JOGL)</li>
+</ul>
+<h2 id="prérequis">Prérequis</h2>
+<ul>
+<li>Java JDK 21</li>
+<li>Maven 3.9+</li>
+<li>GCC &gt;= 9</li>
+<li>Make</li>
+</ul>
+<h2 id="installation-de-java-jdk-21">Installation de Java JDK 21</h2>
+<h3 id="installation-de-java-jdk-21-1">Installation de Java JDK 21</h3>
+<ul>
+<li><strong>Linux</strong> :</li>
+</ul>
+<div class="sourceCode" id="cb1"><pre
+class="sourceCode bash"><code class="sourceCode bash"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="fu">sudo</span> apt update</span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="fu">sudo</span> apt install openjdk-21-jdk</span></code></pre></div>
+<ul>
+<li><strong>macOS</strong> : télécharger le .dmg Oracle ou utiliser
+Homebrew</li>
+</ul>
+<div class="sourceCode" id="cb2"><pre
+class="sourceCode bash"><code class="sourceCode bash"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="ex">brew</span> install openjdk@21</span></code></pre></div>
+<h2 id="compilation">Compilation</h2>
+<ol type="1">
+<li>Compiler le code natif (C / JNI) :</li>
+</ol>
+<div class="sourceCode" id="cb3"><pre
+class="sourceCode bash"><code class="sourceCode bash"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="bu">cd</span> graph-native</span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a><span class="fu">make</span> clean</span>
+<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a><span class="fu">make</span></span></code></pre></div>
+<ol start="2" type="1">
+<li>Compiler le code Java :</li>
+</ol>
+<div class="sourceCode" id="cb4"><pre
+class="sourceCode bash"><code class="sourceCode bash"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="bu">cd</span> ../graph-ui</span>
+<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a><span class="ex">mvn</span> clean compile</span></code></pre></div>
+<h2 id="exécution">Exécution</h2>
+<p>Pour lancer l’application placer vous dans le dossier
+<code>graph-ui</code> et exécuter :</p>
+<div class="sourceCode" id="cb5"><pre
+class="sourceCode bash"><code class="sourceCode bash"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a><span class="ex">mvn</span> javafx:run</span></code></pre></div>
+<p>Une fois le programme lancé, pour visualiser la fenêtre avec le
+graphe, il faut:</p>
+<ul>
+<li>Appuyer sur Ouvrir un fichier de graphe</li>
+<li>Sélectionner le fichier iris.csv</li>
+<li>Appuyer sur next</li>
+<li>Sélectionner une mesure de similarité (corrélation, …), puis appuyer
+sur next</li>
+<li>Appuyer à nouveau sur next une fois que la nouvelle scène est
+apparue</li>
+<li>Choisir un algorithme de communauté ou appuyer directement sur
+next</li>
+<li>Appuyer sur démarrer</li>
+</ul>
+<h2 id="structure-du-projet">Structure du projet</h2>
+<h1
+id="attention-le-projet-est-en-cours-de-modification-la-structure-va-grandement-changer">ATTENTION:
+LE PROJET EST EN COURS DE MODIFICATION, LA STRUCTURE VA GRANDEMENT
+CHANGER !</h1>
+<pre><code>graph-application/
+├── graph-native/          # Code natif (C / JNI)
+│   ├── c/
+│   │   ├── c_graph/
+│   │   ├── concurrent/
+│   │   ├── debug/
+│   │   ├── pretraitement/
+│   │   └── forceatlasV4_CSV.c
+│   ├── out/
+│   │   └── libnative.so ou libnative.dll ou libnative.dylib
+│   └── Makefile
+│
+├── graph-ui/              # Application Java
+│   ├── src/
+│   │   └── main/
+│   │       ├── java/
+│   │       └── resources/
+│   ├── samples/           # Fichiers CSV de test
+│   ├── pom.xml
+│   └── target/
+│
+├── tools/                 # Outils fournis (Maven local si besoin)
+└── README.md</code></pre>
+<h2 id="dépendances">Dépendances</h2>
+<ul>
+<li><strong>Java / Maven</strong> : gérées uniquement via Maven</li>
+<li><strong>JavaFX 21</strong> : modules <code>javafx-controls</code> et
+<code>javafx-fxml</code></li>
+<li><strong>JOGL 2.4.0</strong> + <strong>GlueGen 2.4.0</strong></li>
+</ul>
+<blockquote>
+<p>Les artefacts JOGL ne sont pas disponibles sur Maven Central. Dépôt
+utilisé : <a
+href="https://jogamp.org/deployment/maven">https://jogamp.org/deployment/maven</a></p>
+</blockquote>
+<ul>
+<li><strong>Code natif (JNI)</strong> : compilé en bibliothèque partagée
+<ul>
+<li>Linux : <code>libnative.so</code></li>
+<li>Windows : <code>libnative.dll</code></li>
+<li>macOS : <code>libnative.dylib</code></li>
+</ul></li>
+</ul>
+<p>Chargement dans Java via :</p>
+<div class="sourceCode" id="cb7"><pre
+class="sourceCode java"><code class="sourceCode java"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a><span class="bu">System</span><span class="op">.</span><span class="fu">loadLibrary</span><span class="op">(</span><span class="st">&quot;native&quot;</span><span class="op">);</span></span></code></pre></div>
+<p>Et la JVM doit connaître le chemin :</p>
+<pre><code>-Djava.library.path=../graph-native/out</code></pre>
+<h2 id="javafx-jogl">JavaFX + JOGL</h2>
+<p>JOGL utilise des API internes de JavaFX. Avec Java 21, il faut ouvrir
+explicitement certains modules dans le pom.xml :</p>
+<pre><code>--add-opens javafx.graphics/com.sun.javafx.tk=ALL-UNNAMED
+--add-opens javafx.graphics/com.sun.javafx.tk.quantum=ALL-UNNAMED
+--add-opens javafx.graphics/com.sun.glass.ui=ALL-UNNAMED
+--add-opens javafx.graphics/javafx.stage=ALL-UNNAMED</code></pre>
+<p>Sans ces options, l’erreur suivante apparaît :</p>
+<pre><code>Error getting Window handle</code></pre>
+<h2 id="fichiers-dentrée-csv">Fichiers d’entrée (CSV)</h2>
+<ul>
+<li><code>graph-ui/samples/iris.csv</code></li>
+<li><code>graph-ui/samples/predicancerNUadd9239.csv</code></li>
+</ul>
+<p>Ces fichiers peuvent être sélectionnés depuis l’interface
+graphique.</p>
+<h2 id="problèmes-connus">Problèmes connus</h2>
+<h3 id="unsatisfiedlinkerror">1. <code>UnsatisfiedLinkError</code></h3>
+<p>Problème de chargement de la bibliothèque native (JNI) :</p>
+<ul>
+<li>Vérifier que <code>libnative.so</code> (Linux) /
+<code>libnative.dll</code> (Windows) / <code>libnative.dylib</code>
+(macOS) existe</li>
+<li>Vérifier que <code>java.library.path</code> pointe vers le dossier
+contenant la bibliothèque</li>
+</ul>
+<h3 id="erreurs-jogl-javafx">2. Erreurs JOGL / JavaFX</h3>
+<ul>
+<li>Vérifier que Java &gt;= 21</li>
+<li><strong>Toujours utiliser <code>mvn javafx:run</code></strong></li>
+<li><strong>Ne pas lancer l’application directement avec
+<code>java</code></strong></li>
+</ul>
+<h2 id="auteurs">Auteurs</h2>
+<p>A COMPLÉTER</p>
+<hr />
+</body>
+</html>

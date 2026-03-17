@@ -1,11 +1,12 @@
 package com.mongraphe.graphui.controller;
 
-import java.awt.Desktop;
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.net.URI;
+import java.net.URL;
 import java.nio.file.Files;
 import java.util.Properties;
 
@@ -342,24 +343,70 @@ public final class MainGraphController {
                         + "Undo / Redo : via le menu Édition");
     }
 
-    public void openDocumentation() {
-        try {
-            File readme = new File("README.md");
-            if (readme.exists() && Desktop.isDesktopSupported()) {
-                Desktop.getDesktop().open(readme);
-                return;
-            }
-        } catch (Exception ignored) {
-        }
+    private void openInBrowser(URI uri) throws IOException {
+        String url = uri.toString();
 
+        // Essayer Firefox
         try {
-            if (Desktop.isDesktopSupported()) {
-                Desktop.getDesktop().browse(URI.create("https://openjfx.io/"));
-            }
-        } catch (Exception e) {
-            uiState.setStatus("Impossible d'ouvrir la documentation");
-        }
+            new ProcessBuilder("firefox", url).start();
+            return;
+        } catch (IOException ignored) {}
+
+        // Essayer Chrome
+        try {
+            new ProcessBuilder("google-chrome", url).start();
+            return;
+        } catch (IOException ignored) {}
+
+        // Dernier recours : xdg-open (mais peut rouvrir la messagerie)
+        new ProcessBuilder("xdg-open", url).start();
     }
+
+
+    public void openDocumentation() {
+        new Thread(() -> {
+            try {
+                URL mdUrl = getClass().getResource("/markdown/README.md");
+                File mdFile = new File(mdUrl.toURI());
+
+                if (!mdFile.exists()) {
+                    throw new FileNotFoundException("README.md introuvable");
+                }
+
+                File htmlFile = new File(getClass().getResource("/html").getFile(), "README.html");
+
+                // Conversion Markdown → HTML
+                ProcessBuilder pb = new ProcessBuilder(
+                        "pandoc",
+                        mdFile.getAbsolutePath(),
+                        "-o",
+                        htmlFile.getAbsolutePath(),
+                        "--standalone",
+                        "--css=github-markdown.css",
+                        "--metadata=pagetitle=Documentation"
+                );
+
+
+                pb.redirectErrorStream(true);
+                Process process = pb.start();
+                process.waitFor();
+
+                // Ouvrir dans un vrai navigateur
+                openInBrowser(htmlFile.toURI());
+                return;
+
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+
+            Platform.runLater(() -> alert(
+                    Alert.AlertType.ERROR,
+                    "Documentation",
+                    "Impossible de générer ou d'ouvrir la documentation."
+            ));
+        }).start();
+    }
+
 
     public void showAbout() {
         alert(Alert.AlertType.INFORMATION,
