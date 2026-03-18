@@ -34,6 +34,14 @@ sudo apt install openjdk-21-jdk
 brew install openjdk@21
 ```
 
+## Lancement à partir du script bash
+
+Il vous suffit de lancer car maven est déjà inclus dans le projet
+```bash
+cd graph-application
+bash run-app.sh
+```
+
 ## Compilation
 1. Compiler le code natif (C / JNI) :
 
