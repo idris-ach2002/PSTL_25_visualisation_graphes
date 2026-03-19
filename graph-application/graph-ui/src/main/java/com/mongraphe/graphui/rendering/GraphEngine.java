@@ -27,6 +27,7 @@ public final class GraphEngine {
 
     public interface GraphEngineListener {
         void onSimulationStarted();
+
         void onSimulationStopped();
     }
 
@@ -39,7 +40,8 @@ public final class GraphEngine {
         private final int visibleVertexCount;
         private final int visibleEdgeCount;
 
-        public GraphDataSnapshot(List<Vertex> vertices, List<Edge> edges, int visibleVertexCount, int visibleEdgeCount) {
+        public GraphDataSnapshot(List<Vertex> vertices, List<Edge> edges, int visibleVertexCount,
+                int visibleEdgeCount) {
             this.vertices.addAll(vertices);
             this.edges.addAll(edges);
             this.visibleVertexCount = visibleVertexCount;
@@ -49,11 +51,73 @@ public final class GraphEngine {
             }
         }
 
-        public List<Vertex> getVertices() { return vertices; }
-        public List<Edge> getEdges() { return edges; }
-        public int getVisibleVertexCount() { return visibleVertexCount; }
-        public int getVisibleEdgeCount() { return visibleEdgeCount; }
-        public Vertex getVertexById(int id) { return verticesById.get(id); }
+        public List<Vertex> getVertices() {
+            return vertices;
+        }
+
+        public List<Edge> getEdges() {
+            return edges;
+        }
+
+        public int getVisibleVertexCount() {
+            return visibleVertexCount;
+        }
+
+        public int getVisibleEdgeCount() {
+            return visibleEdgeCount;
+        }
+
+        public Vertex getVertexById(int id) {
+            return verticesById.get(id);
+        }
+    }
+
+    public static class GraphPage<T> {
+        private final List<T> data;
+        private final int totalSize;
+
+        public GraphPage(List<T> data, int totalSize) {
+            this.data = data;
+            this.totalSize = totalSize;
+        }
+
+        public List<T> getData() {
+            return data;
+        }
+
+        public int getTotalSize() {
+            return totalSize;
+        }
+    }
+
+    public GraphPage<Vertex> getVerticesPage(int page, int pageSize) {
+        synchronized (model.mutex()) {
+            List<Vertex> all = model.vertices();
+
+            int from = page * pageSize;
+            int to = Math.min(from + pageSize, all.size());
+
+            if (from >= all.size()) {
+                return new GraphPage<>(List.of(), all.size());
+            }
+
+            return new GraphPage<>(all.subList(from, to), all.size());
+        }
+    }
+
+    public GraphPage<Edge> getEdgesPage(int page, int pageSize) {
+        synchronized (model.mutex()) {
+            List<Edge> all = model.edges();
+
+            int from = page * pageSize;
+            int to = Math.min(from + pageSize, all.size());
+
+            if (from >= all.size()) {
+                return new GraphPage<>(List.of(), all.size());
+            }
+
+            return new GraphPage<>(all.subList(from, to), all.size());
+        }
     }
 
     public GraphEngine(GraphNativeEngine nativeEngine) {
@@ -78,15 +142,25 @@ public final class GraphEngine {
 
     public GraphDataSnapshot getDataSnapshot() {
         synchronized (model.mutex()) {
-            return new GraphDataSnapshot(model.vertices(), model.edges(), model.getVisibleVertexCount(), model.getVisibleEdgeCount());
+            return new GraphDataSnapshot(model.vertices(), model.edges(), model.getVisibleVertexCount(),
+                    model.getVisibleEdgeCount());
         }
     }
 
-    public boolean load(String path, GraphProject.SourceType type, GraphData.SimilitudeMode sim, GraphData.NodeCommunity communityMode) {
+    public boolean load(String path, GraphProject.SourceType type, GraphData.SimilitudeMode sim,
+            GraphData.NodeCommunity communityMode) {
         switch (type) {
-            case CSV -> { loadCsv(path, sim, communityMode); return true; }
-            case DOT -> { loadDot(path, communityMode); return true; }
-            default -> { return false; }
+            case CSV -> {
+                loadCsv(path, sim, communityMode);
+                return true;
+            }
+            case DOT -> {
+                loadDot(path, communityMode);
+                return true;
+            }
+            default -> {
+                return false;
+            }
         }
     }
 
@@ -148,9 +222,12 @@ public final class GraphEngine {
                 model.addVertex(v);
             }
             for (EdgeC ec : edgesArray) {
-                if (ec == null) continue;
-                if (ec.getStart() < 0 || ec.getStart() >= model.vertices().size()) continue;
-                if (ec.getEnd() < 0 || ec.getEnd() >= model.vertices().size()) continue;
+                if (ec == null)
+                    continue;
+                if (ec.getStart() < 0 || ec.getStart() >= model.vertices().size())
+                    continue;
+                if (ec.getEnd() < 0 || ec.getEnd() >= model.vertices().size())
+                    continue;
                 Vertex start = model.vertices().get(ec.getStart());
                 Vertex end = model.vertices().get(ec.getEnd());
                 model.addEdge(new Edge(start, end, ec.getWeight()));
@@ -164,11 +241,25 @@ public final class GraphEngine {
         visibility.apply(model);
     }
 
-    public GraphModel model() { return model; }
-    public Camera2D camera() { return camera; }
-    public GraphVisibilityFilter visibility() { return visibility; }
-    public Metadata getMetadata() { return nativeEngine.getMetadata(); }
-    public Metadata getInitMetadata() { return nativeEngine.getInitMetadata(); }
+    public GraphModel model() {
+        return model;
+    }
+
+    public Camera2D camera() {
+        return camera;
+    }
+
+    public GraphVisibilityFilter visibility() {
+        return visibility;
+    }
+
+    public Metadata getMetadata() {
+        return nativeEngine.getMetadata();
+    }
+
+    public Metadata getInitMetadata() {
+        return nativeEngine.getInitMetadata();
+    }
 
     public void setBackgroundColor(float r, float g, float b, float a) {
         clearR = clamp01(r);
@@ -177,10 +268,21 @@ public final class GraphEngine {
         clearA = clamp01(a);
     }
 
-    public float getBackgroundColorR() { return clearR; }
-    public float getBackgroundColorG() { return clearG; }
-    public float getBackgroundColorB() { return clearB; }
-    public float getBackgroundColorA() { return clearA; }
+    public float getBackgroundColorR() {
+        return clearR;
+    }
+
+    public float getBackgroundColorG() {
+        return clearG;
+    }
+
+    public float getBackgroundColorB() {
+        return clearB;
+    }
+
+    public float getBackgroundColorA() {
+        return clearA;
+    }
 
     public void setColoringMode(GraphModel.ColoringMode mode) {
         synchronized (model.mutex()) {
@@ -230,18 +332,54 @@ public final class GraphEngine {
         }
     }
 
-    public void setUpscale(int up) { Vertex.upscale = up; }
-    public void setStabilizedThreshold(double t) { nativeEngine.setThresholdS(t); }
-    public void setAttractionThreshold(double t) { nativeEngine.setThresholdA(t); }
-    public void setNewFriction(double f) { nativeEngine.setFriction(f); }
-    public void setAttractionCoefficient(double c) { nativeEngine.setAttractionCoeff(c); }
-    public void setRepulsionThreshold(double t) { nativeEngine.setSeuilRep(t); }
-    public void setAntiRepulsion(double t) { nativeEngine.setAntiRepulsion(t); }
-    public void setNewAmortissement(double a) { nativeEngine.setAmortissement(a); }
-    public void setNbClusters(int n) { nativeEngine.SetNumberClusters(n); }
-    public void setRepulsionMode(GraphData.RepulsionMode mode) { if (mode != null) nativeEngine.setModeRepulsion(mode.ordinal()); }
-    public void enableKmeans(boolean enabled) { nativeEngine.setKmeansMode(enabled); }
-    public void setDimensions(double width, double height) { nativeEngine.setDimension(width, height); }
+    public void setUpscale(int up) {
+        Vertex.upscale = up;
+    }
+
+    public void setStabilizedThreshold(double t) {
+        nativeEngine.setThresholdS(t);
+    }
+
+    public void setAttractionThreshold(double t) {
+        nativeEngine.setThresholdA(t);
+    }
+
+    public void setNewFriction(double f) {
+        nativeEngine.setFriction(f);
+    }
+
+    public void setAttractionCoefficient(double c) {
+        nativeEngine.setAttractionCoeff(c);
+    }
+
+    public void setRepulsionThreshold(double t) {
+        nativeEngine.setSeuilRep(t);
+    }
+
+    public void setAntiRepulsion(double t) {
+        nativeEngine.setAntiRepulsion(t);
+    }
+
+    public void setNewAmortissement(double a) {
+        nativeEngine.setAmortissement(a);
+    }
+
+    public void setNbClusters(int n) {
+        nativeEngine.SetNumberClusters(n);
+    }
+
+    public void setRepulsionMode(GraphData.RepulsionMode mode) {
+        if (mode != null)
+            nativeEngine.setModeRepulsion(mode.ordinal());
+    }
+
+    public void enableKmeans(boolean enabled) {
+        nativeEngine.setKmeansMode(enabled);
+    }
+
+    public void setDimensions(double width, double height) {
+        nativeEngine.setDimension(width, height);
+    }
 
     public void setNodePosition(int index, double x, double y) {
         nativeEngine.setNodePosition(index, x, y);
@@ -273,7 +411,9 @@ public final class GraphEngine {
         nativeEngine.setSaut(clusterUpdateFrequency);
     }
 
-    public int getClusterUpdateFrequency() { return clusterUpdateFrequency; }
+    public int getClusterUpdateFrequency() {
+        return clusterUpdateFrequency;
+    }
 
     public void startSimulation() {
         simulation.start();
@@ -293,7 +433,9 @@ public final class GraphEngine {
         }
     }
 
-    public boolean isSimulationRunning() { return simulation.isRunning(); }
+    public boolean isSimulationRunning() {
+        return simulation.isRunning();
+    }
 
     public void freeNativeMemory() {
         nativeEngine.freeAllocatedMemory();
@@ -303,8 +445,10 @@ public final class GraphEngine {
     }
 
     private float clamp01(float v) {
-        if (v < 0f) return 0f;
-        if (v > 1f) return 1f;
+        if (v < 0f)
+            return 0f;
+        if (v > 1f)
+            return 1f;
         return v;
     }
 }

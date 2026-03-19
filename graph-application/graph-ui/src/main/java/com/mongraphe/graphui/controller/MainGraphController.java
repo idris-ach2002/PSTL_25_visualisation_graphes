@@ -43,7 +43,7 @@ public final class MainGraphController {
     private EngineOptionsController engineOptionsViewController;
     @FXML
     private DataController dataViewController;
-    @FXML 
+    @FXML
     private GraphStatsController graphStatsController;
 
     @FXML
@@ -164,6 +164,10 @@ public final class MainGraphController {
         overview.setVisible("overview".equals(view));
         dataView.setVisible("data".equals(view));
         preview.setVisible("preview".equals(view));
+
+        if ("data".equals(view)) {
+            dataViewController.refresh();
+        }
     }
 
     public void openGraphFile() {

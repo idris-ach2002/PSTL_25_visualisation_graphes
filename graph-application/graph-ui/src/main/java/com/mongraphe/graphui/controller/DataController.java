@@ -5,31 +5,31 @@ import com.mongraphe.graphui.interfaces.CommandBusLinkedI;
 import com.mongraphe.graphui.model.Edge;
 import com.mongraphe.graphui.model.Vertex;
 import com.mongraphe.graphui.rendering.GraphEngine;
-import com.mongraphe.graphui.rendering.GraphEngine.GraphDataSnapshot;
 
 import javafx.fxml.FXML;
 import javafx.scene.control.*;
 import javafx.scene.control.cell.PropertyValueFactory;
 import javafx.scene.input.KeyCode;
-import java.util.Collections;
-import java.util.List;
-
 public final class DataController implements CommandBusLinkedI<GraphEngine> {
 
     private static final int ROWS_PER_PAGE = 100;
 
-    @FXML private Label nodesDisplayedLabel;
-    @FXML private Label edgesDisplayedLabel;
-    @FXML private Label totalElementsLabel;
+    @FXML
+    private Label nodesDisplayedLabel;
+    @FXML
+    private Label edgesDisplayedLabel;
+    @FXML
+    private Label totalElementsLabel;
 
-    @FXML private Pagination vertexPagination;
-    @FXML private Pagination edgePagination;
+    @FXML
+    private Pagination vertexPagination;
+    @FXML
+    private Pagination edgePagination;
 
-    @FXML private TextField vertexPageField;
-    @FXML private TextField edgePageField;
-
-    private List<Vertex> allVertices = Collections.emptyList();
-    private List<Edge> allEdges = Collections.emptyList();
+    @FXML
+    private TextField vertexPageField;
+    @FXML
+    private TextField edgePageField;
 
     private TableColumn<Vertex, Integer> vertexIdCol;
     private TableColumn<Vertex, ?> vertexCommunityCol;
@@ -55,24 +55,32 @@ public final class DataController implements CommandBusLinkedI<GraphEngine> {
         // Vertex columns
         vertexIdCol = new TableColumn<>("ID");
         vertexIdCol.setCellValueFactory(new PropertyValueFactory<>("id"));
+
         vertexCommunityCol = new TableColumn<>("Communauté");
         vertexCommunityCol.setCellValueFactory(new PropertyValueFactory<>("communityName"));
+
         vertexDegreeCol = new TableColumn<>("Degré");
         vertexDegreeCol.setCellValueFactory(new PropertyValueFactory<>("degree"));
+
         vertexXCol = new TableColumn<>("X");
         vertexXCol.setCellValueFactory(new PropertyValueFactory<>("x"));
+
         vertexYCol = new TableColumn<>("Y");
         vertexYCol.setCellValueFactory(new PropertyValueFactory<>("y"));
+
         vertexDiameterCol = new TableColumn<>("Diamètre");
         vertexDiameterCol.setCellValueFactory(new PropertyValueFactory<>("diameter"));
+
         vertexDeletedCol = new TableColumn<>("Supprimé ?");
         vertexDeletedCol.setCellValueFactory(new PropertyValueFactory<>("deleted"));
 
         // Edge columns
         edgeStartCol = new TableColumn<>("Début");
         edgeStartCol.setCellValueFactory(new PropertyValueFactory<>("startId"));
+
         edgeEndCol = new TableColumn<>("Fin");
         edgeEndCol.setCellValueFactory(new PropertyValueFactory<>("endId"));
+
         edgeWeightCol = new TableColumn<>("Poids");
         edgeWeightCol.setCellValueFactory(new PropertyValueFactory<>("weight"));
 
@@ -83,7 +91,6 @@ public final class DataController implements CommandBusLinkedI<GraphEngine> {
         vertexPagination.setPageCount(1);
         edgePagination.setPageCount(1);
 
-        // Navigation par champ de texte
         setupPageField(vertexPageField, vertexPagination);
         setupPageField(edgePageField, edgePagination);
     }
@@ -111,15 +118,19 @@ public final class DataController implements CommandBusLinkedI<GraphEngine> {
     }
 
     public void refresh() {
-        if (bus == null) return;
+        if (bus == null)
+            return;
 
-        GraphDataSnapshot snapshot = bus.dispatchSync(GraphEngine::getDataSnapshot);
+        // 👉 juste pour les stats (léger)
+        GraphEngine.GraphPage<Vertex> vPage = bus.dispatchSync(engine -> engine.getVerticesPage(0, 1));
 
-        allVertices = snapshot.getVertices();
-        allEdges = snapshot.getEdges();
+        GraphEngine.GraphPage<Edge> ePage = bus.dispatchSync(engine -> engine.getEdgesPage(0, 1));
 
-        int vertexPages = (int) Math.ceil((double) allVertices.size() / ROWS_PER_PAGE);
-        int edgePages = (int) Math.ceil((double) allEdges.size() / ROWS_PER_PAGE);
+        int vertexTotal = vPage.getTotalSize();
+        int edgeTotal = ePage.getTotalSize();
+
+        int vertexPages = (int) Math.ceil((double) vertexTotal / ROWS_PER_PAGE);
+        int edgePages = (int) Math.ceil((double) edgeTotal / ROWS_PER_PAGE);
 
         vertexPagination.setPageCount(Math.max(vertexPages, 1));
         edgePagination.setPageCount(Math.max(edgePages, 1));
@@ -130,35 +141,47 @@ public final class DataController implements CommandBusLinkedI<GraphEngine> {
         vertexPageField.setText("1");
         edgePageField.setText("1");
 
-        nodesDisplayedLabel.setText(String.valueOf(snapshot.getVisibleVertexCount()));
-        edgesDisplayedLabel.setText(String.valueOf(snapshot.getVisibleEdgeCount()));
-        totalElementsLabel.setText(String.valueOf(allVertices.size() + allEdges.size()));
+        totalElementsLabel.setText(String.valueOf(vertexTotal + edgeTotal));
+
+        // Optionnel si tu veux garder ces infos :
+        nodesDisplayedLabel.setText(String.valueOf(vertexTotal));
+        edgesDisplayedLabel.setText(String.valueOf(edgeTotal));
     }
 
     @SuppressWarnings("unchecked")
     private TableView<Vertex> createVertexPage(int pageIndex) {
         TableView<Vertex> table = new TableView<>();
-        table.getColumns().addAll(vertexIdCol, vertexCommunityCol, vertexDegreeCol,
-                vertexXCol, vertexYCol, vertexDiameterCol, vertexDeletedCol);
 
-        int from = pageIndex * ROWS_PER_PAGE;
-        int to = Math.min(from + ROWS_PER_PAGE, allVertices.size());
-        if (!allVertices.isEmpty()) {
-            table.getItems().setAll(allVertices.subList(from, to));
-        }
+        table.getColumns().addAll(
+                vertexIdCol,
+                vertexCommunityCol,
+                vertexDegreeCol,
+                vertexXCol,
+                vertexYCol,
+                vertexDiameterCol,
+                vertexDeletedCol);
+
+        GraphEngine.GraphPage<Vertex> page = bus
+                .dispatchSync(engine -> engine.getVerticesPage(pageIndex, ROWS_PER_PAGE));
+
+        table.getItems().setAll(page.getData());
+
         return table;
     }
 
     @SuppressWarnings("unchecked")
     private TableView<Edge> createEdgePage(int pageIndex) {
         TableView<Edge> table = new TableView<>();
-        table.getColumns().addAll(edgeStartCol, edgeEndCol, edgeWeightCol);
 
-        int from = pageIndex * ROWS_PER_PAGE;
-        int to = Math.min(from + ROWS_PER_PAGE, allEdges.size());
-        if (!allEdges.isEmpty()) {
-            table.getItems().setAll(allEdges.subList(from, to));
-        }
+        table.getColumns().addAll(
+                edgeStartCol,
+                edgeEndCol,
+                edgeWeightCol);
+
+        GraphEngine.GraphPage<Edge> page = bus.dispatchSync(engine -> engine.getEdgesPage(pageIndex, ROWS_PER_PAGE));
+
+        table.getItems().setAll(page.getData());
+
         return table;
     }
 }
