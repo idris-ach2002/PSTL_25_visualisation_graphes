@@ -121,7 +121,6 @@ public final class DataController implements CommandBusLinkedI<GraphEngine> {
         if (bus == null)
             return;
 
-        // 👉 juste pour les stats (léger)
         GraphEngine.GraphPage<Vertex> vPage = bus.dispatchSync(engine -> engine.getVerticesPage(0, 1));
 
         GraphEngine.GraphPage<Edge> ePage = bus.dispatchSync(engine -> engine.getEdgesPage(0, 1));
@@ -143,7 +142,6 @@ public final class DataController implements CommandBusLinkedI<GraphEngine> {
 
         totalElementsLabel.setText(String.valueOf(vertexTotal + edgeTotal));
 
-        // Optionnel si tu veux garder ces infos :
         nodesDisplayedLabel.setText(String.valueOf(vertexTotal));
         edgesDisplayedLabel.setText(String.valueOf(edgeTotal));
     }
@@ -151,6 +149,12 @@ public final class DataController implements CommandBusLinkedI<GraphEngine> {
     @SuppressWarnings("unchecked")
     private TableView<Vertex> createVertexPage(int pageIndex) {
         TableView<Vertex> table = new TableView<>();
+
+        // Permet aux colonnes de s'étendre pour remplir la largeur
+        table.setColumnResizePolicy(TableView. CONSTRAINED_RESIZE_POLICY_FLEX_LAST_COLUMN);
+
+        table.setPrefWidth(Double.MAX_VALUE);
+        table.setPrefHeight(Double.MAX_VALUE);
 
         table.getColumns().addAll(
                 vertexIdCol,
@@ -172,6 +176,12 @@ public final class DataController implements CommandBusLinkedI<GraphEngine> {
     @SuppressWarnings("unchecked")
     private TableView<Edge> createEdgePage(int pageIndex) {
         TableView<Edge> table = new TableView<>();
+
+        // Permet aux colonnes de s'étendre pour remplir la largeur
+        table.setColumnResizePolicy(TableView. CONSTRAINED_RESIZE_POLICY_FLEX_LAST_COLUMN);
+
+        table.setPrefWidth(Double.MAX_VALUE);
+        table.setPrefHeight(Double.MAX_VALUE);
 
         table.getColumns().addAll(
                 edgeStartCol,

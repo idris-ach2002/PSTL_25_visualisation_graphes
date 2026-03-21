@@ -5,10 +5,7 @@
 
 <VBox xmlns="http://javafx.com/javafx/8"
   xmlns:fx="http://javafx.com/fxml/1"
-  fx:controller="com.mongraphe.graphui.controller.EngineOptionsController"
-  spacing="8"
-  styleClass="dock"
-  style="-fx-padding: 10;">
+  fx:controller="com.mongraphe.graphui.controller.EngineOptionsController">
 
   <Label text="Paramètres du graphe" style="-fx-font-weight: bold; -fx-padding: 10 0 0 0;" />
   <GridPane hgap="10" vgap="5">
@@ -71,6 +68,6 @@
   <CheckBox fx:id="enableKmeans" text="Activer K-Means"/>
 
   <HBox spacing="8" alignment="CENTER_RIGHT">
-    <Button text="Appliquer" onAction="#applyOptions" styleClass="button-8"/>
+    <Button text="Appliquer" onAction="#applyOptions" styleClass="button"/>
   </HBox>
 </VBox>

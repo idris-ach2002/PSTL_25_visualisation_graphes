@@ -5,10 +5,7 @@
 
 <VBox xmlns="http://javafx.com/javafx/8"
       xmlns:fx="http://javafx.com/fxml/1"
-      fx:controller="com.mongraphe.graphui.controller.GraphWorkspaceController"
-      spacing="10"
-      styleClass="dock"
-      style="-fx-padding: 10;">
+      fx:controller="com.mongraphe.graphui.controller.GraphWorkspaceController">
 
     <HBox spacing="5">
         <Label text="Configuration projet" style="-fx-font-weight: bold;"/>

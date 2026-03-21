@@ -81,7 +81,7 @@ public final class EngineOptionsController implements CommandBusLinkedI<GraphEng
         }
 
         if (undoable) {
-            bus.dispatchUndoable(new SetEngineOptionsCommand(options));
+            bus.dispatch(new SetEngineOptionsCommand(options));
         } else {
             bus.dispatchSyncVoid(engine -> new SetEngineOptionsCommand(options).execute(engine));
         }
