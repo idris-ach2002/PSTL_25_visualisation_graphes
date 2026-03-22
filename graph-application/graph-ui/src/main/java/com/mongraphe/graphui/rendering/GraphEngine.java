@@ -334,6 +334,11 @@ public final class GraphEngine {
 
     public void setUpscale(int up) {
         Vertex.upscale = up;
+        synchronized (model.mutex()) {
+            for (Vertex v : model.vertices()) {
+                v.updateDiameter();
+            }
+        }
     }
 
     public void setStabilizedThreshold(double t) {
