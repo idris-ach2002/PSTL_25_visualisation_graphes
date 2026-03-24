@@ -1,11 +1,10 @@
 package com.mongraphe.graphui.controller;
 
+import com.mongraphe.graphui.app.CommandBus;
 import com.mongraphe.graphui.interfaces.CommandBusLinkedI;
 import com.mongraphe.graphui.model.GraphData;
 import com.mongraphe.graphui.rendering.GraphEngine;
 
-import com.mongraphe.graphui.app.CommandBus;
-import javafx.animation.AnimationTimer;
 import javafx.animation.PauseTransition;
 import javafx.fxml.FXML;
 import javafx.scene.control.Button;
@@ -18,21 +17,14 @@ public final class GraphWorkspaceController implements CommandBusLinkedI<GraphEn
 
     private MainGraphController mainController;
 
-    @FXML
-    private ComboBox<GraphData.SimilitudeMode> similarityCombo;
-    @FXML
-    private ComboBox<GraphData.NodeCommunity> communityCombo;
-    @FXML
-    private ComboBox<GraphData.RepulsionMode> repulsionCombo;
+    @FXML private ComboBox<GraphData.SimilitudeMode> similarityCombo;
+    @FXML private ComboBox<GraphData.NodeCommunity> communityCombo;
+    @FXML private ComboBox<GraphData.RepulsionMode> repulsionCombo;
 
-    @FXML
-    private Button playPauseButton;
-    @FXML
-    private Button restartButton;
+    @FXML private Button playPauseButton;
+    @FXML private Button restartButton;
 
     private CommandBus<GraphEngine> bus;
-    private AnimationTimer stateUpdater;
-    private boolean simulationRunning = false;
 
     public void setMainController(MainGraphController controller) {
         this.mainController = controller;
@@ -47,73 +39,55 @@ public final class GraphWorkspaceController implements CommandBusLinkedI<GraphEn
             repulsionCombo.getSelectionModel().selectFirst();
         }
 
-        // Timer pour mettre à jour l'icône en fonction de l'état de la simulation
-        stateUpdater = new AnimationTimer() {
-            private long lastUpdate = 0;
-
-            @Override
-            public void handle(long now) {
-                if (now - lastUpdate < 200_000_000L)
-                    return; // mise à jour toutes les 200 ms
-                lastUpdate = now;
-                updatePlayPauseIcon();
-            }
-        };
-        stateUpdater.start();
+        playPauseButton.setText("▶");
+        restartButton.setText("⟳");
+        restartButton.setTooltip(new Tooltip("Relancer l'algorithme depuis zéro"));
+        playPauseButton.setTooltip(new Tooltip("Lancer"));
     }
 
-    private void updatePlayPauseIcon() {
-        if (bus == null)
-            return;
+    // Appelée par MainGraphController via le listener du moteur
+    public void updatePlayPauseIcon(boolean running) {
+        if (bus == null) return;
 
-        try {
-            boolean running = bus.dispatchSync(GraphEngine::isSimulationRunning);
-            if (running != simulationRunning) {
-                simulationRunning = running;
-                playPauseButton.setText(running ? "⏸" : "▶");
-                playPauseButton.setTooltip(new Tooltip(running ? "Mettre en pause" : "Lancer"));
-            }
-        } catch (Exception ignored) {
-            // Si le moteur n'est pas encore initialisé
-            if (simulationRunning) {
-                simulationRunning = false;
-                playPauseButton.setText("▶");
-                playPauseButton.setTooltip(new Tooltip("Lancer"));
-            }
+        boolean finished = bus.dispatchSync(GraphEngine::isSimulationFinished);
+        if (finished) {
+            playPauseButton.setText("⏹");
+            playPauseButton.setTooltip(new Tooltip("Simulation terminée – cliquer pour relancer"));
+        } else if (running) {
+            playPauseButton.setText("⏸");
+            playPauseButton.setTooltip(new Tooltip("Mettre en pause"));
+        } else {
+            playPauseButton.setText("▶");
+            playPauseButton.setTooltip(new Tooltip("Lancer"));
         }
     }
 
     @FXML
     private void handlePlayPause() {
-        if (mainController == null)
-            return;
+        if (mainController == null || bus == null) return;
 
-        try {
-            boolean running = bus.dispatchSync(GraphEngine::isSimulationRunning);
-            if (running) {
-                bus.dispatch(engine -> engine.stopSimulation());
-                playPauseButton.setText("▶");
+        boolean finished = bus.dispatchSync(GraphEngine::isSimulationFinished);
+        if (finished) {
+            handleRestart();   // relance complète
+            return;
+        }
+
+        boolean running = bus.dispatchSync(GraphEngine::isSimulationRunning);
+        if (running) {
+            bus.dispatch(GraphEngine::stopSimulation);
+        } else {
+            int vertexCount = bus.dispatchSync(engine -> engine.model().vertexCount());
+            if (vertexCount == 0) {
+                startGraph();
             } else {
-                // Si le graphe n'a aucun sommet, on le charge d'abord
-                boolean init = bus.dispatchSync(engine -> engine.initialized());
-                if (!init) {
-                    startGraph();
-                } else {
-                    bus.dispatch(engine -> engine.startSimulation());
-                }
+                bus.dispatch(GraphEngine::startSimulation);
             }
-        } catch (Exception e) {
-            // En cas d'erreur, on tente de charger le graphe
-            startGraph();
         }
     }
 
     @FXML
     private void handleRestart() {
-        if (mainController == null)
-            return;
-
-        // On relance complètement le graphe avec les mêmes paramètres
+        if (mainController == null) return;
         startGraph();
     }
 
@@ -144,30 +118,18 @@ public final class GraphWorkspaceController implements CommandBusLinkedI<GraphEn
         delay.play();
     }
 
-    public GraphData.SimilitudeMode getSelectedSimilarity() {
-        return similarityCombo.getValue();
-    }
-
-    public GraphData.NodeCommunity getSelectedCommunity() {
-        return communityCombo.getValue();
-    }
-
-    public GraphData.RepulsionMode getSelectedRepulsionMode() {
-        return repulsionCombo.getValue();
-    }
+    public GraphData.SimilitudeMode getSelectedSimilarity() { return similarityCombo.getValue(); }
+    public GraphData.NodeCommunity getSelectedCommunity() { return communityCombo.getValue(); }
+    public GraphData.RepulsionMode getSelectedRepulsionMode() { return repulsionCombo.getValue(); }
 
     public void setSelections(GraphData.SimilitudeMode similarity,
-            GraphData.NodeCommunity community,
-            GraphData.RepulsionMode repulsion) {
+                              GraphData.NodeCommunity community,
+                              GraphData.RepulsionMode repulsion) {
         similarityCombo.setValue(similarity);
         communityCombo.setValue(community);
-        if (repulsion != null) {
-            repulsionCombo.setValue(repulsion);
-        }
+        if (repulsion != null) repulsionCombo.setValue(repulsion);
     }
 
     @Override
-    public void setBus(CommandBus<GraphEngine> bus) {
-        this.bus = bus;
-    }
+    public void setBus(CommandBus<GraphEngine> bus) { this.bus = bus; }
 }

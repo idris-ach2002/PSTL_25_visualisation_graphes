@@ -13,6 +13,8 @@ import com.mongraphe.graphui.rendering.GraphEngine;
 public final class SelectModeHandler implements InteractionModeHandler {
 
     private final UiState state;
+    private boolean panning;
+    private int lastX, lastY;
 
     public SelectModeHandler(UiState state) {
         this.state = state;
@@ -20,34 +22,60 @@ public final class SelectModeHandler implements InteractionModeHandler {
 
     @Override
     public void onMousePressed(CommandBus<GraphEngine> bus, int sx, int sy, int button) {
-        if (button != MouseEvent.BUTTON1 || bus == null) return;
+        if (bus == null)
+            return;
 
-        Vertex selected = bus.dispatchSync(engine -> {
-            float wx = engine.camera().screenToWorldX(sx);
-            float wy = engine.camera().screenToWorldY(sy);
-            Vertex v = engine.model().findVertexAt(wx, wy);
-            engine.model().setSelectedVertexId(v == null ? -1 : v.getId());
-            return v;
-        });
+        if (button == MouseEvent.BUTTON3) {
+            // début du panning
+            panning = true;
+            lastX = sx;
+            lastY = sy;
+            return;
+        }
 
-        if (selected != null) {
-            state.setStatus("Sélection: sommet " + selected.getId());
-        } else {
-            state.setStatus("Aucune sélection");
+        if (button == MouseEvent.BUTTON1) {
+            Vertex selected = bus.dispatchSync(engine -> {
+                float wx = engine.camera().screenToWorldX(sx);
+                float wy = engine.camera().screenToWorldY(sy);
+                Vertex v = engine.model().findVertexAt(wx, wy);
+                engine.model().setSelectedVertexId(v == null ? -1 : v.getId());
+                return v;
+            });
+            if (selected != null) {
+                state.setStatus("Sélection: sommet " + selected.getId());
+            } else {
+                state.setStatus("Aucune sélection");
+            }
         }
     }
 
     @Override
-    public void onMouseWheel(CommandBus<GraphEngine> bus, int sx, int sy, float rotation) {
-        if (bus != null) bus.dispatch(engine -> engine.camera().zoomAt(sx, sy, rotation));
+    public void onMouseDragged(CommandBus<GraphEngine> bus, int sx, int sy, int button) {
+        if (!panning || bus == null)
+            return;
+
+        int dx = sx - lastX;
+        int dy = sy - lastY;
+        lastX = sx;
+        lastY = sy;
+        bus.dispatch(engine -> engine.camera().pan(dx, dy));
     }
 
-    @Override public void onMouseDragged(CommandBus<GraphEngine> bus, int sx, int sy, int button) {}
-    @Override public void onMouseReleased(CommandBus<GraphEngine> bus, int sx, int sy, int button) {}
+    @Override
+    public void onMouseReleased(CommandBus<GraphEngine> bus, int sx, int sy, int button) {
+        panning = false;
+    }
+
+    @Override
+    public void onMouseWheel(CommandBus<GraphEngine> bus, int sx, int sy, float rotation) {
+        if (bus != null)
+            bus.dispatch(engine -> engine.camera().zoomAt(sx, sy, rotation));
+    }
 
     @Override
     public void onKeyPressed(CommandBus<GraphEngine> bus, int keyCode, boolean ctrlDown) {
-        if (bus == null) return;
+        if (bus == null)
+            return;
         if (keyCode == KeyEvent.VK_DELETE || keyCode == KeyEvent.VK_BACK_SPACE) {
             Integer id = bus.dispatchSync(engine -> engine.model().getSelectedVertexId());
             if (id != null && id >= 0) {
