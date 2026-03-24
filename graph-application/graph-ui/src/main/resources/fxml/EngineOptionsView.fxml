@@ -15,9 +15,6 @@
     <Label text="Agrandissement par degré:" GridPane.rowIndex="1" GridPane.columnIndex="0" />
     <TextField fx:id="degreeFactor" GridPane.rowIndex="1" GridPane.columnIndex="1" text="0.3" />
 
-    <Label text="Agrandissement total:" GridPane.rowIndex="2" GridPane.columnIndex="0" />
-    <TextField fx:id="upScale" GridPane.rowIndex="2" GridPane.columnIndex="1" text="5" />
-
     <Label text="Seuil de stabilité:" GridPane.rowIndex="3" GridPane.columnIndex="0" />
     <TextField fx:id="stabilizedThreshold" promptText="auto" GridPane.rowIndex="3" GridPane.columnIndex="1" />
 
@@ -47,9 +44,6 @@
 
     <Label text="Poids min arêtes:" GridPane.rowIndex="12" GridPane.columnIndex="0" />
     <TextField fx:id="minEdgeWeight" text="0" GridPane.rowIndex="12" GridPane.columnIndex="1" />
-
-    <Label text="Mode de répulsion:" GridPane.rowIndex="13" GridPane.columnIndex="0" />
-    <ComboBox fx:id="repulsionModeComboBox" prefWidth="200" GridPane.rowIndex="13" GridPane.columnIndex="1"/>
   </GridPane>
 
   <Separator/>

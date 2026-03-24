@@ -4,13 +4,13 @@
 <?import javafx.scene.control.*?>
 
 <VBox xmlns="http://javafx.com/javafx/8"
-      xmlns:fx="http://javafx.com/fxml/1"
-      fx:controller="com.mongraphe.graphui.controller.GraphWorkspaceController">
+    xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.mongraphe.graphui.controller.GraphWorkspaceController">
 
     <HBox spacing="5">
-        <Label text="Configuration projet" style="-fx-font-weight: bold;"/>
+        <Label text="ForceAtlasCSV" style="-fx-font-weight: bold;"/>
         <Region HBox.hgrow="ALWAYS"/>
-        <Button text="▶ Démarrer" onAction="#handleStartButton"/>
+        <Button fx:id="playPauseButton" onAction="#handlePlayPause" text="▶" style="-fx-min-width: 32px; -fx-min-height: 32px; -fx-background-radius: 0;"/>
+        <Button fx:id="restartButton" onAction="#handleRestart" text="⟳" style="-fx-min-width: 32px; -fx-min-height: 32px; -fx-background-radius: 0;"/>
     </HBox>
 
     <Label text="Mesure de similarité"/>

@@ -79,6 +79,7 @@ public final class MainGraphController {
         menuViewController.setBus(bus);
         menuViewController.setMainController(this);
         workspaceViewController.setMainController(this);
+        workspaceViewController.setBus(bus);
         engineOptionsViewController.setBus(bus);
         dataViewController.setBus(bus);
         graphStatsController.setMainController(this);

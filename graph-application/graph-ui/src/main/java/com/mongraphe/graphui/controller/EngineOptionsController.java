@@ -8,7 +8,6 @@ import com.mongraphe.graphui.app.CommandBus;
 import com.mongraphe.graphui.interaction.commands.SetBackgroundColorCommand;
 import com.mongraphe.graphui.interaction.commands.SetEngineOptionsCommand;
 import com.mongraphe.graphui.interfaces.CommandBusLinkedI;
-import com.mongraphe.graphui.model.GraphData;
 import com.mongraphe.graphui.model.GraphModel;
 import com.mongraphe.graphui.rendering.GraphEngine;
 
@@ -38,7 +37,6 @@ public final class EngineOptionsController implements CommandBusLinkedI<GraphEng
     @FXML private TextField minimumDegree;
     @FXML private TextField minEdgeWeight;
 
-    @FXML private ComboBox<GraphData.RepulsionMode> repulsionModeComboBox;
     @FXML private ComboBox<GraphModel.ColoringMode> coloringModeCombo;
     @FXML private ColorPicker canvasColorPicker;
     @FXML private ColorPicker uniformNodeColorPicker;
@@ -46,11 +44,6 @@ public final class EngineOptionsController implements CommandBusLinkedI<GraphEng
 
     @FXML
     private void initialize() {
-        repulsionModeComboBox.getItems().setAll(GraphData.RepulsionMode.values());
-        if (!repulsionModeComboBox.getItems().isEmpty()) {
-            repulsionModeComboBox.getSelectionModel().selectFirst();
-        }
-
         coloringModeCombo.getItems().setAll(GraphModel.ColoringMode.values());
         coloringModeCombo.getSelectionModel().select(GraphModel.ColoringMode.COMMUNITY);
 
@@ -134,9 +127,6 @@ public final class EngineOptionsController implements CommandBusLinkedI<GraphEng
         put(p, "minimumDegree", minimumDegree.getText());
         put(p, "minEdgeWeight", minEdgeWeight.getText());
 
-        if (repulsionModeComboBox.getValue() != null) {
-            p.setProperty("repulsionMode", repulsionModeComboBox.getValue().name());
-        }
         if (coloringModeCombo.getValue() != null) {
             p.setProperty("coloringMode", coloringModeCombo.getValue().name());
         }
@@ -164,7 +154,6 @@ public final class EngineOptionsController implements CommandBusLinkedI<GraphEng
         minimumDegree.setText(p.getProperty("minimumDegree", minimumDegree.getText()));
         minEdgeWeight.setText(p.getProperty("minEdgeWeight", minEdgeWeight.getText()));
 
-        setEnumValue(repulsionModeComboBox, p.getProperty("repulsionMode"), GraphData.RepulsionMode.class);
         setEnumValue(coloringModeCombo, p.getProperty("coloringMode"), GraphModel.ColoringMode.class);
 
         String background = p.getProperty("background");
@@ -198,7 +187,6 @@ public final class EngineOptionsController implements CommandBusLinkedI<GraphEng
         EngineOptions options = new EngineOptions();
         options.degreeFactor = parseDoubleOrNull(degreeFactor, errors, "Agrandissement par degré");
         options.initialNodeSize = parseDoubleOrNull(initNodeSize, errors, "Taille d'un nœud");
-        options.upScale = parseIntOrNull(upScale, errors, "Agrandissement total");
         options.stabilizedThreshold = parseDoubleOrNull(stabilizedThreshold, errors, "Seuil de stabilité");
         options.attractionThreshold = parseDoubleOrNull(attractionThreshold, errors, "Seuil d'attraction");
         options.clusterUpdateFrequency = parseIntOrNull(updatedFrequence, errors, "Fréquence des clusters");
@@ -209,11 +197,9 @@ public final class EngineOptionsController implements CommandBusLinkedI<GraphEng
         options.nbClusters = parseIntOrNull(nbClusters, errors, "Nombre de clusters");
         options.minimumDegree = parseIntOrNull(minimumDegree, errors, "Degré minimum");
         options.minEdgeWeight = parseDoubleOrNull(minEdgeWeight, errors, "Poids min arêtes");
-        options.repulsionMode = repulsionModeComboBox.getValue();
 
         validateStrictlyPositive(initNodeSize, options.initialNodeSize, errors, "Taille d'un nœud");
         validateNonNegative(degreeFactor, options.degreeFactor, errors, "Agrandissement par degré");
-        validateStrictlyPositive(upScale, options.upScale, errors, "Agrandissement total");
         validateStrictlyPositive(updatedFrequence, options.clusterUpdateFrequency, errors, "Fréquence des clusters");
         validateStrictlyPositive(newFriction, options.newFriction, errors, "Friction");
         validateNonNegative(stabilizedThreshold, options.stabilizedThreshold, errors, "Seuil de stabilité");

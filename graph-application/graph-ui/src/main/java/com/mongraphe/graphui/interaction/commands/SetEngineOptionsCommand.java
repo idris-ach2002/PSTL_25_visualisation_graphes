@@ -19,7 +19,6 @@ public class SetEngineOptionsCommand implements GraphCommand<GraphEngine> {
 
         if (opts.degreeFactor != null) context.setDegreeScaleFactor(opts.degreeFactor);
         if (opts.initialNodeSize != null) context.setInitialNodeSize(opts.initialNodeSize);
-        if (opts.upScale != null) context.setUpscale(opts.upScale);
         if (opts.stabilizedThreshold != null) context.setStabilizedThreshold(opts.stabilizedThreshold);
         if (opts.attractionThreshold != null) context.setAttractionThreshold(opts.attractionThreshold);
         if (opts.nbClusters != null) context.setNbClusters(opts.nbClusters);
@@ -30,7 +29,6 @@ public class SetEngineOptionsCommand implements GraphCommand<GraphEngine> {
         if (opts.newAmortissement != null) context.setNewAmortissement(opts.newAmortissement);
         if (opts.minimumDegree != null) context.setMinimumDegree(opts.minimumDegree);
         if (opts.minEdgeWeight != null) context.setMinimumEdgeWeight(opts.minEdgeWeight);
-        if (opts.repulsionMode != null) context.setRepulsionMode(opts.repulsionMode);
 
         if (wasRunning) {
             context.startSimulation();
