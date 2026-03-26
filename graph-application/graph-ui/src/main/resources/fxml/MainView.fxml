@@ -36,6 +36,10 @@
                     <ToggleButton text="Move" toggleGroup="$toolToggleGroup" userData="MOVE"/>
                     <ToggleButton text="Delete" toggleGroup="$toolToggleGroup" userData="DELETE"/>
                 </HBox>
+                <HBox spacing="5" alignment="CENTER">
+                    <Button text="+" onAction="#zoomIn" />
+                    <Button text="-" onAction="#zoomOut" />
+                </HBox>
             </HBox>
         </VBox>
     </top>

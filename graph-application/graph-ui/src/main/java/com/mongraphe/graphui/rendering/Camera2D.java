@@ -31,17 +31,24 @@ public final class Camera2D {
         updateProjection();
     }
 
-    public void zoomAt(float screenX, float screenY, float amount) {
-
+    public void zoomAt(float screenX, float screenY, float factor) {
         float worldX = screenToWorldX(screenX);
         float worldY = screenToWorldY(screenY);
 
-        zoom *= (amount > 0) ? 1.1f : 0.9f;
+        zoom *= factor;
 
         offsetX = worldX - (screenX - width / 2f) / zoom;
         offsetY = worldY - (height / 2f - screenY) / zoom;
 
         updateProjection();
+    }
+
+    public void zoomIn() {
+        zoomAt(width / 2f, height / 2f, 1.1f);
+    }
+
+    public void zoomOut() {
+        zoomAt(width / 2f, height / 2f, 0.9f);
     }
 
     public void setZoom(float zoom) {

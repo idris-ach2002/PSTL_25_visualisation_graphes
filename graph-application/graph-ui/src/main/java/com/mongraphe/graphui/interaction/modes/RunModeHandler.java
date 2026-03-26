@@ -44,7 +44,8 @@ public final class RunModeHandler implements InteractionModeHandler {
 
     @Override
     public void onMouseDragged(CommandBus<GraphEngine> bus, int sx, int sy, int button) {
-        if (!panning || bus == null) return;
+        if (!panning || bus == null)
+            return;
 
         int dx = sx - lastX;
         int dy = sy - lastY;
@@ -60,12 +61,16 @@ public final class RunModeHandler implements InteractionModeHandler {
 
     @Override
     public void onMouseWheel(CommandBus<GraphEngine> bus, int sx, int sy, float rotation) {
-        if (bus != null) bus.dispatch(engine -> engine.camera().zoomAt(sx, sy, rotation));
+        if (bus != null) {
+            float factor = (rotation > 0) ? 1.1f : 0.9f;
+            bus.dispatch(engine -> engine.camera().zoomAt(sx, sy, factor));
+        }
     }
 
     @Override
     public void onKeyPressed(CommandBus<GraphEngine> bus, int keyCode, boolean ctrlDown) {
-        if (bus == null) return;
+        if (bus == null)
+            return;
 
         if (keyCode == KeyEvent.VK_SPACE) {
             boolean running = bus.dispatchSync(GraphEngine::isSimulationRunning);

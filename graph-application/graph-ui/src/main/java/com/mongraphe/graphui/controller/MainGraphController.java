@@ -5,6 +5,7 @@ import java.nio.file.Files;
 import javafx.application.Platform;
 import javafx.fxml.FXML;
 import javafx.scene.control.Alert;
+import javafx.scene.control.Button;
 import javafx.scene.control.Toggle;
 import javafx.scene.control.ToggleGroup;
 import javafx.scene.layout.BorderPane;
@@ -20,6 +21,7 @@ import com.mongraphe.graphui.app.UiState;
 import com.mongraphe.graphui.interaction.InteractionService;
 import com.mongraphe.graphui.model.GraphData;
 import com.mongraphe.graphui.model.GraphProject;
+import com.mongraphe.graphui.rendering.Camera2D;
 import com.mongraphe.graphui.rendering.EngineExecutor;
 import com.mongraphe.graphui.rendering.GraphEngine;
 import com.mongraphe.graphui.rendering.GraphNativeEngine;
@@ -68,6 +70,11 @@ public final class MainGraphController implements GraphEngine.GraphEngineListene
     private Pane preview;
     @FXML
     private VBox graphStats;
+
+    @FXML
+    private Button zoomInButton;
+    @FXML
+    private Button zoomOutButton;
 
     @FXML
     private void initialize() {
@@ -120,6 +127,16 @@ public final class MainGraphController implements GraphEngine.GraphEngineListene
             setInteractionEnabled(true);
             uiState.setStatus("Pause");
         });
+    }
+
+    @FXML
+    private void zoomIn() {
+        bus.dispatch(engine -> engine.camera().zoomIn());
+    }
+
+    @FXML
+    private void zoomOut() {
+        bus.dispatch(engine -> engine.camera().zoomOut());
     }
 
     private void setInteractionEnabled(boolean enabled) {

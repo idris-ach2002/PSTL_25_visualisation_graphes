@@ -69,8 +69,10 @@ public final class DeleteModeHandler implements InteractionModeHandler {
 
     @Override
     public void onMouseWheel(CommandBus<GraphEngine> bus, int sx, int sy, float rotation) {
-        if (bus != null)
-            bus.dispatch(engine -> engine.camera().zoomAt(sx, sy, rotation));
+        if (bus != null) {
+            float factor = (rotation > 0) ? 1.1f : 0.9f;
+            bus.dispatch(engine -> engine.camera().zoomAt(sx, sy, factor));
+        }
     }
 
     @Override
