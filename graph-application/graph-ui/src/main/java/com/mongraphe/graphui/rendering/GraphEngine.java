@@ -24,6 +24,7 @@ public final class GraphEngine {
 
     private volatile float clearR = 1f, clearG = 1f, clearB = 1f, clearA = 1f;
     private int clusterUpdateFrequency = 1;
+    private boolean initialized = false;
 
     public interface GraphEngineListener {
         void onSimulationStarted();
@@ -126,6 +127,22 @@ public final class GraphEngine {
         this.model = new GraphModel();
         this.simulation = new GraphSimulation(nativeEngine);
         this.visibility = new GraphVisibilityFilter();
+
+        simulation.setOnFinished(() -> {
+            synchronized (listeners) {
+                for (GraphEngineListener l : listeners) {
+                    l.onSimulationStopped();
+                }
+            }
+        });
+    }
+
+    public boolean isSimulationFinished() {
+        return simulation.isFinishedNaturally();
+    }
+
+    public boolean initialized() {
+        return initialized;
     }
 
     public void addListener(GraphEngineListener listener) {
@@ -152,10 +169,12 @@ public final class GraphEngine {
         switch (type) {
             case CSV -> {
                 loadCsv(path, sim, communityMode);
+                initialized = true;
                 return true;
             }
             case DOT -> {
                 loadDot(path, communityMode);
+                initialized = true;
                 return true;
             }
             default -> {
@@ -330,10 +349,6 @@ public final class GraphEngine {
                 v.updateDiameter();
             }
         }
-    }
-
-    public void setUpscale(int up) {
-        Vertex.upscale = up;
     }
 
     public void setStabilizedThreshold(double t) {

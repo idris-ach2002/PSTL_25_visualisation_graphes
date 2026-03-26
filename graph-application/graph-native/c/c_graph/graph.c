@@ -293,7 +293,7 @@ double update_position_forces(double(*forces)[2], double PasMaxX, double PasMaxY
             vertices[i].x = x;
             vertices[i].y = y;
 
-            new_max_movement = fmax(Max_movement, velocities[i][0] * velocities[i][0] + velocities[i][0] * velocities[i][0]);
+            new_max_movement = fmax(Max_movement, velocities[i][0] * velocities[i][0] + velocities[i][1] * velocities[i][1]);
         }
     }
 

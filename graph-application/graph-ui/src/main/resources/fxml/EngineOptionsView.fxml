@@ -5,10 +5,7 @@
 
 <VBox xmlns="http://javafx.com/javafx/8"
   xmlns:fx="http://javafx.com/fxml/1"
-  fx:controller="com.mongraphe.graphui.controller.EngineOptionsController"
-  spacing="8"
-  styleClass="dock"
-  style="-fx-padding: 10;">
+  fx:controller="com.mongraphe.graphui.controller.EngineOptionsController">
 
   <Label text="Paramètres du graphe" style="-fx-font-weight: bold; -fx-padding: 10 0 0 0;" />
   <GridPane hgap="10" vgap="5">
@@ -17,9 +14,6 @@
 
     <Label text="Agrandissement par degré:" GridPane.rowIndex="1" GridPane.columnIndex="0" />
     <TextField fx:id="degreeFactor" GridPane.rowIndex="1" GridPane.columnIndex="1" text="0.3" />
-
-    <Label text="Agrandissement total:" GridPane.rowIndex="2" GridPane.columnIndex="0" />
-    <TextField fx:id="upScale" GridPane.rowIndex="2" GridPane.columnIndex="1" text="5" />
 
     <Label text="Seuil de stabilité:" GridPane.rowIndex="3" GridPane.columnIndex="0" />
     <TextField fx:id="stabilizedThreshold" promptText="auto" GridPane.rowIndex="3" GridPane.columnIndex="1" />
@@ -50,9 +44,6 @@
 
     <Label text="Poids min arêtes:" GridPane.rowIndex="12" GridPane.columnIndex="0" />
     <TextField fx:id="minEdgeWeight" text="0" GridPane.rowIndex="12" GridPane.columnIndex="1" />
-
-    <Label text="Mode de répulsion:" GridPane.rowIndex="13" GridPane.columnIndex="0" />
-    <ComboBox fx:id="repulsionModeComboBox" prefWidth="200" GridPane.rowIndex="13" GridPane.columnIndex="1"/>
   </GridPane>
 
   <Separator/>
@@ -71,6 +62,6 @@
   <CheckBox fx:id="enableKmeans" text="Activer K-Means"/>
 
   <HBox spacing="8" alignment="CENTER_RIGHT">
-    <Button text="Appliquer" onAction="#applyOptions" styleClass="button-8"/>
+    <Button text="Appliquer" onAction="#applyOptions" styleClass="button"/>
   </HBox>
 </VBox>

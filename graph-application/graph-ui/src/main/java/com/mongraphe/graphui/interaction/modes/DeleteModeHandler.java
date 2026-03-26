@@ -12,6 +12,8 @@ import com.mongraphe.graphui.rendering.GraphEngine;
 public final class DeleteModeHandler implements InteractionModeHandler {
 
     private final UiState state;
+    private boolean panning;
+    private int lastX, lastY;
 
     public DeleteModeHandler(UiState state) {
         this.state = state;
@@ -19,7 +21,18 @@ public final class DeleteModeHandler implements InteractionModeHandler {
 
     @Override
     public void onMousePressed(CommandBus<GraphEngine> bus, int sx, int sy, int button) {
-        if (button != MouseEvent.BUTTON1 || bus == null) return;
+        if (bus == null)
+            return;
+
+        if (button == MouseEvent.BUTTON3) {
+            panning = true;
+            lastX = sx;
+            lastY = sy;
+            return;
+        }
+
+        if (button != MouseEvent.BUTTON1)
+            return;
 
         Vertex selected = bus.dispatchSync(engine -> {
             float wx = engine.camera().screenToWorldX(sx);
@@ -37,13 +50,33 @@ public final class DeleteModeHandler implements InteractionModeHandler {
         state.setStatus("Sommet supprimé: " + selected.getId());
     }
 
-    @Override public void onMouseDragged(CommandBus<GraphEngine> bus, int sx, int sy, int b) {}
-    @Override public void onMouseReleased(CommandBus<GraphEngine> bus, int sx, int sy, int b) {}
+    @Override
+    public void onMouseDragged(CommandBus<GraphEngine> bus, int sx, int sy, int button) {
+        if (!panning || bus == null)
+            return;
+
+        int dx = sx - lastX;
+        int dy = sy - lastY;
+        lastX = sx;
+        lastY = sy;
+        bus.dispatch(engine -> engine.camera().pan(dx, dy));
+    }
+
+    @Override
+    public void onMouseReleased(CommandBus<GraphEngine> bus, int sx, int sy, int button) {
+        panning = false;
+    }
 
     @Override
     public void onMouseWheel(CommandBus<GraphEngine> bus, int sx, int sy, float rotation) {
-        if (bus != null) bus.dispatch(engine -> engine.camera().zoomAt(sx, sy, rotation));
+        if (bus != null) {
+            float factor = (rotation > 0) ? 1.1f : 0.9f;
+            bus.dispatch(engine -> engine.camera().zoomAt(sx, sy, factor));
+        }
     }
 
-    @Override public void onKeyPressed(CommandBus<GraphEngine> bus, int keyCode, boolean ctrlDown) {}
+    @Override
+    public void onKeyPressed(CommandBus<GraphEngine> bus, int keyCode, boolean ctrlDown) {
+        // Rien à faire
+    }
 }

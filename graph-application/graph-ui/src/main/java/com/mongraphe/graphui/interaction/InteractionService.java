@@ -43,30 +43,75 @@ public final class InteractionService {
     }
 
     public Mode getMode() {
-        if (current == selectHandler) return Mode.SELECT;
-        if (current == moveHandler) return Mode.MOVE;
-        if (current == deleteHandler) return Mode.DELETE;
+        if (current == selectHandler)
+            return Mode.SELECT;
+        if (current == moveHandler)
+            return Mode.MOVE;
+        if (current == deleteHandler)
+            return Mode.DELETE;
         return Mode.RUN;
     }
 
     public void setMode(Mode mode) {
         Objects.requireNonNull(mode);
         switch (mode) {
-            case SELECT -> { current = selectHandler; state.setStatus("Mode: sélection"); }
-            case MOVE -> { current = moveHandler; state.setStatus("Mode: déplacement"); }
-            case DELETE -> { current = deleteHandler; state.setStatus("Mode: suppression"); }
-            case RUN -> { current = runHandler; state.setStatus("Mode: exécution"); }
+            case SELECT -> {
+                current = selectHandler;
+                state.setStatus("Mode: sélection");
+            }
+            case MOVE -> {
+                current = moveHandler;
+                state.setStatus("Mode: déplacement");
+            }
+            case DELETE -> {
+                current = deleteHandler;
+                state.setStatus("Mode: suppression");
+            }
+            case RUN -> {
+                current = runHandler;
+                state.setStatus("Mode: exécution");
+            }
         }
     }
 
-    public void undo() { bus.undo(); }
-    public void redo() { bus.redo(); }
-    public boolean canUndo() { return bus.canUndo(); }
-    public boolean canRedo() { return bus.canRedo(); }
+    public void setModeRun() {
+        current = runHandler;
+        state.setStatus("Mode: exécution");
+    }
 
-    public void onMousePressed(int x, int y, int b) { current.onMousePressed(bus, x, y, b); }
-    public void onMouseDragged(int x, int y, int b) { current.onMouseDragged(bus, x, y, b); }
-    public void onMouseReleased(int x, int y, int b) { current.onMouseReleased(bus, x, y, b); }
-    public void onMouseWheel(int x, int y, float a) { current.onMouseWheel(bus, x, y, a); }
-    public void onKeyPressed(int key, boolean ctrl) { current.onKeyPressed(bus, key, ctrl); }
+    public void undo() {
+        bus.undo();
+    }
+
+    public void redo() {
+        bus.redo();
+    }
+
+    public boolean canUndo() {
+        return bus.canUndo();
+    }
+
+    public boolean canRedo() {
+        return bus.canRedo();
+    }
+
+    public void onMousePressed(int x, int y, int b) {
+        current.onMousePressed(bus, x, y, b);
+    }
+
+    public void onMouseDragged(int x, int y, int b) {
+        current.onMouseDragged(bus, x, y, b);
+    }
+
+    public void onMouseReleased(int x, int y, int b) {
+        current.onMouseReleased(bus, x, y, b);
+    }
+
+    public void onMouseWheel(int x, int y, float a) {
+        current.onMouseWheel(bus, x, y, a);
+    }
+
+    public void onKeyPressed(int key, boolean ctrl) {
+        current.onKeyPressed(bus, key, ctrl);
+    }
 }

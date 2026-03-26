@@ -18,6 +18,8 @@ public final class MoveModeHandler implements InteractionModeHandler {
     private boolean dragging;
     private double startX, startY;
     private int id = -1;
+    private boolean panning;
+    private int lastX, lastY;
 
     public MoveModeHandler(UiState state) {
         this.state = state;
@@ -25,7 +27,18 @@ public final class MoveModeHandler implements InteractionModeHandler {
 
     @Override
     public void onMousePressed(CommandBus<GraphEngine> bus, int sx, int sy, int button) {
-        if (button != MouseEvent.BUTTON1 || bus == null) return;
+        if (bus == null)
+            return;
+
+        if (button == MouseEvent.BUTTON3) {
+            panning = true;
+            lastX = sx;
+            lastY = sy;
+            return;
+        }
+
+        if (button != MouseEvent.BUTTON1)
+            return;
 
         selected = bus.dispatchSync(engine -> {
             float wx = engine.camera().screenToWorldX(sx);
@@ -35,9 +48,8 @@ public final class MoveModeHandler implements InteractionModeHandler {
             return v;
         });
 
-        if (selected == null) {
+        if (selected == null)
             return;
-        }
 
         dragging = true;
         id = selected.getId();
@@ -47,7 +59,20 @@ public final class MoveModeHandler implements InteractionModeHandler {
 
     @Override
     public void onMouseDragged(CommandBus<GraphEngine> bus, int sx, int sy, int button) {
-        if (!dragging || selected == null || bus == null) return;
+        if (bus == null)
+            return;
+
+        if (panning) {
+            int dx = sx - lastX;
+            int dy = sy - lastY;
+            lastX = sx;
+            lastY = sy;
+            bus.dispatch(engine -> engine.camera().pan(dx, dy));
+            return;
+        }
+
+        if (!dragging || selected == null)
+            return;
 
         float wx = bus.dispatchSync(engine -> engine.camera().screenToWorldX(sx));
         float wy = bus.dispatchSync(engine -> engine.camera().screenToWorldY(sy));
@@ -57,12 +82,18 @@ public final class MoveModeHandler implements InteractionModeHandler {
 
     @Override
     public void onMouseReleased(CommandBus<GraphEngine> bus, int sx, int sy, int button) {
-        if (!dragging || bus == null) return;
+        if (panning) {
+            panning = false;
+            return;
+        }
+
+        if (!dragging || bus == null)
+            return;
         dragging = false;
 
         double[] end = bus.dispatchSync(engine -> {
             Vertex v = engine.model().vertexById(id);
-            return v == null ? new double[] {startX, startY} : new double[] {v.getX(), v.getY()};
+            return v == null ? new double[] { startX, startY } : new double[] { v.getX(), v.getY() };
         });
 
         if (Math.abs(end[0] - startX) > 1e-6 || Math.abs(end[1] - startY) > 1e-6) {
@@ -75,12 +106,16 @@ public final class MoveModeHandler implements InteractionModeHandler {
 
     @Override
     public void onMouseWheel(CommandBus<GraphEngine> bus, int sx, int sy, float rotation) {
-        if (bus != null) bus.dispatch(engine -> engine.camera().zoomAt(sx, sy, rotation));
+        if (bus != null) {
+            float factor = (rotation > 0) ? 1.1f : 0.9f;
+            bus.dispatch(engine -> engine.camera().zoomAt(sx, sy, factor));
+        }
     }
-
+    
     @Override
     public void onKeyPressed(CommandBus<GraphEngine> bus, int keyCode, boolean ctrlDown) {
-        if (bus == null) return;
+        if (bus == null)
+            return;
         if (keyCode == KeyEvent.VK_DELETE || keyCode == KeyEvent.VK_BACK_SPACE) {
             Integer selectedId = bus.dispatchSync(engine -> engine.model().getSelectedVertexId());
             if (selectedId != null && selectedId >= 0) {

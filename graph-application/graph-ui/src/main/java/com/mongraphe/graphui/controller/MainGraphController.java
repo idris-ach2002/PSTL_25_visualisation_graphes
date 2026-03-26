@@ -5,9 +5,11 @@ import java.nio.file.Files;
 import javafx.application.Platform;
 import javafx.fxml.FXML;
 import javafx.scene.control.Alert;
+import javafx.scene.control.Button;
 import javafx.scene.control.Toggle;
 import javafx.scene.control.ToggleGroup;
 import javafx.scene.layout.BorderPane;
+import javafx.scene.layout.HBox;
 import javafx.scene.layout.Pane;
 import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
@@ -25,7 +27,7 @@ import com.mongraphe.graphui.rendering.GraphNativeEngine;
 import com.mongraphe.graphui.rendering.GraphRenderer;
 import com.mongraphe.graphui.view.GraphPanel;
 
-public final class MainGraphController {
+public final class MainGraphController implements GraphEngine.GraphEngineListener {
 
     private final UiState uiState = new UiState();
 
@@ -48,8 +50,12 @@ public final class MainGraphController {
 
     @FXML
     private ToggleGroup viewToggleGroup;
+
+    @FXML
+    private HBox toolBar;
     @FXML
     private ToggleGroup toolToggleGroup;
+    private boolean interactionEnabled = false;
 
     @FXML
     private StackPane rootStack;
@@ -63,6 +69,11 @@ public final class MainGraphController {
     private Pane preview;
     @FXML
     private VBox graphStats;
+
+    @FXML
+    private Button zoomInButton;
+    @FXML
+    private Button zoomOutButton;
 
     @FXML
     private void initialize() {
@@ -79,22 +90,81 @@ public final class MainGraphController {
         menuViewController.setBus(bus);
         menuViewController.setMainController(this);
         workspaceViewController.setMainController(this);
+        workspaceViewController.setBus(bus);
         engineOptionsViewController.setBus(bus);
         dataViewController.setBus(bus);
         graphStatsController.setMainController(this);
         graphStatsController.setBus(bus);
 
+        // Écouter les changements d'état de la simulation pour mettre à jour
+        // l'interface
+        engine.addListener(this);
+
         setupGraphSurfaceResize();
         setupToolToggle();
         setupCloseWindowListener(nativeEngine);
 
+        nativeEngine.setDimension(1300, 724); // TODO : Ajouter la possibilté de le paramétrer
+
+        setInteractionEnabled(false);
+
         uiState.setStatus("Prêt");
     }
 
-    public void openFile(File file) {
-        if (file == null) {
-            return;
+    // Implémentation de GraphEngineListener
+    @Override
+    public void onSimulationStarted() {
+        Platform.runLater(() -> {
+            workspaceViewController.updatePlayPauseIcon(true);
+            setInteractionEnabled(false);
+            uiState.setStatus("Simulation en cours");
+        });
+    }
+
+    @Override
+    public void onSimulationStopped() {
+        Platform.runLater(() -> {
+            workspaceViewController.updatePlayPauseIcon(false);
+            setInteractionEnabled(true);
+            uiState.setStatus("Pause");
+        });
+    }
+
+    @FXML
+    private void zoomIn() {
+        bus.dispatch(engine -> engine.camera().zoomIn());
+    }
+
+    @FXML
+    private void zoomOut() {
+        bus.dispatch(engine -> engine.camera().zoomOut());
+    }
+
+    private void setInteractionEnabled(boolean enabled) {
+        interactionEnabled = enabled;
+        toolBar.setDisable(!enabled);
+        if (!enabled) {
+            // Quand la simulation tourne, on force le mode RUN (camera/zoom seulement)
+            interaction.setModeRun();
+        } else {
+            // Quand on est en pause, on applique le mode sélectionné par l'utilisateur
+            Toggle selected = toolToggleGroup.getSelectedToggle();
+            if (selected != null) {
+                String mode = (String) selected.getUserData();
+                try {
+                    interaction.setMode(InteractionService.Mode.valueOf(mode));
+                } catch (IllegalArgumentException e) {
+                    interaction.setMode(InteractionService.Mode.SELECT);
+                }
+            } else {
+                interaction.setMode(InteractionService.Mode.SELECT);
+            }
         }
+    }
+
+    public void openFile(File file) {
+        if (file == null)
+            return;
         this.project = new GraphProject(file, detectType(file));
         uiState.setStatus("Fichier sélectionné : " + file.getName());
     }
@@ -131,6 +201,7 @@ public final class MainGraphController {
             if (overview != null) {
                 overview.setVisible(true);
             }
+            // La simulation est démarrée, le listener onSimulationStarted sera appelé
         } catch (Exception e) {
             alert(Alert.AlertType.ERROR, "Erreur de chargement",
                     "Impossible de charger le graphe : " + rootCauseMessage(e));
@@ -140,18 +211,15 @@ public final class MainGraphController {
     private void setupCloseWindowListener(GraphNativeEngine nat) {
         rootStack.sceneProperty().addListener((obs, oldScene, scene) -> {
             if (scene != null) {
-
                 scene.windowProperty().addListener((obsW, oldWindow, window) -> {
                     if (window != null) {
                         Stage stage = (Stage) window;
-
                         stage.setOnCloseRequest(e -> {
                             panel.stop();
                             nat.freeAllocatedMemory();
                         });
                     }
                 });
-
             }
         });
     }
@@ -190,47 +258,6 @@ public final class MainGraphController {
         }
     }
 
-    /*
-     * public void saveProject() {
-     * if (project == null) {
-     * alert(Alert.AlertType.WARNING, "Enregistrer",
-     * "Aucun fichier source n'est chargé.");
-     * return;
-     * }
-     * 
-     * FileChooser chooser = new FileChooser();
-     * chooser.setTitle("Enregistrer le projet");
-     * chooser.getExtensionFilters().add(new
-     * FileChooser.ExtensionFilter("Projet MonGraphe", "*.mongraphe"));
-     * File file = chooser.showSaveDialog(getStage());
-     * if (file == null) {
-     * return;
-     * }
-     * if (!file.getName().toLowerCase().endsWith(".mongraphe")) {
-     * file = new File(file.getAbsolutePath() + ".mongraphe");
-     * }
-     * 
-     * Properties p = new Properties();
-     * p.setProperty("source", project.sourceFile().getAbsolutePath());
-     * p.setProperty("sourceType", project.sourceType().name());
-     * if (currentSimilarity != null)
-     * p.setProperty("similarity", currentSimilarity.name());
-     * if (currentCommunity != null)
-     * p.setProperty("community", currentCommunity.name());
-     * if (currentRepulsion != null)
-     * p.setProperty("workspaceRepulsion", currentRepulsion.name());
-     * engineOptionsViewController.fillProperties(p);
-     * 
-     * try (FileOutputStream fos = new FileOutputStream(file)) {
-     * p.store(fos, "MonGraphe project");
-     * uiState.setStatus("Projet enregistré : " + file.getName());
-     * } catch (IOException e) {
-     * alert(Alert.AlertType.ERROR, "Erreur",
-     * "Impossible d'enregistrer le projet : " + e.getMessage());
-     * }
-     * }
-     */
-
     public void exportPng() {
         if (panel == null) {
             alert(Alert.AlertType.WARNING, "Export PNG", "Aucun graphe affiché.");
@@ -241,9 +268,8 @@ public final class MainGraphController {
         chooser.setTitle("Exporter en PNG");
         chooser.getExtensionFilters().add(new FileChooser.ExtensionFilter("Image PNG", "*.png"));
         File out = chooser.showSaveDialog(getStage());
-        if (out == null) {
+        if (out == null)
             return;
-        }
         if (!out.getName().toLowerCase().endsWith(".png")) {
             out = new File(out.getAbsolutePath() + ".png");
         }
@@ -267,9 +293,8 @@ public final class MainGraphController {
     }
 
     public void setStatsVisible(boolean show) {
-        if (graphStats == null) {
+        if (graphStats == null)
             return;
-        }
         graphStats.setVisible(show);
         graphStats.setManaged(show);
     }
@@ -296,16 +321,16 @@ public final class MainGraphController {
     }
 
     private void setupToolToggle() {
-        if (toolToggleGroup == null) {
+        if (toolToggleGroup == null)
             return;
-        }
-
         toolToggleGroup.selectedToggleProperty().addListener((obs, oldToggle, newToggle) -> {
-            String mode = newToggle == null ? "RUN" : String.valueOf(newToggle.getUserData());
-            try {
-                interaction.setMode(InteractionService.Mode.valueOf(mode));
-            } catch (IllegalArgumentException e) {
-                interaction.setMode(InteractionService.Mode.RUN);
+            if (interactionEnabled && newToggle != null) {
+                String mode = (String) newToggle.getUserData();
+                try {
+                    interaction.setMode(InteractionService.Mode.valueOf(mode));
+                } catch (IllegalArgumentException e) {
+                    interaction.setMode(InteractionService.Mode.SELECT);
+                }
             }
         });
     }

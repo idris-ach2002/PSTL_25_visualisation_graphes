@@ -440,7 +440,7 @@ void repulsion_intra_cluster_job(void * args) {
 
                         double rep_force;
                         if ( mode == 1 ) { 
-                            rep_force = repulsion_coeff / (dist_squared*dist_squared);
+                            rep_force = repulsion_coeff / dist_squared;
                         } else if (mode == 2 && communities[i] != communities[j]) {//printf("extra repulsion %d, %d \n",i,j);
                             rep_force = 100000 * repulsion_coeff * (node_degrees[i]+1) * (node_degrees[j]+1) / dist_squared;
                         } else { // mode == 0 est le mode par defaut
@@ -522,7 +522,7 @@ void repulsion_intra_clusters(double(*forces)[2], double FMaxX, double FMaxY)
 
                             double rep_force;
                             if ( mode == 1 ) { 
-                                rep_force = repulsion_coeff / (dist_squared*dist_squared);
+                                rep_force = repulsion_coeff / dist_squared;
                             } else if (mode == 2 && communities[i] != communities[j]) {//printf("extra repulsion %d, %d \n",i,j);
                                 rep_force = 100000 * repulsion_coeff * (node_degrees[i]+1) * (node_degrees[j]+1) / dist_squared;
                             } else { // mode == 0 est le mode par defaut
