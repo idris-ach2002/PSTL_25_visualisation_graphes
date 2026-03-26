@@ -104,6 +104,8 @@ public final class MainGraphController implements GraphEngine.GraphEngineListene
         setupToolToggle();
         setupCloseWindowListener(nativeEngine);
 
+        nativeEngine.setDimension(1300, 724); // TODO : Ajouter la possibilté de le paramétrer
+
         setInteractionEnabled(false);
 
         uiState.setStatus("Prêt");
