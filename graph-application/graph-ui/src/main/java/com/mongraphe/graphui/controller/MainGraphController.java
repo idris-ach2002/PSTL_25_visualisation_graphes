@@ -21,7 +21,6 @@ import com.mongraphe.graphui.app.UiState;
 import com.mongraphe.graphui.interaction.InteractionService;
 import com.mongraphe.graphui.model.GraphData;
 import com.mongraphe.graphui.model.GraphProject;
-import com.mongraphe.graphui.rendering.Camera2D;
 import com.mongraphe.graphui.rendering.EngineExecutor;
 import com.mongraphe.graphui.rendering.GraphEngine;
 import com.mongraphe.graphui.rendering.GraphNativeEngine;
