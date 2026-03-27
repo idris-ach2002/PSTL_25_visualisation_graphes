@@ -291,6 +291,7 @@ Java_com_mongraphe_graphui_rendering_GraphNativeEngine_initializeGraph(
     JNIEnv *env, jobject obj, jint md, jdouble thresh, jdouble anti_thresh) {
 
   calculate_similitude_and_edges(mode_similitude, thresh, anti_thresh);
+  build_csr_adjacency();
 
   for (int i = 0; i < num_rows; i++) {
     free(similarity_matrix[i]);
@@ -358,6 +359,7 @@ Java_com_mongraphe_graphui_rendering_GraphNativeEngine_initializeDot(
   const char *str = (*env)->GetStringUTFChars(env, filepath, &b);
 
   parse_dot_file(str);
+  build_csr_adjacency();
 
   InitPool(&pool, 1000, 8);
 
@@ -421,9 +423,6 @@ JNIEXPORT void JNICALL
 Java_com_mongraphe_graphui_rendering_GraphNativeEngine_freeAllocatedMemory(
     JNIEnv *env, jobject obj) {
 
-  // Libérer le CSR utilisé pour les communautés
-  free_csr_adjacency();
-
   free_clusters();
 
   if (similarity_matrix != NULL) {
@@ -433,6 +432,7 @@ Java_com_mongraphe_graphui_rendering_GraphNativeEngine_freeAllocatedMemory(
     free(similarity_matrix);
   }
   freeNodeNames();
+  free_csr_adjacency();
   FreePool(&pool);
 
   num_nodes = 0;

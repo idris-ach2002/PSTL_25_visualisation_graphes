@@ -24,7 +24,7 @@ int leiden_method_CPM();
 int leiden_method();
 int count_unique_communities(int *communities, int num_nodes);
 void find_connected_components();
-void mark_component(int, int);
+void mark_component(int, int, int* stack);
 void apply_louvain_to_component(int);
 void initialize_adjacency_list();
 void initialize_community_colors();

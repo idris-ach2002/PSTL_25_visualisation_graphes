@@ -74,26 +74,24 @@ void find_connected_components() {
   }
   num_components = 0;
 
+  int *stack = malloc(num_nodes * sizeof(int));
   for (int i = 0; i < num_nodes; i++) {
     if (node_community_map[i].component == -1) {
-      mark_component(i, num_components);
+      mark_component(i, num_components, stack);
       num_components++;
     }
   }
-
+  free(stack);
   printf("Number of connected components: %d\n", num_components);
 }
 
-void mark_component(int node, int component) {
-  int *stack = malloc(num_nodes * sizeof(int));
+void mark_component(int node, int component, int *stack) {
   int top = -1;
   stack[++top] = node;
   node_community_map[node].component = component;
-
   while (top >= 0) {
     int cur = stack[top--];
     component_sizes[component]++;
-
     for (int idx = csr_offsets[cur]; idx < csr_offsets[cur + 1]; idx++) {
       int neigh = csr_neighbors[idx];
       if (node_community_map[neigh].component == -1) {
@@ -102,7 +100,6 @@ void mark_component(int node, int component) {
       }
     }
   }
-  free(stack);
 }
 
 // ------------------------------------------------------------
@@ -156,77 +153,11 @@ double calculate_gain_modularity_cpm(int node, int new_community,
   return delta;
 }
 
-int is_strongly_connected(int community_id) {
-  int start = -1;
-  for (int i = 0; i < num_nodes; i++) {
-    if (node_community_map[i].community == community_id) {
-      start = i;
-      break;
-    }
-  }
-  if (start == -1)
-    return 0;
-
-  int *visited = calloc(num_nodes, sizeof(int));
-  int *stack = malloc(num_nodes * sizeof(int));
-  int top = -1;
-  stack[++top] = start;
-  visited[start] = 1;
-
-  while (top >= 0) {
-    int cur = stack[top--];
-    for (int idx = csr_offsets[cur]; idx < csr_offsets[cur + 1]; idx++) {
-      int neigh = csr_neighbors[idx];
-      if (node_community_map[neigh].community == community_id &&
-          !visited[neigh]) {
-        visited[neigh] = 1;
-        stack[++top] = neigh;
-      }
-    }
-  }
-
-  int ok = 1;
-  for (int i = 0; i < num_nodes; i++) {
-    if (node_community_map[i].community == community_id && !visited[i]) {
-      ok = 0;
-      break;
-    }
-  }
-  free(visited);
-  free(stack);
-  return ok;
-}
-
-double calculate_gain_modularity_leiden(int node, int new_community,
-                                        double total_graph_weight) {
-  double current_mod = 0.0, new_mod = 0.0;
-  int current_comm = node_community_map[node].community;
-
-  for (int idx = csr_offsets[node]; idx < csr_offsets[node + 1]; idx++) {
-    int neigh = csr_neighbors[idx];
-    double w = csr_weights[idx];
-    int neigh_comm = node_community_map[neigh].community;
-    if (neigh_comm == current_comm)
-      current_mod += w;
-    else if (neigh_comm == new_community)
-      new_mod += w;
-  }
-
-  double cur_w = node_community_map[node].total_weight;
-  double new_w = node_community_map[new_community].total_weight;
-  double delta = (new_mod - current_mod) - (cur_w * new_w) / total_graph_weight;
-
-  if (!is_strongly_connected(new_community))
-    return -1;
-  return delta;
-}
-
 // ------------------------------------------------------------
 // Algorithme de Louvain (version simple)
 // ------------------------------------------------------------
 int louvain_method() {
   double total_graph_weight = 0.0;
-  build_csr_adjacency();
 
   for (int i = 0; i < num_nodes; i++) {
     node_community_map[i].community = i;
@@ -255,7 +186,6 @@ int louvain_method() {
         int neigh_comm = node_community_map[neigh].community;
         if (neigh_comm == cur_comm)
           continue;
-
         double delta =
             calculate_gain_modularity(node, neigh_comm, total_graph_weight);
         if (delta > best_delta) {
@@ -345,7 +275,6 @@ void apply_louvain_to_component(int component) {
 }
 
 int louvain_methodC() {
-  build_csr_adjacency();
   for (int i = 0; i < num_nodes; i++)
     node_community_map[i].component = -1;
   find_connected_components();
@@ -363,7 +292,6 @@ int louvain_methodC() {
 // ------------------------------------------------------------
 int leiden_method() {
   double total_graph_weight = 0.0;
-  build_csr_adjacency();
 
   for (int i = 0; i < num_nodes; i++) {
     node_community_map[i].community = i;
@@ -390,9 +318,8 @@ int leiden_method() {
         int neigh_comm = node_community_map[neigh].community;
         if (neigh_comm == cur_comm)
           continue;
-
-        double delta = calculate_gain_modularity_leiden(node, neigh_comm,
-                                                        total_graph_weight);
+        double delta =
+            calculate_gain_modularity(node, neigh_comm, total_graph_weight);
         if (delta > best_delta) {
           best_delta = delta;
           best_comm = neigh_comm;
@@ -419,7 +346,6 @@ int leiden_method() {
 // ------------------------------------------------------------
 int leiden_method_CPM() {
   double total_graph_weight = 0.0;
-  build_csr_adjacency();
 
   for (int i = 0; i < num_nodes; i++) {
     node_community_map[i].community = i;
