@@ -8,14 +8,6 @@ import com.mongraphe.graphui.model.GraphModel;
 import com.mongraphe.graphui.model.Vertex;
 import com.mongraphe.graphui.model.GraphModel.ColoringMode;
 
-/**
- * VBO des sommets.
- *
- * Améliorations étape 6:
- * - évite les NPE si community == null
- * - supporte plusieurs modes de coloration (communautés / degré / uniforme)
- * - surbrillance du sommet sélectionné
- */
 public final class VertexGpuBuffer {
 
     private float[] pos, col, size, vis;
@@ -31,7 +23,7 @@ public final class VertexGpuBuffer {
         visVbo = b[3];
     }
 
-    public void update(GraphModel model) {
+    public void update(GraphModel model, float[] positionBuffer) {
         count = model.vertices().size();
         pos = new float[count * 2];
         col = new float[count * 3];
@@ -44,38 +36,45 @@ public final class VertexGpuBuffer {
 
         for (int i = 0; i < count; i++) {
             Vertex v = model.vertices().get(i);
+            if (positionBuffer != null && i * 2 + 1 < positionBuffer.length) {
+                pos[i * 2] = positionBuffer[i * 2];
+                pos[i * 2 + 1] = positionBuffer[i * 2 + 1];
+            } else {
+                pos[i * 2] = 0f;
+                pos[i * 2 + 1] = 0f;
+            }
 
-            pos[i * 2] = (float) v.getX();
-            pos[i * 2 + 1] = (float) v.getY();
             size[i] = (float) v.getDiameter();
 
             boolean visibleVertex = !(v.isDeleted() || !v.isVisible());
             vis[i] = visibleVertex ? 1f : 0f;
 
-            // Couleur
             float r, g, b;
             if (v.getId() == selectedId && selectedId >= 0) {
-                // surbrillance: blanc
-                r = 1f; g = 1f; b = 1f;
+                r = 1f;
+                g = 1f;
+                b = 1f;
             } else if (mode == ColoringMode.UNIFORM) {
                 r = model.getUniformNodeR();
                 g = model.getUniformNodeG();
                 b = model.getUniformNodeB();
             } else if (mode == ColoringMode.DEGREE) {
-                float t = (float) v.getDegree() / (float) maxDeg;
-                // gris légèrement contrasté (pas un arc-en-ciel kitsch)
+                float t = (float) v.getDegree() / maxDeg;
                 float base = 0.15f;
                 float intensity = base + (1f - base) * t;
-                r = intensity; g = intensity; b = intensity;
+                r = intensity;
+                g = intensity;
+                b = intensity;
             } else {
-                // COMMUNITY (default)
                 Community c = v.getCommunity();
                 if (c != null) {
                     r = c.getR();
                     g = c.getG();
                     b = c.getB();
                 } else {
-                    r = 0.6f; g = 0.6f; b = 0.6f;
+                    r = 0.6f;
+                    g = 0.6f;
+                    b = 0.6f;
                 }
             }
 
@@ -92,9 +91,9 @@ public final class VertexGpuBuffer {
         upload(gl, visVbo, vis);
     }
 
-    private void upload(GL4 gl, int vbo, float[] d) {
+    private void upload(GL4 gl, int vbo, float[] data) {
         gl.glBindBuffer(GL4.GL_ARRAY_BUFFER, vbo);
-        gl.glBufferData(GL4.GL_ARRAY_BUFFER, (long) d.length * 4, FloatBuffer.wrap(d), GL4.GL_DYNAMIC_DRAW);
+        gl.glBufferData(GL4.GL_ARRAY_BUFFER, (long) data.length * 4, FloatBuffer.wrap(data), GL4.GL_DYNAMIC_DRAW);
     }
 
     public void draw(GL4 gl) {

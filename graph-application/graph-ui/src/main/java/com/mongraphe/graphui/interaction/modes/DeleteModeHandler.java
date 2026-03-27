@@ -37,7 +37,10 @@ public final class DeleteModeHandler implements InteractionModeHandler {
         Vertex selected = bus.dispatchSync(engine -> {
             float wx = engine.camera().screenToWorldX(sx);
             float wy = engine.camera().screenToWorldY(sy);
-            return engine.model().findVertexAt(wx, wy);
+            float[] posBuffer = engine.getPositionsBuffer();
+            if (posBuffer == null)
+                return null;
+            return engine.model().findVertexAt(wx, wy, posBuffer, engine.camera().getZoom());
         });
 
         if (selected == null) {
@@ -54,7 +57,6 @@ public final class DeleteModeHandler implements InteractionModeHandler {
     public void onMouseDragged(CommandBus<GraphEngine> bus, int sx, int sy, int button) {
         if (!panning || bus == null)
             return;
-
         int dx = sx - lastX;
         int dy = sy - lastY;
         lastX = sx;

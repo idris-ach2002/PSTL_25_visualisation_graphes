@@ -31,7 +31,10 @@ public final class RunModeHandler implements InteractionModeHandler {
             Vertex selected = bus.dispatchSync(engine -> {
                 float wx = engine.camera().screenToWorldX(sx);
                 float wy = engine.camera().screenToWorldY(sy);
-                Vertex v = engine.model().findVertexAt(wx, wy);
+                float[] posBuffer = engine.getPositionsBuffer();
+                if (posBuffer == null)
+                    return null;
+                Vertex v = engine.model().findVertexAt(wx, wy, posBuffer, engine.camera().getZoom());
                 engine.model().setSelectedVertexId(v == null ? -1 : v.getId());
                 return v;
             });
@@ -46,7 +49,6 @@ public final class RunModeHandler implements InteractionModeHandler {
     public void onMouseDragged(CommandBus<GraphEngine> bus, int sx, int sy, int button) {
         if (!panning || bus == null)
             return;
-
         int dx = sx - lastX;
         int dy = sy - lastY;
         lastX = sx;

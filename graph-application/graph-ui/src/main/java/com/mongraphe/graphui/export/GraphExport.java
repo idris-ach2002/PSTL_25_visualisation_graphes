@@ -41,7 +41,6 @@ public class GraphExport {
             setupFramebuffer(gl, width, height, fbo, tex, rbo);
             gl.glViewport(0, 0, width, height);
             gl.glClear(GL4.GL_COLOR_BUFFER_BIT | GL4.GL_DEPTH_BUFFER_BIT);
-            renderer.render(gl);
             BufferedImage img = readPixels(gl, width, height);
             ImageIO.write(img, "png", new File(path));
         } catch (Exception e) {

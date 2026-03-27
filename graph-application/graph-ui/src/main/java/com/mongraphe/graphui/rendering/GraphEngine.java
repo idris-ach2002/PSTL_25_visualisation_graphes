@@ -4,27 +4,35 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 
-import com.mongraphe.graphui.model.Community;
-import com.mongraphe.graphui.model.Edge;
-import com.mongraphe.graphui.model.EdgeC;
-import com.mongraphe.graphui.model.GraphData;
-import com.mongraphe.graphui.model.GraphModel;
-import com.mongraphe.graphui.model.GraphProject;
-import com.mongraphe.graphui.model.Metadata;
-import com.mongraphe.graphui.model.Vertex;
+import com.mongraphe.graphui.model.*;
 
 public final class GraphEngine {
 
     private final GraphNativeEngine nativeEngine;
     private final Camera2D camera;
     private final GraphModel model;
-    private final GraphSimulation simulation;
     private final GraphVisibilityFilter visibility;
 
     private volatile float clearR = 1f, clearG = 1f, clearB = 1f, clearA = 1f;
     private int clusterUpdateFrequency = 1;
     private boolean initialized = false;
+
+    // Double‑buffering des positions
+    private float[] posBuffer0;
+    private float[] posBuffer1;
+    private volatile float[] currentPositions; // lu par le rendu
+
+    private final ScheduledExecutorService simulationExecutor = Executors.newSingleThreadScheduledExecutor(r -> {
+        Thread t = new Thread(r, "graph-simulation-thread");
+        t.setDaemon(true);
+        return t;
+    });
+    private volatile boolean simulationRunning = false;
+    private volatile boolean graphLoaded = false;
 
     public interface GraphEngineListener {
         void onSimulationStarted();
@@ -35,21 +43,21 @@ public final class GraphEngine {
     private final List<GraphEngineListener> listeners = new ArrayList<>();
 
     public static class GraphDataSnapshot {
-        private final List<Vertex> vertices = new ArrayList<>();
-        private final List<Edge> edges = new ArrayList<>();
-        private final Map<Integer, Vertex> verticesById = new HashMap<>();
+        private final List<Vertex> vertices;
+        private final List<Edge> edges;
+        private final Map<Integer, Vertex> verticesById;
         private final int visibleVertexCount;
         private final int visibleEdgeCount;
 
         public GraphDataSnapshot(List<Vertex> vertices, List<Edge> edges, int visibleVertexCount,
                 int visibleEdgeCount) {
-            this.vertices.addAll(vertices);
-            this.edges.addAll(edges);
+            this.vertices = new ArrayList<>(vertices);
+            this.edges = new ArrayList<>(edges);
             this.visibleVertexCount = visibleVertexCount;
             this.visibleEdgeCount = visibleEdgeCount;
-            for (Vertex v : vertices) {
+            this.verticesById = new HashMap<>();
+            for (Vertex v : vertices)
                 verticesById.put(v.getId(), v);
-            }
         }
 
         public List<Vertex> getVertices() {
@@ -94,14 +102,10 @@ public final class GraphEngine {
     public GraphPage<Vertex> getVerticesPage(int page, int pageSize) {
         synchronized (model.mutex()) {
             List<Vertex> all = model.vertices();
-
             int from = page * pageSize;
             int to = Math.min(from + pageSize, all.size());
-
-            if (from >= all.size()) {
+            if (from >= all.size())
                 return new GraphPage<>(List.of(), all.size());
-            }
-
             return new GraphPage<>(all.subList(from, to), all.size());
         }
     }
@@ -109,14 +113,10 @@ public final class GraphEngine {
     public GraphPage<Edge> getEdgesPage(int page, int pageSize) {
         synchronized (model.mutex()) {
             List<Edge> all = model.edges();
-
             int from = page * pageSize;
             int to = Math.min(from + pageSize, all.size());
-
-            if (from >= all.size()) {
+            if (from >= all.size())
                 return new GraphPage<>(List.of(), all.size());
-            }
-
             return new GraphPage<>(all.subList(from, to), all.size());
         }
     }
@@ -125,12 +125,15 @@ public final class GraphEngine {
         this.nativeEngine = nativeEngine;
         this.camera = new Camera2D();
         this.model = new GraphModel();
-        this.simulation = new GraphSimulation(nativeEngine);
         this.visibility = new GraphVisibilityFilter();
     }
 
     public boolean initialized() {
         return initialized;
+    }
+
+    public boolean isGraphLoaded() {
+        return graphLoaded;
     }
 
     public void addListener(GraphEngineListener listener) {
@@ -172,19 +175,21 @@ public final class GraphEngine {
     }
 
     public void loadCsv(String path, GraphData.SimilitudeMode sim, GraphData.NodeCommunity communityMode) {
-        if (path == null || path.isBlank()) {
+        if (path == null || path.isBlank())
             throw new IllegalArgumentException("CSV path missing");
-        }
+        graphLoaded = false;
         nativeEngine.initGraphCsv(path, sim, communityMode);
         rebuildModelFromNative();
+        graphLoaded = true;
     }
 
     public void loadDot(String path, GraphData.NodeCommunity communityMode) {
-        if (path == null || path.isBlank()) {
+        if (path == null || path.isBlank())
             throw new IllegalArgumentException("DOT path missing");
-        }
+        graphLoaded = false;
         nativeEngine.initGraphDot(path, communityMode);
         rebuildModelFromNative();
+        graphLoaded = true;
     }
 
     private void rebuildModelFromNative() {
@@ -198,12 +203,11 @@ public final class GraphEngine {
         }
 
         for (int i = 0; i < verticesArray.length; i++) {
-            if (verticesArray[i] != null) {
+            if (verticesArray[i] != null)
                 verticesArray[i].setId(i);
-            }
         }
 
-        HashMap<Integer, Community> communities = new HashMap<>();
+        Map<Integer, Community> communities = new HashMap<>();
         for (int i = 0; i < verticesArray.length; i++) {
             int cid = (communityIds != null && i < communityIds.length) ? communityIds[i] : 0;
             Community c = communities.get(cid);
@@ -214,17 +218,15 @@ public final class GraphEngine {
                 c = new Community(cid, r, g, b);
                 communities.put(cid, c);
             }
-            if (verticesArray[i] != null) {
+            if (verticesArray[i] != null)
                 verticesArray[i].setCommunity(c);
-            }
         }
 
         synchronized (model.mutex()) {
             model.clear();
             for (Vertex v : verticesArray) {
-                if (v == null) {
+                if (v == null)
                     continue;
-                }
                 v.updateDiameter();
                 model.addVertex(v);
             }
@@ -241,11 +243,86 @@ public final class GraphEngine {
             }
         }
         visibility.apply(model);
+
+        // Initialiser les buffers de positions
+        int vertexCount = verticesArray.length;
+        posBuffer0 = new float[vertexCount * 2];
+        posBuffer1 = new float[vertexCount * 2];
+        for (int i = 0; i < vertexCount; i++) {
+            if (verticesArray[i] == null)
+                continue;
+            float x = (float) verticesArray[i].getX();
+            float y = (float) verticesArray[i].getY();
+            posBuffer0[i * 2] = x;
+            posBuffer0[i * 2 + 1] = y;
+            posBuffer1[i * 2] = x;
+            posBuffer1[i * 2 + 1] = y;
+        }
+        currentPositions = posBuffer0;
     }
 
-    public void update() {
-        simulation.update(model);
-        visibility.apply(model);
+    public void startSimulation() {
+        if (!graphLoaded)
+            return;
+        if (simulationRunning)
+            return;
+        simulationRunning = true;
+        simulationExecutor.scheduleAtFixedRate(this::simulateStep, 0, 16, TimeUnit.MILLISECONDS);
+        synchronized (listeners) {
+            for (GraphEngineListener listener : listeners)
+                listener.onSimulationStarted();
+        }
+    }
+
+    public void stopSimulation() {
+        simulationRunning = false;
+        synchronized (listeners) {
+            for (GraphEngineListener listener : listeners)
+                listener.onSimulationStopped();
+        }
+    }
+
+    private void simulateStep() {
+        if (!simulationRunning || !graphLoaded)
+            return;
+        try {
+            nativeEngine.updatePositions();
+            Vertex[] positions = nativeEngine.getPositions();
+            if (positions == null || positions.length == 0)
+                return;
+
+            float[] backBuffer = (currentPositions == posBuffer0) ? posBuffer1 : posBuffer0;
+            int vertexCount = positions.length;
+            for (int i = 0; i < vertexCount; i++) {
+                if (positions[i] == null)
+                    continue;
+                backBuffer[i * 2] = (float) positions[i].getX();
+                backBuffer[i * 2 + 1] = (float) positions[i].getY();
+            }
+            currentPositions = backBuffer;
+
+            // Mise à jour du modèle (visibilité)
+            synchronized (model.mutex()) {
+                visibility.apply(model);
+            }
+        } catch (Exception e) {
+            // log éventuel
+        }
+    }
+
+    public boolean isSimulationRunning() {
+        return simulationRunning;
+    }
+
+    public float[] getPositionsBuffer() {
+        return currentPositions;
+    }
+
+    public float[] getVertexPosition(int id) {
+        float[] buf = currentPositions;
+        if (buf == null || id < 0 || id * 2 + 1 >= buf.length)
+            return new float[] { 0f, 0f };
+        return new float[] { buf[id * 2], buf[id * 2 + 1] };
     }
 
     public GraphModel model() {
@@ -323,9 +400,8 @@ public final class GraphEngine {
         Vertex.initial_node_size = size;
         nativeEngine.setInitialNodeSize(size);
         synchronized (model.mutex()) {
-            for (Vertex v : model.vertices()) {
+            for (Vertex v : model.vertices())
                 v.updateDiameter();
-            }
         }
     }
 
@@ -333,9 +409,8 @@ public final class GraphEngine {
         Vertex.degree_scale_factor = factor;
         nativeEngine.setDegreeScaleFactor(factor);
         synchronized (model.mutex()) {
-            for (Vertex v : model.vertices()) {
+            for (Vertex v : model.vertices())
                 v.updateDiameter();
-            }
         }
     }
 
@@ -386,21 +461,20 @@ public final class GraphEngine {
 
     public void setNodePosition(int index, double x, double y) {
         nativeEngine.setNodePosition(index, x, y);
-        synchronized (model.mutex()) {
-            Vertex v = model.vertexById(index);
-            if (v != null) {
-                v.updatePosition(x, y);
-            }
+        float[] cur = currentPositions;
+        if (cur != null && index * 2 + 1 < cur.length) {
+            cur[index * 2] = (float) x;
+            cur[index * 2 + 1] = (float) y;
         }
+        // Optionnel mettre à jour aussi le Vertex
     }
 
     public void deleteNode(int index) {
         nativeEngine.deleteNode(index);
         synchronized (model.mutex()) {
             Vertex v = model.vertexById(index);
-            if (v != null) {
+            if (v != null)
                 model.deleteVertex(v);
-            }
         }
     }
 
@@ -418,40 +492,34 @@ public final class GraphEngine {
         return clusterUpdateFrequency;
     }
 
-    public void startSimulation() {
-        simulation.start();
-        synchronized (listeners) {
-            for (GraphEngineListener listener : listeners) {
-                listener.onSimulationStarted();
+    public void dispose() {
+        // Arrêter la simulation
+        simulationRunning = false;
+        graphLoaded = false;
+
+        // Arrêter l'exécuteur et attendre la fin des tâches en cours
+        simulationExecutor.shutdown();
+        try {
+            if (!simulationExecutor.awaitTermination(1, TimeUnit.SECONDS)) {
+                simulationExecutor.shutdownNow();
             }
+        } catch (InterruptedException e) {
+            simulationExecutor.shutdownNow();
+            Thread.currentThread().interrupt();
         }
-    }
 
-    public void stopSimulation() {
-        simulation.stop();
-        synchronized (listeners) {
-            for (GraphEngineListener listener : listeners) {
-                listener.onSimulationStopped();
-            }
-        }
-    }
-
-    public boolean isSimulationRunning() {
-        return simulation.isRunning();
-    }
-
-    public void freeNativeMemory() {
+        // Libérer la mémoire native
         nativeEngine.freeAllocatedMemory();
+
+        // Vider le modèle Java
         synchronized (model.mutex()) {
             model.clear();
         }
+
+        currentPositions = null;
     }
 
     private float clamp01(float v) {
-        if (v < 0f)
-            return 0f;
-        if (v > 1f)
-            return 1f;
-        return v;
+        return v < 0f ? 0f : (v > 1f ? 1f : v);
     }
 }

@@ -35,7 +35,7 @@ public final class MainGraphController implements GraphEngine.GraphEngineListene
     private GraphPanel panel;
     private CommandBus<GraphEngine> bus;
     private InteractionService interaction;
-    private GraphNativeEngine nativeEngine;
+    private GraphEngine engine;
 
     @FXML
     private MainMenuController menuViewController;
@@ -77,8 +77,8 @@ public final class MainGraphController implements GraphEngine.GraphEngineListene
 
     @FXML
     private void initialize() {
-        nativeEngine = new GraphNativeEngine();
-        GraphEngine engine = new GraphEngine(nativeEngine);
+        GraphNativeEngine nativeEngine = new GraphNativeEngine();
+        this.engine = new GraphEngine(nativeEngine);
         GraphRenderer renderer = new GraphRenderer(engine, engine.camera());
         bus = new CommandBus<>(engine, new EngineExecutor());
         interaction = new InteractionService(bus, uiState);
@@ -186,7 +186,6 @@ public final class MainGraphController implements GraphEngine.GraphEngineListene
         try {
             bus.dispatchSyncVoid(engine -> {
                 engine.stopSimulation();
-                engine.freeNativeMemory();
                 engine.load(project.sourceFile().getAbsolutePath(), project.sourceType(), similitude, community);
                 if (repulsion != null) {
                     engine.setRepulsionMode(repulsion);
@@ -216,7 +215,7 @@ public final class MainGraphController implements GraphEngine.GraphEngineListene
                         Stage stage = (Stage) window;
                         stage.setOnCloseRequest(e -> {
                             panel.stop();
-                            nat.freeAllocatedMemory();
+                            engine.dispose();
                         });
                     }
                 });

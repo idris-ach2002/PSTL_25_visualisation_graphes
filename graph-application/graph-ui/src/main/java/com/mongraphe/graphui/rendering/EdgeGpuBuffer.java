@@ -1,7 +1,6 @@
 package com.mongraphe.graphui.rendering;
 
 import java.nio.FloatBuffer;
-
 import com.jogamp.opengl.GL4;
 import com.mongraphe.graphui.model.Edge;
 import com.mongraphe.graphui.model.GraphModel;
@@ -29,8 +28,7 @@ public class EdgeGpuBuffer {
         visVbo = b[3];
     }
 
-    public void update(GraphModel model) {
-
+    public void update(GraphModel model, float[] positionBuffer) {
         int edgeCount = model.edges().size();
         vertexCount = edgeCount * 2;
 
@@ -42,36 +40,39 @@ public class EdgeGpuBuffer {
         int p = 0, c = 0, s = 0, v = 0;
 
         for (Edge e : model.edges()) {
+            int startId = e.getStart().getId();
+            int endId = e.getEnd().getId();
 
-            float x1 = (float) e.getStart().getX();
-            float y1 = (float) e.getStart().getY();
-            float x2 = (float) e.getEnd().getX();
-            float y2 = (float) e.getEnd().getY();
+            float x1 = (positionBuffer != null && startId * 2 + 1 < positionBuffer.length) ? positionBuffer[startId * 2]
+                    : 0f;
+            float y1 = (positionBuffer != null && startId * 2 + 1 < positionBuffer.length)
+                    ? positionBuffer[startId * 2 + 1]
+                    : 0f;
+            float x2 = (positionBuffer != null && endId * 2 + 1 < positionBuffer.length) ? positionBuffer[endId * 2]
+                    : 0f;
+            float y2 = (positionBuffer != null && endId * 2 + 1 < positionBuffer.length) ? positionBuffer[endId * 2 + 1]
+                    : 0f;
 
-            // positions
             positions[p++] = x1;
             positions[p++] = y1;
             positions[p++] = x2;
             positions[p++] = y2;
 
-            // colors
             float r = e.getR();
             float g = e.getG();
-            float bcol = e.getB();
+            float b = e.getB();
 
             colors[c++] = r;
             colors[c++] = g;
-            colors[c++] = bcol;
+            colors[c++] = b;
             colors[c++] = r;
             colors[c++] = g;
-            colors[c++] = bcol;
+            colors[c++] = b;
 
-            // sizes
             float w = (float) e.getWeight();
             sizes[s++] = w;
             sizes[s++] = w;
 
-            // visibility
             float vis = e.isVisible() ? 1f : 0f;
             visibility[v++] = vis;
             visibility[v++] = vis;
@@ -87,30 +88,23 @@ public class EdgeGpuBuffer {
 
     private void upload(GL4 gl, int vbo, float[] data) {
         gl.glBindBuffer(GL4.GL_ARRAY_BUFFER, vbo);
-        gl.glBufferData(GL4.GL_ARRAY_BUFFER,
-                (long) data.length * Float.BYTES,
-                FloatBuffer.wrap(data),
+        gl.glBufferData(GL4.GL_ARRAY_BUFFER, (long) data.length * Float.BYTES, FloatBuffer.wrap(data),
                 GL4.GL_DYNAMIC_DRAW);
     }
 
     public void draw(GL4 gl) {
-
-        // position
         gl.glEnableVertexAttribArray(0);
         gl.glBindBuffer(GL4.GL_ARRAY_BUFFER, posVbo);
         gl.glVertexAttribPointer(0, 2, GL4.GL_FLOAT, false, 0, 0);
 
-        // color
         gl.glEnableVertexAttribArray(1);
         gl.glBindBuffer(GL4.GL_ARRAY_BUFFER, colorVbo);
         gl.glVertexAttribPointer(1, 3, GL4.GL_FLOAT, false, 0, 0);
 
-        // size
         gl.glEnableVertexAttribArray(2);
         gl.glBindBuffer(GL4.GL_ARRAY_BUFFER, sizeVbo);
         gl.glVertexAttribPointer(2, 1, GL4.GL_FLOAT, false, 0, 0);
 
-        // visibility
         gl.glEnableVertexAttribArray(3);
         gl.glBindBuffer(GL4.GL_ARRAY_BUFFER, visVbo);
         gl.glVertexAttribPointer(3, 1, GL4.GL_FLOAT, false, 0, 0);

@@ -5,17 +5,11 @@ import com.jogamp.opengl.GLAutoDrawable;
 import com.jogamp.opengl.GLEventListener;
 import com.mongraphe.graphui.model.GraphModel;
 
-/**
- * Renderer JOGL: dessine sommets/arêtes depuis le modèle Java.
- * La simulation est déclenchée via GraphEngine.update().
- */
 public final class GraphRenderer implements GLEventListener {
 
     private final GraphEngine engine;
-
     private VertexGpuBuffer vertexBuffer;
     private EdgeGpuBuffer edgeBuffer;
-
     private GLShaderProgram pointShader;
     private GLShaderProgram edgeShader;
 
@@ -25,9 +19,7 @@ public final class GraphRenderer implements GLEventListener {
 
     @Override
     public void init(GLAutoDrawable drawable) {
-
         GL4 gl = drawable.getGL().getGL4();
-
         configureGL(gl);
 
         vertexBuffer = new VertexGpuBuffer();
@@ -50,20 +42,19 @@ public final class GraphRenderer implements GLEventListener {
 
     @Override
     public void display(GLAutoDrawable drawable) {
-        render(drawable.getGL().getGL4());
-    }
-
-    public void render(GL4 gl) {
-
+        GL4 gl = drawable.getGL().getGL4();
         gl.glClearColor(engine.getBackgroundColorR(), engine.getBackgroundColorG(), engine.getBackgroundColorB(),
                 engine.getBackgroundColorA());
         gl.glClear(GL4.GL_COLOR_BUFFER_BIT);
+
         GraphModel model = engine.model();
+        float[] posBuffer = engine.getPositionsBuffer();
+        if (posBuffer == null)
+            return;
+
         synchronized (model.mutex()) {
-            engine.update();
-            model.setZoom(engine.camera().getZoom());
-            vertexBuffer.update(model);
-            edgeBuffer.update(model);
+            vertexBuffer.update(model, posBuffer);
+            edgeBuffer.update(model, posBuffer);
         }
 
         vertexBuffer.upload(gl);
@@ -92,7 +83,6 @@ public final class GraphRenderer implements GLEventListener {
 
     @Override
     public void dispose(GLAutoDrawable drawable) {
-        // Best effort: libère au moins les programmes shader
         try {
             GL4 gl = drawable.getGL().getGL4();
             if (pointShader != null)
