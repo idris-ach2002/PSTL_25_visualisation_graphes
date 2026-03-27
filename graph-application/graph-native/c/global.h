@@ -29,7 +29,7 @@ extern double attraction_coeff;
 extern double thresholdA;
 extern double seuilrep;
 extern double thresholdS;
-extern double amortissement;
+extern volatile double amortissement;
 
 #include "c_graph/cluster.h"
 

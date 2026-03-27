@@ -127,18 +127,6 @@ public final class GraphEngine {
         this.model = new GraphModel();
         this.simulation = new GraphSimulation(nativeEngine);
         this.visibility = new GraphVisibilityFilter();
-
-        simulation.setOnFinished(() -> {
-            synchronized (listeners) {
-                for (GraphEngineListener l : listeners) {
-                    l.onSimulationStopped();
-                }
-            }
-        });
-    }
-
-    public boolean isSimulationFinished() {
-        return simulation.isFinishedNaturally();
     }
 
     public boolean initialized() {

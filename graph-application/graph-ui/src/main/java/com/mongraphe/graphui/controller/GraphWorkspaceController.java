@@ -48,12 +48,8 @@ public final class GraphWorkspaceController implements CommandBusLinkedI<GraphEn
     // Appelée par MainGraphController via le listener du moteur
     public void updatePlayPauseIcon(boolean running) {
         if (bus == null) return;
-
-        boolean finished = bus.dispatchSync(GraphEngine::isSimulationFinished);
-        if (finished) {
-            playPauseButton.setText("⏹");
-            playPauseButton.setTooltip(new Tooltip("Simulation terminée – cliquer pour relancer"));
-        } else if (running) {
+        
+        if (running) {
             playPauseButton.setText("⏸");
             playPauseButton.setTooltip(new Tooltip("Mettre en pause"));
         } else {
@@ -65,13 +61,6 @@ public final class GraphWorkspaceController implements CommandBusLinkedI<GraphEn
     @FXML
     private void handlePlayPause() {
         if (mainController == null || bus == null) return;
-
-        boolean finished = bus.dispatchSync(GraphEngine::isSimulationFinished);
-        if (finished) {
-            handleRestart();   // relance complète
-            return;
-        }
-
         boolean running = bus.dispatchSync(GraphEngine::isSimulationRunning);
         if (running) {
             bus.dispatch(GraphEngine::stopSimulation);

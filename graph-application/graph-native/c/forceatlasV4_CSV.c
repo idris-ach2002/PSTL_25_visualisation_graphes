@@ -10,8 +10,6 @@
 #include <termios.h>
 #endif
 
-#include <ctype.h>
-
 #include <stdatomic.h>
 
 #include "global.h"
@@ -75,13 +73,6 @@ Java_com_mongraphe_graphui_rendering_GraphNativeEngine_updatePositions(
 
     Max_movementOld = Max_movement;
     friction *= amortissement;
-  }
-
-  if ((Max_movementOld < thresholdS && iteration > 50) ||
-      iteration >= max_iterations) {
-    // end state reached
-    pause_updates = 1;
-    return 0;
   }
 
   for (int i = 0; i < num_nodes; ++i) {

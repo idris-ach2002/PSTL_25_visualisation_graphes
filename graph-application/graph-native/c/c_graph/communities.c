@@ -398,17 +398,30 @@ int leiden_method_CPM() {
 // ------------------------------------------------------------
 // Fonctions utilitaires
 // ------------------------------------------------------------
+static int *community_mark = NULL; // tableau de marqueurs
+static int current_mark = 1;       // valeur courante pour marquer
+static int mark_size = 0;          // taille actuelle du tableau
+
 int count_unique_communities(int *communities, int num_nodes) {
-  bool *seen = calloc(num_nodes, sizeof(bool));
+  // Agrandir le tableau si nécessaire
+  if (num_nodes > mark_size) {
+    int new_size = num_nodes;
+    community_mark = realloc(community_mark, new_size * sizeof(int));
+    // Initialiser la nouvelle zone à 0
+    for (int i = mark_size; i < new_size; i++)
+      community_mark[i] = 0;
+    mark_size = new_size;
+  }
+
   int unique = 0;
   for (int i = 0; i < num_nodes; i++) {
     int c = communities[i];
-    if (!seen[c]) {
-      seen[c] = true;
+    if (community_mark[c] != current_mark) {
+      community_mark[c] = current_mark;
       unique++;
     }
   }
-  free(seen);
+  current_mark++; // incrémenter pour le prochain appel
   return unique;
 }
 

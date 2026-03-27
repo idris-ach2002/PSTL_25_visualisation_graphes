@@ -22,7 +22,7 @@ double thresholdA = 1;
 double seuilrep = 0;
 double thresholdS = 1;
 
-double amortissement = 0.999;
+volatile double amortissement = 0.999;
 
 double** similarity_matrix = NULL;
 

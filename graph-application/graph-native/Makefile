@@ -47,7 +47,7 @@ OBJ := $(patsubst $(SRC_DIR)/%.c,$(OUT_DIR)/%.o,$(SRC))
 LIB := $(OUT_DIR)/libnative.$(EXT)
 LIB_OS := $(OUT_OS_DIR)/libnative.$(EXT)
 
-CFLAGS := -Wall -Wextra -O2 -fPIC $(CSTD) $(COMPILER_FLAGS) $(JNI_INC)
+CFLAGS := -Wall -Wextra -O2 -fPIC -O3 -march=native $(CSTD) $(COMPILER_FLAGS) $(JNI_INC)
 LDFLAGS := -lm
 
 .PHONY: all test clean
