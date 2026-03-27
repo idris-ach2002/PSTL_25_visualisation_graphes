@@ -24,8 +24,6 @@ double thresholdS = 1;
 
 volatile double amortissement = 0.999;
 
-double** similarity_matrix = NULL;
-
 short modified_graph = 0;
 
 void toroidal_vector(Point *dir, Point p1, Point p2) {
@@ -307,72 +305,4 @@ void normalize(Point *p) {
         p->x /= norm;
         p->y /= norm;
     }
-}
-
-
-
-struct similarity_args {
-    double threshold;
-    double antiseuil;
-    int row;
-    int choice;
-    Barrier barrier;
-};
-
-void similarity_job(void *args) {
-    struct similarity_args *data = (struct similarity_args*) args;
-
-    for (int j = data->row + 1; j < num_rows; ++j) {
-        double similarity = similarity_matrix[data->row][j]; 
-
-        if (similarity > data->threshold && num_edges < MAX_EDGES) {
-            int edge_index = incr_or_max(&num_edges, MAX_EDGES);
-            if (edge_index < MAX_EDGES) {
-                edges[edge_index].node1 = data->row;
-                edges[edge_index].node2 = j;
-                edges[edge_index].weight = similarity;
-            }
-        } else if (similarity < data->antiseuil && num_antiedges < MAX_EDGES) {
-            int antiedge_index = incr_or_max(&num_antiedges, MAX_EDGES);
-            if (antiedge_index < MAX_EDGES) {
-                antiedges[antiedge_index].node1 = data->row;
-                antiedges[antiedge_index].node2 = j;
-                antiedges[antiedge_index].weight = similarity;
-            }
-        }
-    }
-
-    decrement_barrier(data->barrier, 1);
-}
-
-/////////////////////////////////////
-
-
-// Fonction pour calculer la similitude en fonction du choix de l'utilisateur
-void calculate_similitude_and_edges(int md, double threshold, double antiseuil) {
-        
-    num_edges = 0;
-    num_antiedges = 0;
-    struct barrier bar;
-    new_barrier(&bar, num_rows);
-
-    for (int i = 0; i < num_rows; i++) {
-        struct similarity_args* s_args = (struct similarity_args*) malloc(sizeof(struct similarity_args));
-        s_args->threshold = threshold;
-        s_args->antiseuil = antiseuil;
-        s_args->row       = i;
-        s_args->choice    = md;
-        s_args->barrier   = &bar;
-
-        struct Job task;
-        task.j = similarity_job;
-        task.args = s_args;
-
-        submit(&pool, task);
-    }
-    // main thread wait for the thread to finish processing the previous calculation
-    wait_barrier(&bar);
-
-    num_antiedges = fmin(num_antiedges, MAX_EDGES);
-    num_edges = fmin(num_edges, MAX_EDGES);
 }

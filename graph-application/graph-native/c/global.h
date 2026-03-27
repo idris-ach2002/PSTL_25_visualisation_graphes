@@ -93,7 +93,6 @@ extern char delimiter[1];
 #define EPSILON 1e-12  // Pour éviter la division par 0
 
 extern int mode_similitude;
-extern double **similarity_matrix;
 extern int global_histogram[NUM_BINS];
 
 // ForceAtlas

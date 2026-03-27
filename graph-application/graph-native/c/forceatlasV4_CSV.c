@@ -239,56 +239,105 @@ JNIEXPORT jobject JNICALL
 Java_com_mongraphe_graphui_rendering_GraphNativeEngine_computeThreshold(
     JNIEnv *env, jobject obj, jint modeSimilitude, jint edge_factor) {
 
-  InitPool(&pool, 1000, 8);
-  similarity_matrix = (double **)malloc(num_rows * sizeof(double *));
-  for (int i = 0; i < num_rows; i++) {
-    similarity_matrix[i] = (double *)malloc(num_rows * sizeof(double));
-    for (int j = 0; j < num_rows; j++) {
-      similarity_matrix[i][j] = -1.0;
-    }
-  }
-
   num_nodes = num_rows;
   live_nodes = num_nodes;
-
-  double threshold, antiseuil;
   mode_similitude = modeSimilitude;
 
-  // un tableau dont de taille nombre de paire dans un ensemble avec num_rows
-  // element = 2 parmis num_rows
-  double *similarities =
-      (double *)malloc(num_rows * (num_rows - 1) / 2 * sizeof(double));
-  double means_similitude =
-      calculate_mean_similitude_parallel(modeSimilitude, similarities);
+  double threshold, anti_threshold, mean_similarity = 0.0;
+  int total_pairs = num_rows * (num_rows - 1) / 2;
+  int target_edges = edge_factor * num_nodes; // nombre d'arêtes souhaité
 
-  calculate_threshold(modeSimilitude, 10 * num_nodes, &threshold, &antiseuil,
-                      similarities);
+  // Taille de l'échantillon : 100 * target_edges mais pas plus de 500 000
+  int sample_size =
+      (target_edges * 100 < total_pairs) ? target_edges * 100 : total_pairs;
+  if (sample_size < 1)
+    sample_size = 1;
+  if (sample_size > 500000)
+    sample_size = 500000;
+
+  double *sample_similarities = malloc(sample_size * sizeof(double));
+  if (!sample_similarities) {
+    // Fallback : valeurs par défaut
+    threshold = anti_threshold = mean_similarity = 0.5;
+    jclass res_class =
+        (*env)->FindClass(env, "com/mongraphe/graphui/model/Metadata");
+    jmethodID constructor =
+        (*env)->GetMethodID(env, res_class, "<init>", "(IDDD)V");
+    return (*env)->NewObject(env, res_class, constructor, num_nodes, threshold,
+                             anti_threshold, mean_similarity);
+  }
+
+  double sum = 0.0;
+  for (int k = 0; k < sample_size; k++) {
+    int i = rand() % num_rows;
+    int j = rand() % num_rows;
+    while (i == j)
+      j = rand() % num_rows;
+    double sim;
+    switch (modeSimilitude) {
+    case 0:
+      sim = correlation_similarity(i, j);
+      break;
+    case 1:
+      sim = cosine_similarity(i, j);
+      break;
+    case 2:
+      sim = euclidean_distance(i, j);
+      break;
+    case 3:
+      sim = L1_norm(i, j);
+      break;
+    case 4:
+      sim = Linf_norm(i, j);
+      break;
+    case 5:
+      sim = KL_divergence(i, j);
+      break;
+    default:
+      sim = 0.0;
+    }
+    sample_similarities[k] = sim;
+    sum += sim;
+  }
+
+  qsort(sample_similarities, sample_size, sizeof(double), compare_double);
+
+  // Calcul de l'indice en fonction de la proportion d'arêtes souhaitée
+  double fraction = (double)target_edges / total_pairs;
+  int idx = (int)(fraction * sample_size);
+  if (idx < 0)
+    idx = 0;
+  if (idx >= sample_size)
+    idx = sample_size - 1;
+
+  threshold = sample_similarities[sample_size - 1 - idx];
+  anti_threshold = sample_similarities[idx];
+  mean_similarity = sum / sample_size;
+
+  free(sample_similarities);
 
   jclass res_class =
       (*env)->FindClass(env, "com/mongraphe/graphui/model/Metadata");
   jmethodID constructor =
       (*env)->GetMethodID(env, res_class, "<init>", "(IDDD)V");
-  jobject res = (*env)->NewObject(env, res_class, constructor, num_nodes,
-                                  threshold, antiseuil, means_similitude);
-
-  free(similarities);
-  similarities = NULL;
-
-  return res;
+  return (*env)->NewObject(env, res_class, constructor, num_nodes, threshold,
+                           anti_threshold, mean_similarity);
 }
 
 JNIEXPORT jobject JNICALL
 Java_com_mongraphe_graphui_rendering_GraphNativeEngine_initializeGraph(
     JNIEnv *env, jobject obj, jint md, jdouble thresh, jdouble anti_thresh) {
 
-  calculate_similitude_and_edges(mode_similitude, thresh, anti_thresh);
-  build_csr_adjacency();
+  // Réinitialiser les compteurs
+  num_edges = 0;
+  num_antiedges = 0;
 
-  for (int i = 0; i < num_rows; i++) {
-    free(similarity_matrix[i]);
-  }
-  free(similarity_matrix);
-  similarity_matrix = NULL;
+  InitPool(&pool, 1000, 8);
+
+  create_edges_from_thresholds(md, thresh, anti_thresh);
+
+  // Construire le CSR après avoir les arêtes
+  build_csr_adjacency();
 
   modeA = 0;
   if (md == 0) {
@@ -416,12 +465,6 @@ Java_com_mongraphe_graphui_rendering_GraphNativeEngine_freeAllocatedMemory(
 
   free_clusters();
 
-  if (similarity_matrix != NULL) {
-    for (int i = 0; i < num_rows; i++) {
-      free(similarity_matrix[i]);
-    }
-    free(similarity_matrix);
-  }
   freeNodeNames();
   free_csr_adjacency();
   FreePool(&pool);

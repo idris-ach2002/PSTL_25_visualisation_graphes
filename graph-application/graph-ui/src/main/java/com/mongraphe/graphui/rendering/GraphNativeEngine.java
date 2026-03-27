@@ -170,7 +170,7 @@ public final class GraphNativeEngine {
 
         double[][] csvData = startsProgram(path);
         int modeSimilitude = getModeSimilitude(sim);
-        initMetadata = computeThreshold(modeSimilitude, 5);
+        initMetadata = computeThreshold(modeSimilitude, 10);
         if (initMetadata == null) {
             throw new IllegalStateException("initGraphCsv: impossible de calculer les seuils.");
         }
