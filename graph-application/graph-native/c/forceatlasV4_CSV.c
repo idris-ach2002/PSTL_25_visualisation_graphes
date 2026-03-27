@@ -421,16 +421,9 @@ JNIEXPORT void JNICALL
 Java_com_mongraphe_graphui_rendering_GraphNativeEngine_freeAllocatedMemory(
     JNIEnv *env, jobject obj) {
 
-  // Libérer la mémoire allouée pour les voisins
-  for (int i = 0; i < num_nodes; i++) {
-    Neighbor *neighbor = adjacency_list[i].head;
-    while (neighbor != NULL) {
-      Neighbor *next = neighbor->next;
-      free(neighbor);
-      neighbor = next;
-    }
-    adjacency_list[i].head = NULL;
-  }
+  // Libérer le CSR utilisé pour les communautés
+  free_csr_adjacency();
+
   free_clusters();
 
   if (similarity_matrix != NULL) {

@@ -58,7 +58,6 @@ extern double degree_scale_factor;
 
 #include "c_graph/communities.h"
 
-extern AdjacencyList adjacency_list[MAX_NODES];
 extern Community node_community_map[MAX_NODES];
 extern int num_communities;
 extern int component_sizes[MAX_NODES]; // Tableau pour stocker la taille de chaque composante

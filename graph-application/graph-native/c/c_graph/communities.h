@@ -4,14 +4,19 @@
 #include "cluster.h"
 
 typedef struct {
-    Neighbor* head;
-} AdjacencyList;
-
-typedef struct {
     int community;
     double total_weight;
     int component;  // Ajout du champ pour la composante connexe
 } Community;
+
+extern int *csr_offsets;      // décalages par nœud (taille num_nodes+1)
+extern int *csr_neighbors;    // voisins (taille 2*num_edges)
+extern double *csr_weights;   // poids associés (taille 2*num_edges)
+extern int csr_total_edges;   // nombre total d'entrées (2*num_edges)
+
+// Fonctions de gestion du CSR
+void build_csr_adjacency(void);
+void free_csr_adjacency(void);
 
 int louvain_method();
 int louvain_methodC();

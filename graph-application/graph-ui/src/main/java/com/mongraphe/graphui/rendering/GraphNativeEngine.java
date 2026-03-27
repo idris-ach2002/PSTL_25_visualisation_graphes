@@ -163,24 +163,6 @@ public final class GraphNativeEngine {
         return ".so";
     }
 
-    public double[][] initGraph(String path, GraphData.SimilitudeMode sim, GraphData.NodeCommunity community) {
-        if (path == null || path.isBlank()) {
-            throw new IllegalArgumentException("initGraph: chemin du fichier non spécifié.");
-        }
-
-        double[][] csvData = startsProgram(path);
-        int modeSimilitude = getModeSimilitude(sim);
-        initMetadata = computeThreshold(modeSimilitude, 50);
-        if (initMetadata == null) {
-            throw new IllegalStateException("initGraph: impossible de calculer les seuils.");
-        }
-
-        double threshold = initMetadata.getEdgeThreshold();
-        double antiThreshold = initMetadata.getAntiThreshold();
-        metadata = initializeGraph(getModeCommunity(community), threshold, antiThreshold);
-        return csvData;
-    }
-
     public double[][] initGraphCsv(String path, GraphData.SimilitudeMode sim, GraphData.NodeCommunity community) {
         if (path == null || path.isBlank()) {
             throw new IllegalArgumentException("initGraphCsv: chemin du fichier non spécifié.");

@@ -12,12 +12,6 @@ typedef struct {
     int capacity; // Capacité actuelle du tableau
 } Cluster;
 
-typedef struct Neighbor {
-    int node;
-    double weight;
-    struct Neighbor* next;
-} Neighbor;
-
 void kmeans_iteration(int num_points, int num_clusters, int *labels, double centers[][2], double Lx, double Ly, double* max_diff);
 
 // version originale de la fonction
