@@ -58,9 +58,11 @@ Java_com_mongraphe_graphui_rendering_GraphNativeEngine_updatePositions(
 
   if (pause_updates == 0) {
 
-    repulsion_edges(forces);
+    parallel_repulsion_edges(forces);
+
     parallel_intra_clusters(forces, FMaxX, FMaxY);
-    repulsion_anti_edges(forces);
+
+    parallel_repulsion_anti_edges(forces);
 
     double Max_movement = update_position_forces(forces, PasMaxX, PasMaxY, 0.);
     update_clusters();
