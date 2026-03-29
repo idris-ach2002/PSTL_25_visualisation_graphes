@@ -4,8 +4,8 @@
 #include <jni.h>
 #include "c_graph/graph.h"
 
-#define MAX_NODES 1000000
-#define MAX_EDGES 100000000
+#define MAX_NODES 100000
+#define MAX_EDGES 1000000
 
 extern Edge edges[MAX_EDGES]; // Pour les arêtes normales
 extern char **node_names; // Array to store node names as strings      

@@ -22,6 +22,7 @@ void free_csr_adjacency(void) {
 
 void build_csr_adjacency(void) {
   free_csr_adjacency();
+
   int *degree = calloc(num_nodes, sizeof(int));
   for (int i = 0; i < num_edges; i++) {
     int u = edges[i].node1;
@@ -29,25 +30,34 @@ void build_csr_adjacency(void) {
     degree[u]++;
     degree[v]++;
   }
+
   csr_offsets = malloc((num_nodes + 1) * sizeof(int));
   csr_offsets[0] = 0;
-  for (int i = 0; i < num_nodes; i++)
+  for (int i = 0; i < num_nodes; i++) {
     csr_offsets[i + 1] = csr_offsets[i] + degree[i];
+  }
   csr_total_edges = csr_offsets[num_nodes];
+
   csr_neighbors = malloc(csr_total_edges * sizeof(int));
   csr_weights = malloc(csr_total_edges * sizeof(double));
+
   int *pos = malloc(num_nodes * sizeof(int));
   memcpy(pos, csr_offsets, num_nodes * sizeof(int));
+
   for (int i = 0; i < num_edges; i++) {
-    int u = edges[i].node1, v = edges[i].node2;
+    int u = edges[i].node1;
+    int v = edges[i].node2;
     double w = edges[i].weight;
+
     int pu = pos[u]++;
     csr_neighbors[pu] = v;
     csr_weights[pu] = w;
+
     int pv = pos[v]++;
     csr_neighbors[pv] = u;
     csr_weights[pv] = w;
   }
+
   free(degree);
   free(pos);
 }
@@ -56,11 +66,14 @@ void build_csr_adjacency(void) {
 // Détection des composantes connexes
 // ------------------------------------------------------------
 void find_connected_components() {
-  for (int i = 0; i < num_nodes; i++)
+  for (int i = 0; i < num_nodes; i++) {
     node_community_map[i].component = -1;
-  for (int i = 0; i < MAX_NODES; i++)
+  }
+  for (int i = 0; i < MAX_NODES; i++) {
     component_sizes[i] = 0;
+  }
   num_components = 0;
+
   int *stack = malloc(num_nodes * sizeof(int));
   for (int i = 0; i < num_nodes; i++) {
     if (node_community_map[i].component == -1) {
@@ -96,6 +109,7 @@ double calculate_gain_modularity(int node, int new_community,
                                  double total_graph_weight) {
   double current_modularity = 0.0, new_modularity = 0.0;
   int current_community = node_community_map[node].community;
+
   for (int idx = csr_offsets[node]; idx < csr_offsets[node + 1]; idx++) {
     int neigh = csr_neighbors[idx];
     double w = csr_weights[idx];
@@ -105,6 +119,7 @@ double calculate_gain_modularity(int node, int new_community,
     else if (neigh_comm == new_community)
       new_modularity += w;
   }
+
   double current_weight = node_community_map[node].total_weight;
   double neighbor_weight = node_community_map[new_community].total_weight;
   double delta = (new_modularity - current_modularity) -
@@ -117,6 +132,7 @@ double calculate_gain_modularity_cpm(int node, int new_community,
   double current_internal = 0.0, new_internal = 0.0;
   int current_community = node_community_map[node].community;
   int degree_node = 0;
+
   for (int idx = csr_offsets[node]; idx < csr_offsets[node + 1]; idx++) {
     int neigh = csr_neighbors[idx];
     double w = csr_weights[idx];
@@ -127,8 +143,10 @@ double calculate_gain_modularity_cpm(int node, int new_community,
       new_internal += w;
     degree_node += w;
   }
+
   double current_size = node_community_map[current_community].total_weight;
   double new_size = node_community_map[new_community].total_weight;
+
   double delta =
       new_internal - current_internal -
       resolution_parameter * (degree_node * (new_size - current_size));
@@ -136,10 +154,11 @@ double calculate_gain_modularity_cpm(int node, int new_community,
 }
 
 // ------------------------------------------------------------
-// Louvain classique
+// Algorithme de Louvain (version simple)
 // ------------------------------------------------------------
 int louvain_method() {
   double total_graph_weight = 0.0;
+
   for (int i = 0; i < num_nodes; i++) {
     node_community_map[i].community = i;
     node_community_map[i].total_weight = 0.0;
@@ -151,6 +170,7 @@ int louvain_method() {
     node_community_map[v].total_weight += w;
     total_graph_weight += 2 * w;
   }
+
   find_connected_components();
 
   int improvement = 1;
@@ -160,6 +180,7 @@ int louvain_method() {
       int cur_comm = node_community_map[node].community;
       double best_delta = 0.0;
       int best_comm = cur_comm;
+
       for (int idx = csr_offsets[node]; idx < csr_offsets[node + 1]; idx++) {
         int neigh = csr_neighbors[idx];
         int neigh_comm = node_community_map[neigh].community;
@@ -172,67 +193,28 @@ int louvain_method() {
           best_comm = neigh_comm;
         }
       }
+
       if (best_comm != cur_comm) {
         node_community_map[node].community = best_comm;
         improvement = 1;
       }
     }
   }
+
   for (int i = 0; i < num_nodes; i++)
     communities[i] = node_community_map[i].community;
+
   int uniq = count_unique_communities(communities, num_nodes);
   printf("Number of communities detected: %d\n", uniq);
   return uniq;
 }
 
 // ------------------------------------------------------------
-// Louvain sur chaque composante
+// Louvain sur chaque composante (louvain_methodC)
 // ------------------------------------------------------------
-// Structure pour passer les arguments à un thread
-struct louvain_component_args {
-  int component;
-  Barrier barrier;
-};
-
-void process_louvain_component_job(void *arg) {
-  struct louvain_component_args *args = (struct louvain_component_args *)arg;
-  apply_louvain_to_component(args->component);
-  decrement_barrier(args->barrier, 1);
-}
-
-int louvain_methodC() {
-  // 1. Détection des composantes (séquentiel, rapide)
-  for (int i = 0; i < num_nodes; i++)
-    node_community_map[i].component = -1;
-  find_connected_components();
-
-  // 2. Barrière pour synchroniser les threads
-  struct barrier bar;
-  new_barrier(&bar, num_components);
-
-  // 3. Soumettre une tâche par composante
-  for (int comp = 0; comp < num_components; comp++) {
-    struct louvain_component_args *args =
-        malloc(sizeof(struct louvain_component_args));
-    args->component = comp;
-    args->barrier = &bar;
-    struct Job job;
-    job.j = process_louvain_component_job;
-    job.args = args;
-    submit(&pool, job);
-  }
-
-  // 4. Attendre la fin de tous les traitements
-  wait_barrier(&bar);
-
-  // 5. Compter les communautés uniques
-  int total = count_unique_communities(communities, num_nodes);
-  printf("Total number of communities detected: %d\n", total);
-  return total;
-}
-
 void apply_louvain_to_component(int component) {
   double total_graph_weight = 0.0;
+
   // Réinitialisation pour la composante
   for (int i = 0; i < num_nodes; i++) {
     if (node_community_map[i].component == component) {
@@ -240,6 +222,7 @@ void apply_louvain_to_component(int component) {
       node_community_map[i].total_weight = 0.0;
     }
   }
+
   for (int i = 0; i < num_edges; i++) {
     int u = edges[i].node1, v = edges[i].node2;
     double w = edges[i].weight;
@@ -250,15 +233,18 @@ void apply_louvain_to_component(int component) {
       total_graph_weight += 2 * w;
     }
   }
+
   int improvement = 1;
   while (improvement) {
     improvement = 0;
     for (int node = 0; node < num_nodes; node++) {
       if (node_community_map[node].component != component)
         continue;
+
       int cur_comm = node_community_map[node].community;
       double best_delta = 0.0;
       int best_comm = cur_comm;
+
       for (int idx = csr_offsets[node]; idx < csr_offsets[node + 1]; idx++) {
         int neigh = csr_neighbors[idx];
         if (node_community_map[neigh].component != component)
@@ -266,6 +252,7 @@ void apply_louvain_to_component(int component) {
         int neigh_comm = node_community_map[neigh].community;
         if (neigh_comm == cur_comm)
           continue;
+
         double delta =
             calculate_gain_modularity(node, neigh_comm, total_graph_weight);
         if (delta > best_delta) {
@@ -273,52 +260,61 @@ void apply_louvain_to_component(int component) {
           best_comm = neigh_comm;
         }
       }
+
       if (best_comm != cur_comm) {
         node_community_map[node].community = best_comm;
         improvement = 1;
       }
     }
   }
+
   for (int i = 0; i < num_nodes; i++) {
     if (node_community_map[i].component == component)
       communities[i] = node_community_map[i].community;
   }
+}
+
+int louvain_methodC() {
+  for (int i = 0; i < num_nodes; i++)
+    node_community_map[i].component = -1;
+  find_connected_components();
+
+  for (int comp = 0; comp < num_components; comp++)
+    apply_louvain_to_component(comp);
+
+  int total = count_unique_communities(communities, num_nodes);
+  printf("Total number of communities detected: %d\n", total);
+  return total;
 }
 
 // ------------------------------------------------------------
 // Leiden (simple)
 // ------------------------------------------------------------
-void apply_leiden_to_component(int component) {
+int leiden_method() {
   double total_graph_weight = 0.0;
+
   for (int i = 0; i < num_nodes; i++) {
-    if (node_community_map[i].component == component) {
-      node_community_map[i].community = i;
-      node_community_map[i].total_weight = 0.0;
-    }
+    node_community_map[i].community = i;
+    node_community_map[i].total_weight = 0.0;
   }
   for (int i = 0; i < num_edges; i++) {
     int u = edges[i].node1, v = edges[i].node2;
     double w = edges[i].weight;
-    if (node_community_map[u].component == component &&
-        node_community_map[v].component == component) {
-      node_community_map[u].total_weight += w;
-      node_community_map[v].total_weight += w;
-      total_graph_weight += 2 * w;
-    }
+    node_community_map[u].total_weight += w;
+    node_community_map[v].total_weight += w;
+    total_graph_weight += 2 * w;
   }
+
   int improvement = 1;
   while (improvement) {
     improvement = 0;
     for (int node = 0; node < num_nodes; node++) {
-      if (node_community_map[node].component != component)
-        continue;
       int cur_comm = node_community_map[node].community;
       double best_delta = 0.0;
       int best_comm = cur_comm;
+
       for (int idx = csr_offsets[node]; idx < csr_offsets[node + 1]; idx++) {
         int neigh = csr_neighbors[idx];
-        if (node_community_map[neigh].component != component)
-          continue;
         int neigh_comm = node_community_map[neigh].community;
         if (neigh_comm == cur_comm)
           continue;
@@ -329,50 +325,16 @@ void apply_leiden_to_component(int component) {
           best_comm = neigh_comm;
         }
       }
+
       if (best_comm != cur_comm) {
         node_community_map[node].community = best_comm;
         improvement = 1;
       }
     }
   }
-  for (int i = 0; i < num_nodes; i++) {
-    if (node_community_map[i].component == component)
-      communities[i] = node_community_map[i].community;
-  }
-}
 
-struct leiden_component_args {
-  int component;
-  Barrier barrier;
-};
-
-void process_leiden_component_job(void *arg) {
-  struct leiden_component_args *args = (struct leiden_component_args *)arg;
-  apply_leiden_to_component(args->component);
-  decrement_barrier(args->barrier, 1);
-}
-
-int leiden_method() {
-  // Détection des composantes
   for (int i = 0; i < num_nodes; i++)
-    node_community_map[i].component = -1;
-  find_connected_components();
-
-  struct barrier bar;
-  new_barrier(&bar, num_components);
-
-  for (int comp = 0; comp < num_components; comp++) {
-    struct leiden_component_args *args =
-        malloc(sizeof(struct leiden_component_args));
-    args->component = comp;
-    args->barrier = &bar;
-    struct Job job;
-    job.j = process_leiden_component_job;
-    job.args = args;
-    submit(&pool, job);
-  }
-
-  wait_barrier(&bar);
+    communities[i] = node_community_map[i].community;
 
   int uniq = count_unique_communities(communities, num_nodes);
   printf("Number of communities detected: %d\n", uniq);
@@ -382,88 +344,51 @@ int leiden_method() {
 // ------------------------------------------------------------
 // Leiden CPM
 // ------------------------------------------------------------
-void apply_leiden_cpm_to_component(int component) {
+int leiden_method_CPM() {
+  double total_graph_weight = 0.0;
+
   for (int i = 0; i < num_nodes; i++) {
-    if (node_community_map[i].component == component) {
-      node_community_map[i].community = i;
-      node_community_map[i].total_weight = 0.0;
-    }
+    node_community_map[i].community = i;
+    node_community_map[i].total_weight = 0.0;
   }
   for (int i = 0; i < num_edges; i++) {
     int u = edges[i].node1, v = edges[i].node2;
     double w = edges[i].weight;
-    if (node_community_map[u].component == component &&
-        node_community_map[v].component == component) {
-      node_community_map[u].total_weight += w;
-      node_community_map[v].total_weight += w;
-    }
+    node_community_map[u].total_weight += w;
+    node_community_map[v].total_weight += w;
+    total_graph_weight += 2 * w;
   }
+
   int improvement = 1;
   while (improvement) {
     improvement = 0;
     for (int node = 0; node < num_nodes; node++) {
-      if (node_community_map[node].component != component)
-        continue;
       int cur_comm = node_community_map[node].community;
       double best_delta = 0.0;
       int best_comm = cur_comm;
+
       for (int idx = csr_offsets[node]; idx < csr_offsets[node + 1]; idx++) {
         int neigh = csr_neighbors[idx];
-        if (node_community_map[neigh].component != component)
-          continue;
         int neigh_comm = node_community_map[neigh].community;
         if (neigh_comm == cur_comm)
           continue;
+
         double delta = calculate_gain_modularity_cpm(node, neigh_comm, lambda);
         if (delta > best_delta) {
           best_delta = delta;
           best_comm = neigh_comm;
         }
       }
+
       if (best_comm != cur_comm) {
         node_community_map[node].community = best_comm;
         improvement = 1;
       }
     }
   }
-  for (int i = 0; i < num_nodes; i++) {
-    if (node_community_map[i].component == component)
-      communities[i] = node_community_map[i].community;
-  }
-}
 
-struct leiden_cpm_component_args {
-  int component;
-  Barrier barrier;
-};
-
-void process_leiden_cpm_component_job(void *arg) {
-  struct leiden_cpm_component_args *args =
-      (struct leiden_cpm_component_args *)arg;
-  apply_leiden_cpm_to_component(args->component);
-  decrement_barrier(args->barrier, 1);
-}
-
-int leiden_method_CPM() {
   for (int i = 0; i < num_nodes; i++)
-    node_community_map[i].component = -1;
-  find_connected_components();
-
-  struct barrier bar;
-  new_barrier(&bar, num_components);
-
-  for (int comp = 0; comp < num_components; comp++) {
-    struct leiden_cpm_component_args *args =
-        malloc(sizeof(struct leiden_cpm_component_args));
-    args->component = comp;
-    args->barrier = &bar;
-    struct Job job;
-    job.j = process_leiden_cpm_component_job;
-    job.args = args;
-    submit(&pool, job);
-  }
-
-  wait_barrier(&bar);
+    communities[i] = node_community_map[i].community;
 
   int uniq = count_unique_communities(communities, num_nodes);
   printf("Number of communities detected: %d\n", uniq);
@@ -473,18 +398,21 @@ int leiden_method_CPM() {
 // ------------------------------------------------------------
 // Fonctions utilitaires
 // ------------------------------------------------------------
-static int *community_mark = NULL;
-static int current_mark = 1;
-static int mark_size = 0;
+static int *community_mark = NULL; // tableau de marqueurs
+static int current_mark = 1;       // valeur courante pour marquer
+static int mark_size = 0;          // taille actuelle du tableau
 
 int count_unique_communities(int *communities, int num_nodes) {
+  // Agrandir le tableau si nécessaire
   if (num_nodes > mark_size) {
     int new_size = num_nodes;
     community_mark = realloc(community_mark, new_size * sizeof(int));
+    // Initialiser la nouvelle zone à 0
     for (int i = mark_size; i < new_size; i++)
       community_mark[i] = 0;
     mark_size = new_size;
   }
+
   int unique = 0;
   for (int i = 0; i < num_nodes; i++) {
     int c = communities[i];
@@ -493,7 +421,7 @@ int count_unique_communities(int *communities, int num_nodes) {
       unique++;
     }
   }
-  current_mark++;
+  current_mark++; // incrémenter pour le prochain appel
   return unique;
 }
 
@@ -513,6 +441,7 @@ void compute_ratio_S(int *S) {
   }
   int *community_sizes = calloc(num_nodes, sizeof(int));
   int *community_s1_counts = calloc(num_nodes, sizeof(int));
+
   for (int i = 0; i < num_rows; i++) {
     int comm = communities[i];
     if (comm < 0 || comm >= num_nodes) {
@@ -523,6 +452,7 @@ void compute_ratio_S(int *S) {
     if (S[i] == 1)
       community_s1_counts[comm]++;
   }
+
   printf("Community Ratios (>0.5%% of nodes):\n");
   for (int comm = 0; comm < num_nodes; comm++) {
     if (community_sizes[comm] > num_nodes / 200) {

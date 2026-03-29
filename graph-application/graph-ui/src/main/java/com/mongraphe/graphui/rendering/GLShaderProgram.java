@@ -12,11 +12,6 @@ public class GLShaderProgram {
         this.programId = programId;
     }
 
-    public void setFloat(GL4 gl, String name, float value) {
-        int loc = gl.glGetUniformLocation(programId, name);
-        gl.glUniform1f(loc, value);
-    }
-
     public static GLShaderProgram createShaderProgram(GL4 gl, String vertexSrc, String fragmentSrc) {
         int vertexShader = gl.glCreateShader(GL4.GL_VERTEX_SHADER);
         int fragmentShader = gl.glCreateShader(GL4.GL_FRAGMENT_SHADER);

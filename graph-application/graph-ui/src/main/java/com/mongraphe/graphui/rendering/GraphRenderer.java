@@ -67,7 +67,6 @@ public final class GraphRenderer implements GLEventListener {
     private void drawVertices(GL4 gl) {
         pointShader.use(gl);
         pointShader.setMat4(gl, "u_transform", engine.camera().getProjection());
-        pointShader.setFloat(gl, "u_zoom", engine.camera().getZoom());
         vertexBuffer.draw(gl);
     }
 

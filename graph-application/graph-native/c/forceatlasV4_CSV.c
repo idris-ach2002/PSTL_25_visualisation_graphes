@@ -179,9 +179,8 @@ Java_com_mongraphe_graphui_rendering_GraphNativeEngine_getPositions(
     return NULL;
   }
 
-  // Constructeur avec 3 doubles (x, y, size)
   jmethodID point_constructor =
-      (*env)->GetMethodID(env, obj_class, "<init>", "(DDD)V");
+      (*env)->GetMethodID(env, obj_class, "<init>", "(DD)V");
   if (point_constructor == NULL) {
     (*env)->DeleteLocalRef(env, obj_class);
     return NULL;
@@ -196,10 +195,8 @@ Java_com_mongraphe_graphui_rendering_GraphNativeEngine_getPositions(
   for (int i = 0; i < num_nodes; ++i) {
     double x = vertices[i].x;
     double y = vertices[i].y;
-    double size = vertices[i].size;
 
-    jobject point =
-        (*env)->NewObject(env, obj_class, point_constructor, x, y, size);
+    jobject point = (*env)->NewObject(env, obj_class, point_constructor, x, y);
     if (point == NULL) {
       break;
     }
