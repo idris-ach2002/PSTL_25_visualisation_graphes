@@ -4,12 +4,12 @@ import java.util.ArrayList;
 
 public class Vertex {
 
-    public static int upscale = 8;
     public static double initial_node_size = 1;
     public static double degree_scale_factor = 0;
 
     private int id;
-    private double x, y, diameter;
+    public static int upscale = 1;
+    private volatile double x, y, diameter;
     private boolean isVisible = true;
     private boolean isDeleted = false;
     private final ArrayList<Edge> edges = new ArrayList<>();
@@ -19,6 +19,12 @@ public class Vertex {
         this.x = x * upscale;
         this.y = y * upscale;
         this.diameter = initial_node_size;
+    }
+
+    public Vertex(double x, double y, double diameter) {
+        this.x = x * upscale;
+        this.y = y * upscale;
+        this.diameter = diameter;
     }
 
     public int getId() {
@@ -42,18 +48,8 @@ public class Vertex {
         this.y = y;
     }
 
-    public void setDiameter(double diameter) {
-        this.diameter = diameter;
-    }
-
     public double getDiameter() {
         return diameter;
-    }
-
-    public void updateDiameter() {
-        if (degree_scale_factor < 0)
-            degree_scale_factor = 0;
-        diameter = initial_node_size + degree_scale_factor * getDegree();
     }
 
     public boolean isVisible() {
@@ -72,7 +68,6 @@ public class Vertex {
     public void restore() {
         isDeleted = false;
         isVisible = true;
-        updateDiameter();
     }
 
     public boolean isDeleted() {

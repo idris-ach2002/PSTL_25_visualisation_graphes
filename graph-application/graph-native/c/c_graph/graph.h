@@ -16,6 +16,7 @@ typedef struct {
 typedef struct {
     double x;
     double y;
+    double size;
     short deleted;
 } Point;
 

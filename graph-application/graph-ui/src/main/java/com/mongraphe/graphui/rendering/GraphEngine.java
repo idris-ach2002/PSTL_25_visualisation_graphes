@@ -227,7 +227,6 @@ public final class GraphEngine {
             for (Vertex v : verticesArray) {
                 if (v == null)
                     continue;
-                v.updateDiameter();
                 model.addVertex(v);
             }
             for (EdgeC ec : edgesArray) {
@@ -399,19 +398,11 @@ public final class GraphEngine {
     public void setInitialNodeSize(double size) {
         Vertex.initial_node_size = size;
         nativeEngine.setInitialNodeSize(size);
-        synchronized (model.mutex()) {
-            for (Vertex v : model.vertices())
-                v.updateDiameter();
-        }
     }
 
     public void setDegreeScaleFactor(double factor) {
         Vertex.degree_scale_factor = factor;
         nativeEngine.setDegreeScaleFactor(factor);
-        synchronized (model.mutex()) {
-            for (Vertex v : model.vertices())
-                v.updateDiameter();
-        }
     }
 
     public void setStabilizedThreshold(double t) {
