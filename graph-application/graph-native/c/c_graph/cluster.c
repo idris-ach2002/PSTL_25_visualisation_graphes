@@ -494,67 +494,6 @@ void parallel_intra_clusters(double(*forces)[2], double FMaxX, double FMaxY) {
     wait_barrier(&bar);
 }
 
-// Étape 2 : Forces de répulsion intra-cluster
-void repulsion_intra_clusters(double(*forces)[2], double FMaxX, double FMaxY)
-{
-
-    if ( modified_graph && mode != 1 ) 
-        calculate_node_degrees();
-
-    for (int cluster = 0; cluster < n_clusters; cluster++) {
-        int size = cluster_nodes[cluster].size;
-        for (int i = 0; i < size; i++) {
-            int node_i = cluster_nodes[cluster].nodes[i];
-    
-            Point pi = vertices[node_i];
-            if ( pi.deleted == 0 ) {
-                
-                for (int j = i + 1; j < size; j++) {
-                    int node_j = cluster_nodes[cluster].nodes[j];
-
-                    if ( vertices[node_j].deleted == 0 ) {
-                        Point dir;
-                        toroidal_vector(&dir, pi, vertices[node_j]);
-            
-                        double dist_squared = dir.x * dir.x + dir.y * dir.y;
-                        if (dist_squared > seuilrep) { // Assume a minimum distance to avoid division by zero
-                            //double dist = sqrt(dist_squared);
-
-                            double rep_force;
-                            if ( mode == 1 ) { 
-                                rep_force = repulsion_coeff / dist_squared;
-                            } else if (mode == 2 && communities[i] != communities[j]) {//printf("extra repulsion %d, %d \n",i,j);
-                                rep_force = 100000 * repulsion_coeff * (node_degrees[i]+1) * (node_degrees[j]+1) / dist_squared;
-                            } else { // mode == 0 est le mode par defaut
-                                rep_force = repulsion_coeff * (node_degrees[i]+1) * (node_degrees[j]+1) / dist_squared;
-                            } 
-                                                
-                            forces[node_i][0] -= dir.x * rep_force;
-                            forces[node_i][1] -= dir.y * rep_force;
-                            forces[node_j][0] += dir.x * rep_force;
-                            forces[node_j][1] += dir.y * rep_force;
-                        } else {
-                            double rep_force = repulsion_coeff / seuilrep;
-                                                
-                            forces[node_i][0] -= dir.x * rep_force;
-                            forces[node_i][1] -= dir.y * rep_force;
-                            forces[node_j][0] += dir.x * rep_force;
-                            forces[node_j][1] += dir.y * rep_force;
-                        }
-                    }
-                }
-            
-                // capper les forces d'attractions
-                forces[node_i][0] = fmax(fmin(forces[node_i][0], FMaxX), -FMaxX);
-                forces[node_i][1] = fmax(fmin(forces[node_i][1], FMaxY), -FMaxY);
-        
-            }
-        }
-    }
-
-
-}
-
 // etape 4 dans update_positions
 void update_clusters()
 {
