@@ -3,16 +3,9 @@ package com.mongraphe.graphui.controller;
 import java.io.File;
 import java.nio.file.Files;
 
-import javax.swing.SwingUtilities;
-
-import com.jogamp.opengl.GLCapabilities;
-import com.jogamp.opengl.GLProfile;
-import com.jogamp.opengl.awt.GLJPanel;
-import com.jogamp.opengl.util.FPSAnimator;
 import com.mongraphe.graphui.app.CommandBus;
 import com.mongraphe.graphui.app.UiState;
 import com.mongraphe.graphui.interaction.InteractionService;
-import com.mongraphe.graphui.interaction.SwingInputHandler;
 import com.mongraphe.graphui.model.GraphData;
 import com.mongraphe.graphui.model.GraphProject;
 import com.mongraphe.graphui.rendering.EngineExecutor;
@@ -22,7 +15,6 @@ import com.mongraphe.graphui.rendering.GraphRenderer;
 import com.mongraphe.graphui.view.GraphPanel;
 
 import javafx.application.Platform;
-import javafx.embed.swing.SwingNode;
 import javafx.fxml.FXML;
 import javafx.scene.control.Alert;
 import javafx.scene.control.Button;
@@ -44,6 +36,7 @@ public final class MainGraphController implements GraphEngine.GraphEngineListene
     private CommandBus<GraphEngine> bus;
     private InteractionService interaction;
     private GraphEngine engine;
+    private GraphPanel previewGraphPanel;
 
     @FXML
     private MainMenuController menuViewController;
@@ -109,24 +102,10 @@ public final class MainGraphController implements GraphEngine.GraphEngineListene
         graphStatsController.setBus(bus);
         previewController.setBus(bus);
 
-        GLProfile profile = GLProfile.get(GLProfile.GL4);
-        GLCapabilities caps = new GLCapabilities(profile);
-        GLJPanel glPanel = new GLJPanel(caps);
-        glPanel.addGLEventListener(renderer);
+        previewGraphPanel = new GraphPanel(renderer, interaction);
+        previewGraphPanel.start();
 
-        SwingInputHandler input = new SwingInputHandler(interaction);
-        glPanel.addMouseListener(input);
-        glPanel.addMouseMotionListener(input);
-        glPanel.addMouseWheelListener(input);
-        glPanel.addKeyListener(input);
-        glPanel.setFocusable(true);
-
-        FPSAnimator animator = new FPSAnimator(glPanel, 120, true);
-        SwingNode swingNode = new SwingNode();
-        SwingUtilities.invokeLater(() -> swingNode.setContent(glPanel));
-        animator.start();
-
-        previewController.setGraphPanel(swingNode);
+        previewController.setGraphPanel(previewGraphPanel.canvas());
 
         // Écouter les changements d'état de la simulation pour mettre à jour
         // l'interface
@@ -247,6 +226,7 @@ public final class MainGraphController implements GraphEngine.GraphEngineListene
                         Stage stage = (Stage) window;
                         stage.setOnCloseRequest(e -> {
                             panel.stop();
+                            previewGraphPanel.stop();
                             engine.dispose();
                         });
                     }
