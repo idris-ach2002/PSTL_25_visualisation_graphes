@@ -300,11 +300,6 @@ public final class GraphEngine {
                 backBuffer[i * 2 + 1] = (float) positions[i].getY();
             }
             currentPositions = backBuffer;
-
-            // Mise à jour du modèle (visibilité)
-            synchronized (model.mutex()) {
-                visibility.apply(model);
-            }
         } catch (Exception e) {
             // log éventuel
         }
@@ -466,7 +461,6 @@ public final class GraphEngine {
             cur[index * 2] = (float) x;
             cur[index * 2 + 1] = (float) y;
         }
-        // Optionnel mettre à jour aussi le Vertex
     }
 
     public void deleteNode(int index) {
