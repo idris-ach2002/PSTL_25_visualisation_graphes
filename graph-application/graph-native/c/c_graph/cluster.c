@@ -47,7 +47,7 @@ double compute_node_size(int node_index) {
     if ( degree_scale_factor < 0 )
         degree_scale_factor = 0;
     
-    return initial_node_size + degree_scale_factor * node_degrees[node_index];
+    return initial_node_size + sqrt(degree_scale_factor * node_degrees[node_index]);
 }
 
 double squared_distance(double* center, Point p) {
@@ -176,100 +176,6 @@ void grid_clustering(
         }
     }
 
-}
-
-void noverlap_sequential(double (*forces)[2], int node_index, int grid_index, int* map, double FMaxX, double FMaxY) {
-
-    for (int i = 0; i < grid_list[grid_index].size; ++i) {
-
-        int grid_node = grid_list[grid_index].nodes[i];
-
-        if ( grid_node > node_index && map[grid_node] != node_index ) {
-
-            map[grid_node] = node_index;
-
-            double node_size = compute_node_size(node_index);
-            double grid_node_size = compute_node_size(grid_node);
-
-            Point dir;
-            toroidal_vector(&dir, vertices[node_index], vertices[grid_node]);
-            double dist_squared = dir.x * dir.x + dir.y * dir.y;
-            double dist = sqrt(dist_squared); 
-
-            // border_to_border distance
-            double btb_dist = dist - node_size - grid_node_size;
-
-            
-            double rep_force = 0.;
-            double attr_force = 0.;
-            // overlaping
-            if ( btb_dist < 0 ) {
-
-                if ( dist_squared > seuilrep ) {
-                    rep_force = repulsion_coeff * 0.3 * (node_degrees[grid_node]+1) * (node_degrees[node_index]+1);
-                } else {
-                    rep_force = repulsion_coeff / seuilrep;
-                }
-
-            } else {
-                attr_force = btb_dist;
-                rep_force = repulsion_coeff * (node_degrees[grid_node]+1) * (node_degrees[node_index]+1) / btb_dist;
-            }
-
-            forces[grid_node][0] = forces[grid_node][0] + dir.x * rep_force - dir.x * attr_force ;
-            forces[grid_node][1] = forces[grid_node][1] + dir.y * rep_force - dir.y * attr_force ;
-            forces[node_index][0] = forces[node_index][0] - dir.x * rep_force + dir.x * attr_force;
-            forces[node_index][1] = forces[node_index][1] - dir.y * rep_force + dir.y * attr_force;
-        }
-
-    }
-
-}
-
-void noverlap_force(double (*forces)[2], double FMaxX, double FMaxY) {
-
-    int grid_length = 20;
-    int grid_size = 400;
-
-    double center_width = Lx * 0.5;
-    double center_height = Ly * 0.5;
-
-    double grid_width = Lx / grid_length;
-    double grid_height = Ly / grid_length;
-
-    int* map = (int*) malloc(sizeof(int) * num_nodes);
-    for (int i = 0; i < num_nodes; ++i) {
-        map[i] = -1;
-    }
-
-    if ( modified_graph && mode != 1 ) 
-        calculate_node_degrees();
-
-    for (int i = 0; i < num_nodes; ++i) {
-
-        if ( vertices[i].deleted == 0 ) {
-            double node_size = initial_node_size + degree_scale_factor * node_degrees[i];
-            double minX = vertices[i].x - node_size + center_width / 2 < 0 ? 0 : vertices[i].x - node_size + center_width / 2;
-            double maxX = vertices[i].x + node_size + center_width / 2 < 0 ? 0 : vertices[i].x + node_size + center_width / 2;
-            double minY = vertices[i].y - node_size + center_height / 2 < 0 ? 0 : vertices[i].y - node_size + center_height / 2;
-            double maxY = vertices[i].y + node_size + center_height / 2 < 0 ? 0 : vertices[i].y + node_size + center_height / 2;
-            int grid_minX = fmin(fmax(minX / grid_width, 0), grid_length - 1);
-            int grid_maxX = fmax(fmin(maxX / grid_width, grid_length - 1), 0);
-            int grid_minY = fmin(fmax(minY / grid_height, 0), grid_length - 1);
-            int grid_maxY = fmax(fmin(maxY / grid_height, grid_length - 1), 0);
-
-            for (int j = grid_minY; j <= grid_maxY; ++j) {
-                for (int k = grid_minX; k <= grid_maxX; ++k) {
-                    noverlap_sequential(forces, i, j * grid_length + k, map, FMaxX, FMaxY);
-                }
-            }
-        }
-
-    }
-
-    free(map);
-    freeSpatialCell(grid_list, grid_size);
-    grid_list = NULL;
 }
 
 struct map_arguments {

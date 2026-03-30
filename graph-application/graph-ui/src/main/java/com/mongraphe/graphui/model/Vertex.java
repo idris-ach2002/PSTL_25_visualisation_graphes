@@ -4,8 +4,7 @@ import java.util.ArrayList;
 
 public class Vertex {
 
-    public static int upscale = 8;
-    public static double initial_node_size = 1;
+    public static double initial_node_size = 5;
     public static double degree_scale_factor = 0;
 
     private int id;
@@ -16,8 +15,8 @@ public class Vertex {
     private Community community;
 
     public Vertex(double x, double y) {
-        this.x = x * upscale;
-        this.y = y * upscale;
+        this.x = x;
+        this.y = y;
         this.diameter = initial_node_size;
     }
 
@@ -53,7 +52,7 @@ public class Vertex {
     public void updateDiameter() {
         if (degree_scale_factor < 0)
             degree_scale_factor = 0;
-        diameter = initial_node_size + degree_scale_factor * getDegree();
+        diameter = initial_node_size + Math.sqrt(degree_scale_factor * getDegree());
     }
 
     public boolean isVisible() {
