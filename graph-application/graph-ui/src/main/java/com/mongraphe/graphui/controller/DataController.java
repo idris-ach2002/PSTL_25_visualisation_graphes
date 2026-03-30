@@ -7,7 +7,11 @@ import com.mongraphe.graphui.model.Vertex;
 import com.mongraphe.graphui.rendering.GraphEngine;
 
 import javafx.fxml.FXML;
-import javafx.scene.control.*;
+import javafx.scene.control.Label;
+import javafx.scene.control.Pagination;
+import javafx.scene.control.TableColumn;
+import javafx.scene.control.TableView;
+import javafx.scene.control.TextField;
 import javafx.scene.control.cell.PropertyValueFactory;
 import javafx.scene.input.KeyCode;
 public final class DataController implements CommandBusLinkedI<GraphEngine> {
@@ -155,6 +159,7 @@ public final class DataController implements CommandBusLinkedI<GraphEngine> {
 
         table.setPrefWidth(Double.MAX_VALUE);
         table.setPrefHeight(Double.MAX_VALUE);
+        GraphEngine.GraphPage<Vertex> vPage = bus.dispatchSync(engine -> engine.getVerticesPage(0, 1));
 
         table.getColumns().addAll(
                 vertexIdCol,

@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.layout.*?>
+<?import javafx.scene.control.*?>
+
+<BorderPane xmlns="http://javafx.com/javafx/8"
+  xmlns:fx="http://javafx.com/fxml/1"
+  fx:controller="com.mongraphe.graphui.controller.PreviewController">
+
+  <center>
+    <BorderPane fx:id="graphContainer" style="-fx-background-color: #fff; -fx-border-color: #ccc; -fx-border-width: 1;"/>
+ </center>
+  <left>
+        <VBox >
+
+        <Label text="Paramètres du graphe" style="-fx-font-weight: bold; -fx-padding: 10 0 0 0;" />
+        <GridPane hgap="10" vgap="5">
+            <Label text="Taille d'un noeud:" GridPane.rowIndex="0" GridPane.columnIndex="0" />
+            <TextField fx:id="initNodeSize" GridPane.rowIndex="0" GridPane.columnIndex="1" text="3" />
+
+            <Label text="Agrandissement par degré:" GridPane.rowIndex="1" GridPane.columnIndex="0" />
+            <TextField fx:id="degreeFactor" GridPane.rowIndex="1" GridPane.columnIndex="1" text="0.3" />
+
+        
+
+            <Label text="Degré minimum:" GridPane.rowIndex="11" GridPane.columnIndex="0" />
+            <TextField fx:id="minimumDegree" text="0" GridPane.rowIndex="11" GridPane.columnIndex="1" />
+
+            <Label text="Poids min arêtes:" GridPane.rowIndex="12" GridPane.columnIndex="0" />
+            <TextField fx:id="minEdgeWeight" text="0" GridPane.rowIndex="12" GridPane.columnIndex="1" />
+        </GridPane>
+
+        <Separator/>
+        <Label text="Apparence" style="-fx-font-weight: bold;"/>
+        <GridPane hgap="10" vgap="5">
+            <Label text="Couleur du canvas:" GridPane.rowIndex="0" GridPane.columnIndex="0" />
+            <ColorPicker fx:id="canvasColorPicker" GridPane.rowIndex="0" GridPane.columnIndex="1" />
+
+            <Label text="Coloration des nœuds:" GridPane.rowIndex="1" GridPane.columnIndex="0" />
+            <ComboBox fx:id="coloringModeCombo" prefWidth="200" GridPane.rowIndex="1" GridPane.columnIndex="1"/>
+
+            <Label text="Couleur uniforme:" GridPane.rowIndex="2" GridPane.columnIndex="0" />
+            <ColorPicker fx:id="uniformNodeColorPicker" GridPane.rowIndex="2" GridPane.columnIndex="1" />
+        </GridPane>
+
+
+        <HBox spacing="8" alignment="CENTER_RIGHT">
+            <Button text="Appliquer" onAction="#applyOptions" styleClass="button"/>
+        </HBox>
+        </VBox> 
+    </left>
+</BorderPane>
