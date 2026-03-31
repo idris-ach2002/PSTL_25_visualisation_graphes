@@ -2,19 +2,6 @@ package com.mongraphe.graphui.controller;
 
 import java.io.File;
 import java.nio.file.Files;
-import javafx.application.Platform;
-import javafx.fxml.FXML;
-import javafx.scene.control.Alert;
-import javafx.scene.control.Button;
-import javafx.scene.control.Toggle;
-import javafx.scene.control.ToggleGroup;
-import javafx.scene.layout.BorderPane;
-import javafx.scene.layout.HBox;
-import javafx.scene.layout.Pane;
-import javafx.scene.layout.StackPane;
-import javafx.scene.layout.VBox;
-import javafx.stage.FileChooser;
-import javafx.stage.Stage;
 
 import com.mongraphe.graphui.app.CommandBus;
 import com.mongraphe.graphui.app.UiState;
@@ -27,6 +14,19 @@ import com.mongraphe.graphui.rendering.GraphNativeEngine;
 import com.mongraphe.graphui.rendering.GraphRenderer;
 import com.mongraphe.graphui.view.GraphPanel;
 
+import javafx.application.Platform;
+import javafx.fxml.FXML;
+import javafx.scene.control.Alert;
+import javafx.scene.control.Button;
+import javafx.scene.control.Toggle;
+import javafx.scene.control.ToggleGroup;
+import javafx.scene.layout.BorderPane;
+import javafx.scene.layout.HBox;
+import javafx.scene.layout.StackPane;
+import javafx.scene.layout.VBox;
+import javafx.stage.FileChooser;
+import javafx.stage.Stage;
+
 public final class MainGraphController implements GraphEngine.GraphEngineListener {
 
     private final UiState uiState = new UiState();
@@ -36,6 +36,7 @@ public final class MainGraphController implements GraphEngine.GraphEngineListene
     private CommandBus<GraphEngine> bus;
     private InteractionService interaction;
     private GraphEngine engine;
+    private GraphPanel previewGraphPanel;
 
     @FXML
     private MainMenuController menuViewController;
@@ -47,6 +48,10 @@ public final class MainGraphController implements GraphEngine.GraphEngineListene
     private DataController dataViewController;
     @FXML
     private GraphStatsController graphStatsController;
+    @FXML
+    private PreviewController previewController;
+
+
 
     @FXML
     private ToggleGroup viewToggleGroup;
@@ -66,7 +71,7 @@ public final class MainGraphController implements GraphEngine.GraphEngineListene
     @FXML
     private StackPane graphHostPane;
     @FXML
-    private Pane preview;
+    private BorderPane preview;
     @FXML
     private VBox graphStats;
 
@@ -95,6 +100,12 @@ public final class MainGraphController implements GraphEngine.GraphEngineListene
         dataViewController.setBus(bus);
         graphStatsController.setMainController(this);
         graphStatsController.setBus(bus);
+        previewController.setBus(bus);
+
+        previewGraphPanel = new GraphPanel(renderer, interaction);
+        previewGraphPanel.start();
+
+        previewController.setGraphPanel(previewGraphPanel.canvas());
 
         // Écouter les changements d'état de la simulation pour mettre à jour
         // l'interface
@@ -215,6 +226,7 @@ public final class MainGraphController implements GraphEngine.GraphEngineListene
                         Stage stage = (Stage) window;
                         stage.setOnCloseRequest(e -> {
                             panel.stop();
+                            previewGraphPanel.stop();
                             engine.dispose();
                         });
                     }
@@ -234,6 +246,10 @@ public final class MainGraphController implements GraphEngine.GraphEngineListene
 
         if ("data".equals(view)) {
             dataViewController.refresh();
+        }
+
+        if ("preview".equals(view)) {
+            bus.dispatch(e -> e.stopSimulation());
         }
     }
 
