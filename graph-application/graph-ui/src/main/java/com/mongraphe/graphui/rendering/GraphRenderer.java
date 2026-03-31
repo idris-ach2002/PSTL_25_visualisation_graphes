@@ -12,9 +12,23 @@ public final class GraphRenderer implements GLEventListener {
     private EdgeGpuBuffer edgeBuffer;
     private GLShaderProgram pointShader;
     private GLShaderProgram edgeShader;
+    private volatile GraphRenderOptions renderOptions;
 
     public GraphRenderer(GraphEngine engine, Camera2D camera) {
+        this(engine, camera, GraphRenderOptions.straight());
+    }
+
+    public GraphRenderer(GraphEngine engine, Camera2D camera, GraphRenderOptions renderOptions) {
         this.engine = engine;
+        this.renderOptions = renderOptions == null ? GraphRenderOptions.straight() : renderOptions;
+    }
+
+    public void setRenderOptions(GraphRenderOptions renderOptions) {
+        this.renderOptions = renderOptions == null ? GraphRenderOptions.straight() : renderOptions;
+    }
+
+    public GraphRenderOptions getRenderOptions() {
+        return renderOptions;
     }
 
     @Override
@@ -52,15 +66,16 @@ public final class GraphRenderer implements GLEventListener {
         if (posBuffer == null)
             return;
 
+        GraphRenderOptions options = renderOptions;
         synchronized (model.mutex()) {
             vertexBuffer.update(model, posBuffer);
-            edgeBuffer.update(model, posBuffer);
+            edgeBuffer.update(model, posBuffer, options);
         }
 
         vertexBuffer.upload(gl);
         edgeBuffer.upload(gl);
 
-        drawEdges(gl);
+        drawEdges(gl, options);
         drawVertices(gl);
     }
 
@@ -70,10 +85,12 @@ public final class GraphRenderer implements GLEventListener {
         vertexBuffer.draw(gl);
     }
 
-    private void drawEdges(GL4 gl) {
+    private void drawEdges(GL4 gl, GraphRenderOptions options) {
         edgeShader.use(gl);
         edgeShader.setMat4(gl, "u_transform", engine.camera().getProjection());
+        gl.glLineWidth(options == null ? 1f : options.edgeLineWidth());
         edgeBuffer.draw(gl);
+        gl.glLineWidth(1f);
     }
 
     @Override

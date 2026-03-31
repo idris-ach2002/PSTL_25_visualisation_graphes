@@ -12,6 +12,7 @@ import com.mongraphe.graphui.rendering.EngineExecutor;
 import com.mongraphe.graphui.rendering.GraphEngine;
 import com.mongraphe.graphui.rendering.GraphNativeEngine;
 import com.mongraphe.graphui.rendering.GraphRenderer;
+import com.mongraphe.graphui.rendering.GraphRenderOptions;
 import com.mongraphe.graphui.view.GraphPanel;
 
 import javafx.application.Platform;
@@ -84,10 +85,10 @@ public final class MainGraphController implements GraphEngine.GraphEngineListene
     private void initialize() {
         GraphNativeEngine nativeEngine = new GraphNativeEngine();
         this.engine = new GraphEngine(nativeEngine);
-        GraphRenderer renderer = new GraphRenderer(engine, engine.camera());
+        GraphRenderer mainRenderer = new GraphRenderer(engine, engine.camera(), GraphRenderOptions.straight());
         bus = new CommandBus<>(engine, new EngineExecutor());
         interaction = new InteractionService(bus, uiState);
-        panel = new GraphPanel(renderer, interaction);
+        panel = new GraphPanel(mainRenderer, interaction);
 
         graphHostPane.getChildren().add(panel.canvas());
         panel.start();
@@ -102,9 +103,11 @@ public final class MainGraphController implements GraphEngine.GraphEngineListene
         graphStatsController.setBus(bus);
         previewController.setBus(bus);
 
-        previewGraphPanel = new GraphPanel(renderer, interaction);
+        GraphRenderer previewRenderer = new GraphRenderer(engine, engine.camera(), GraphRenderOptions.previewView());
+        previewGraphPanel = new GraphPanel(previewRenderer, interaction);
         previewGraphPanel.start();
 
+        previewController.setPreviewRenderer(previewRenderer);
         previewController.setGraphPanel(previewGraphPanel.canvas());
 
         // Écouter les changements d'état de la simulation pour mettre à jour
