@@ -23,7 +23,17 @@ double correlation_similarity(int i, int j) {
     den_j += dj * dj;
   }
 
-  return (num / sqrt(den_i * den_j));
+  if (den_i < EPSILON || den_j < EPSILON) {
+    // variance nulle dc vecteurs constants
+    return (den_i == den_j) ? 1.0 : 0.0;
+  }
+  double corr = num / sqrt(den_i * den_j);
+  // Arrondir à [-1,1] pour éviter les erreurs d'arrondi
+  if (corr > 1.0)
+    corr = 1.0;
+  if (corr < -1.0)
+    corr = -1.0;
+  return corr;
 }
 
 // Calcul de la norme L1 (somme des distances absolues)
@@ -56,6 +66,8 @@ double cosine_similarity(int i, int j) {
     den_i += data[i][k] * data[i][k];
     den_j += data[j][k] * data[j][k];
   }
+  if (den_i < EPSILON || den_j < EPSILON)
+    return 0.0;
   return num / (sqrt(den_i) * sqrt(den_j));
 }
 
@@ -64,25 +76,19 @@ double KL_divergence(int i, int j) {
   double kl_div = 0.0;
   double p[num_columns];
   double q[num_columns];
-
-  // Copier les lignes i et j dans des vecteurs locaux pour les normaliser
   for (int k = 0; k < num_columns; k++) {
     p[k] = data[i][k];
     q[k] = data[j][k];
   }
-
-  // Normaliser les deux vecteurs
   normalize_vector(p, num_columns);
   normalize_vector(q, num_columns);
-
-  // Calcul de la divergence KL
   for (int k = 0; k < num_columns; k++) {
-    if (p[k] > EPSILON && q[k] > EPSILON) {
-      kl_div += p[k] * log(p[k] / q[k]);
-    }
+    // Ajouter un petit epsilon pour éviter log(0)
+    double pk = (p[k] < EPSILON) ? EPSILON : p[k];
+    double qk = (q[k] < EPSILON) ? EPSILON : q[k];
+    kl_div += pk * log(pk / qk);
   }
-
-  return 1 / (1 + kl_div);
+  return 1.0 / (1.0 + kl_div);
 }
 
 // Calcul de la distance euclidienne

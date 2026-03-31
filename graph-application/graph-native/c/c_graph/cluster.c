@@ -341,13 +341,13 @@ void repulsion_intra_cluster_job(void * args) {
                     toroidal_vector(&dir, pi, vertices[node_j]);
             
                     double dist_squared = dir.x * dir.x + dir.y * dir.y;
-                    if (dist_squared > seuilrep) { // Assume a minimum distance to avoid division by zero
-                        //double dist = sqrt(dist_squared);
+                    if (dist_squared < 1e-12) dist_squared = 1e-12; // Assume a minimum distance to avoid division by zero
+                    if (dist_squared > seuilrep) {
 
                         double rep_force;
                         if ( mode == 1 ) { 
                             rep_force = repulsion_coeff / dist_squared;
-                        } else if (mode == 2 && communities[i] != communities[j]) {//printf("extra repulsion %d, %d \n",i,j);
+                        } else if (mode == 2 && communities[node_i] != communities[node_j]) {
                             rep_force = 100000 * repulsion_coeff * (node_degrees[i]+1) * (node_degrees[j]+1) / dist_squared;
                         } else { // mode == 0 est le mode par defaut
                             rep_force = repulsion_coeff * (node_degrees[i]+1) * (node_degrees[j]+1) / dist_squared;
