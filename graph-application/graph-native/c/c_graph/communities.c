@@ -164,6 +164,8 @@ static int aggregate_and_build_csr(int n_cur, int *partition, int N_orig,
                                    double **new_weights) {
   // 1. Compression des communautés
   int *compress = malloc(n_cur * sizeof(int));
+  if (!compress)
+    return -1;
   for (int i = 0; i < n_cur; i++)
     compress[i] = -1;
   int n_new = 0;
@@ -178,24 +180,24 @@ static int aggregate_and_build_csr(int n_cur, int *partition, int N_orig,
     node_comm[i] = compress[partition[node_comm[i]]];
   }
 
-  // 3. Collecter les arêtes du graphe contracté
-  // On utilise un tableau temporaire (au pire E_orig arêtes)
+  // 3. Collecter les arêtes du graphe contracté (une seule direction pour le
+  // moment)
   Edge *tmp_edges = malloc(E_orig * sizeof(Edge));
+  if (!tmp_edges) {
+    free(compress);
+    return -1;
+  }
   int tmp_count = 0;
-
   for (int i = 0; i < E_orig; i++) {
     int u = edges[i].node1, v = edges[i].node2;
     double w = edges[i].weight;
     int cu = node_comm[u], cv = node_comm[v];
     if (cu == cv) {
-      // auto-boucle : on la conserve pour le CSR
       tmp_edges[tmp_count].node1 = cu;
       tmp_edges[tmp_count].node2 = cv;
       tmp_edges[tmp_count].weight = w;
       tmp_count++;
     } else {
-      // arête entre deux communautés différentes, on la stocke une seule fois
-      // (cu <= cv)
       if (cu < cv) {
         tmp_edges[tmp_count].node1 = cu;
         tmp_edges[tmp_count].node2 = cv;
@@ -211,22 +213,43 @@ static int aggregate_and_build_csr(int n_cur, int *partition, int N_orig,
   // 4. Trier les arêtes par (node1, node2)
   qsort(tmp_edges, tmp_count, sizeof(Edge), compare_edge);
 
-  // 5. Compter les degrés et fusionner les arêtes multiples
+  // 5. Compter les degrés (symétrique) et fusionner les doublons
   int *degree = calloc(n_new, sizeof(int));
-  int combined_count = 0;
-  for (int i = 0; i < tmp_count; i++) {
-    if (i == 0 || tmp_edges[i].node1 != tmp_edges[i - 1].node1 ||
-        tmp_edges[i].node2 != tmp_edges[i - 1].node2) {
-      // nouvelle arête unique
-      degree[tmp_edges[i].node1]++;
-      combined_count++;
-    } else {
-      // arête déjà existante : on cumule le poids plus tard
+  if (!degree) {
+    free(tmp_edges);
+    free(compress);
+    return -1;
+  }
+  int i = 0;
+  while (i < tmp_count) {
+    int u = tmp_edges[i].node1, v = tmp_edges[i].node2;
+    double w_sum = 0.0;
+    int j = i;
+    while (j < tmp_count && tmp_edges[j].node1 == u &&
+           tmp_edges[j].node2 == v) {
+      w_sum += tmp_edges[j].weight;
+      j++;
     }
+    // Mise à jour des degrés
+    if (u == v) {
+      degree[u] += 2;
+    } else {
+      degree[u] += 1;
+      degree[v] += 1;
+    }
+    // On garde la somme dans le premier élément du groupe
+    tmp_edges[i].weight = w_sum;
+    i = j;
   }
 
   // 6. Construire les offsets
   *new_offsets = malloc((n_new + 1) * sizeof(int));
+  if (!*new_offsets) {
+    free(degree);
+    free(tmp_edges);
+    free(compress);
+    return -1;
+  }
   (*new_offsets)[0] = 0;
   for (int i = 0; i < n_new; i++) {
     (*new_offsets)[i + 1] = (*new_offsets)[i] + degree[i];
@@ -234,32 +257,58 @@ static int aggregate_and_build_csr(int n_cur, int *partition, int N_orig,
   int total_edges = (*new_offsets)[n_new];
   *new_neighbors = malloc(total_edges * sizeof(int));
   *new_weights = malloc(total_edges * sizeof(double));
+  if (!*new_neighbors || !*new_weights) {
+    free(*new_offsets);
+    free(degree);
+    free(tmp_edges);
+    free(compress);
+    return -1;
+  }
 
-  // 7. Remplir les voisins et poids (en parcourant une nouvelle fois la liste
-  // triée)
+  // 7. Remplir le CSR symétrique
   int *pos = malloc(n_new * sizeof(int));
+  if (!pos) {
+    free(*new_offsets);
+    free(*new_neighbors);
+    free(*new_weights);
+    free(degree);
+    free(tmp_edges);
+    free(compress);
+    return -1;
+  }
   memcpy(pos, *new_offsets, n_new * sizeof(int));
 
-  for (int i = 0; i < tmp_count; i++) {
+  i = 0;
+  while (i < tmp_count) {
     int u = tmp_edges[i].node1, v = tmp_edges[i].node2;
     double w = tmp_edges[i].weight;
-    // Si c'est le premier de sa séquence, on initialise la case
-    if (i == 0 || u != tmp_edges[i - 1].node1 || v != tmp_edges[i - 1].node2) {
+    // Sauter les doublons (déjà fusionnés)
+    int j = i + 1;
+    while (j < tmp_count && tmp_edges[j].node1 == u && tmp_edges[j].node2 == v)
+      j++;
+    if (u == v) {
+      // auto-boucle : deux entrées
+      int p = pos[u]++;
+      (*new_neighbors)[p] = u;
+      (*new_weights)[p] = w;
+      p = pos[u]++;
+      (*new_neighbors)[p] = u;
+      (*new_weights)[p] = w;
+    } else {
       int p = pos[u]++;
       (*new_neighbors)[p] = v;
       (*new_weights)[p] = w;
-    } else {
-      // Arête en doublon : on ajoute le poids à la case déjà écrite
-      int idx = pos[u] - 1; // on a déjà incrémenté pos[u] pour cette arête
-      (*new_weights)[idx] += w;
+      p = pos[v]++;
+      (*new_neighbors)[p] = u;
+      (*new_weights)[p] = w;
     }
+    i = j;
   }
 
   free(degree);
   free(pos);
   free(tmp_edges);
   free(compress);
-
   return n_new;
 }
 
@@ -810,11 +859,14 @@ int leiden_method() {
 // Leiden CPM (identique à la modularité,
 // mais avec la formule de gain CPM)
 // ------------------------------------------------------------
+
 int leiden_method_CPM() {
   int N_orig = num_nodes;
   int E_orig = num_edges;
 
   double *deg_orig = calloc(N_orig, sizeof(double));
+  if (!deg_orig)
+    return -1;
   for (int i = 0; i < E_orig; i++) {
     int u = edges[i].node1, v = edges[i].node2;
     double w = edges[i].weight;
@@ -823,6 +875,10 @@ int leiden_method_CPM() {
   }
 
   int *node_comm = malloc(N_orig * sizeof(int));
+  if (!node_comm) {
+    free(deg_orig);
+    return -1;
+  }
   for (int i = 0; i < N_orig; i++)
     node_comm[i] = i;
 
@@ -830,36 +886,78 @@ int leiden_method_CPM() {
   int *offsets = malloc((n_cur + 1) * sizeof(int));
   int *neighbors = malloc(csr_total_edges * sizeof(int));
   double *weights = malloc(csr_total_edges * sizeof(double));
+  if (!offsets || !neighbors || !weights) {
+    free(deg_orig);
+    free(node_comm);
+    free(offsets);
+    free(neighbors);
+    free(weights);
+    return -1;
+  }
   memcpy(offsets, csr_offsets, (n_cur + 1) * sizeof(int));
   memcpy(neighbors, csr_neighbors, csr_total_edges * sizeof(int));
   memcpy(weights, csr_weights, csr_total_edges * sizeof(double));
 
   int *partition = malloc(n_cur * sizeof(int));
+  if (!partition) {
+    free(deg_orig);
+    free(node_comm);
+    free(offsets);
+    free(neighbors);
+    free(weights);
+    return -1;
+  }
   for (int i = 0; i < n_cur; i++)
     partition[i] = i;
 
-  double *comm_deg = malloc(n_cur * sizeof(double));
-  memcpy(comm_deg, deg_orig, n_cur * sizeof(double));
+  int *comm_node_count = malloc(n_cur * sizeof(int));
+  if (!comm_node_count) {
+    free(deg_orig);
+    free(node_comm);
+    free(offsets);
+    free(neighbors);
+    free(weights);
+    free(partition);
+    return -1;
+  }
+  for (int i = 0; i < n_cur; i++)
+    comm_node_count[i] = 1;
 
   bool improvement = true;
+  int *mark = NULL;
+  int mark_capacity = 0;
+
   while (improvement) {
     improvement = false;
 
-    // Phase 1 : mouvements locaux (gain CPM)
-    int *mark = calloc(n_cur, sizeof(int));
+    // Phase 1 : mouvements locaux
+    if (mark_capacity < n_cur) {
+      int old_cap = mark_capacity;
+      mark = realloc(mark, n_cur * sizeof(int));
+      if (!mark) {
+        free(deg_orig);
+        free(node_comm);
+        free(offsets);
+        free(neighbors);
+        free(weights);
+        free(partition);
+        free(comm_node_count);
+        return -1;
+      }
+      for (int i = old_cap; i < n_cur; i++)
+        mark[i] = 0; // initialisation
+      mark_capacity = n_cur;
+    }
     int cur_mark = 1;
     for (int node = 0; node < n_cur; node++) {
       int old_comm = partition[node];
       double k_in_old = 0.0;
       for (int idx = offsets[node]; idx < offsets[node + 1]; idx++) {
-        int neigh = neighbors[idx];
-        if (partition[neigh] == old_comm)
+        if (partition[neighbors[idx]] == old_comm)
           k_in_old += weights[idx];
       }
-
       double best_delta = 0.0;
       int best_comm = old_comm;
-
       for (int idx = offsets[node]; idx < offsets[node + 1]; idx++) {
         int neigh = neighbors[idx];
         int neigh_comm = partition[neigh];
@@ -867,23 +965,15 @@ int leiden_method_CPM() {
           continue;
         if (mark[neigh_comm] != cur_mark) {
           mark[neigh_comm] = cur_mark;
-
           double k_in_new = 0.0;
           for (int jdx = offsets[node]; jdx < offsets[node + 1]; jdx++) {
-            int n2 = neighbors[jdx];
-            if (partition[n2] == neigh_comm)
+            if (partition[neighbors[jdx]] == neigh_comm)
               k_in_new += weights[jdx];
           }
-
-          double deg_i = 0.0;
-          for (int jdx = offsets[node]; jdx < offsets[node + 1]; jdx++) {
-            deg_i += weights[jdx];
-          }
-          double size_old = comm_deg[old_comm];
-          double size_new = comm_deg[neigh_comm];
+          int size_old = comm_node_count[old_comm];
+          int size_new = comm_node_count[neigh_comm];
           double delta =
-              (k_in_new - k_in_old) - lambda * deg_i * (size_new - size_old);
-
+              (k_in_new - k_in_old) + lambda * (size_old - 1 - size_new);
           if (delta > best_delta) {
             best_delta = delta;
             best_comm = neigh_comm;
@@ -894,24 +984,60 @@ int leiden_method_CPM() {
 
       if (best_delta > 1e-12 && best_comm != old_comm) {
         partition[node] = best_comm;
-        comm_deg[old_comm] -= deg_orig[node];
-        comm_deg[best_comm] += deg_orig[node];
+        comm_node_count[old_comm]--;
+        comm_node_count[best_comm]++;
         improvement = true;
       }
     }
-    free(mark);
+
     if (!improvement)
       break;
 
-    // Phase 2 : raffinement (gain CPM)
+    // Phase 2 : raffinement
     int *refined = malloc(n_cur * sizeof(int));
+    if (!refined) {
+      free(deg_orig);
+      free(node_comm);
+      free(offsets);
+      free(neighbors);
+      free(weights);
+      free(partition);
+      free(comm_node_count);
+      free(mark);
+      return -1;
+    }
     for (int i = 0; i < n_cur; i++)
       refined[i] = partition[i];
 
-    double *ref_comm_deg = malloc(n_cur * sizeof(double));
-    memcpy(ref_comm_deg, comm_deg, n_cur * sizeof(double));
+    int *ref_comm_node_count = malloc(n_cur * sizeof(int));
+    if (!ref_comm_node_count) {
+      free(refined);
+      free(deg_orig);
+      free(node_comm);
+      free(offsets);
+      free(neighbors);
+      free(weights);
+      free(partition);
+      free(comm_node_count);
+      free(mark);
+      return -1;
+    }
+    memcpy(ref_comm_node_count, comm_node_count, n_cur * sizeof(int));
 
     int *order = malloc(n_cur * sizeof(int));
+    if (!order) {
+      free(refined);
+      free(ref_comm_node_count);
+      free(deg_orig);
+      free(node_comm);
+      free(offsets);
+      free(neighbors);
+      free(weights);
+      free(partition);
+      free(comm_node_count);
+      free(mark);
+      return -1;
+    }
     for (int i = 0; i < n_cur; i++)
       order[i] = i;
     shuffle(order, n_cur);
@@ -921,55 +1047,42 @@ int leiden_method_CPM() {
       refined_changed = false;
       for (int pos = 0; pos < n_cur; pos++) {
         int node = order[pos];
-
         int old_comm = refined[node];
         double k_in_old = 0.0;
         for (int idx = offsets[node]; idx < offsets[node + 1]; idx++) {
-          int neigh = neighbors[idx];
-          if (refined[neigh] == old_comm)
+          if (refined[neighbors[idx]] == old_comm)
             k_in_old += weights[idx];
         }
-
         double best_delta = 0.0;
         int best_comm = old_comm;
-
         for (int idx = offsets[node]; idx < offsets[node + 1]; idx++) {
           int neigh = neighbors[idx];
           int cand_comm = refined[neigh];
           if (cand_comm == old_comm)
             continue;
-
           double k_in_new = 0.0;
           for (int jdx = offsets[node]; jdx < offsets[node + 1]; jdx++) {
-            int n2 = neighbors[jdx];
-            if (refined[n2] == cand_comm)
+            if (refined[neighbors[jdx]] == cand_comm)
               k_in_new += weights[jdx];
           }
-
-          double deg_i = 0.0;
-          for (int jdx = offsets[node]; jdx < offsets[node + 1]; jdx++) {
-            deg_i += weights[jdx];
-          }
-          double size_old = ref_comm_deg[old_comm];
-          double size_new = ref_comm_deg[cand_comm];
+          int size_old = ref_comm_node_count[old_comm];
+          int size_new = ref_comm_node_count[cand_comm];
           double delta =
-              (k_in_new - k_in_old) - lambda * deg_i * (size_new - size_old);
-
+              (k_in_new - k_in_old) + lambda * (size_old - 1 - size_new);
           if (delta > best_delta) {
             best_delta = delta;
             best_comm = cand_comm;
           }
         }
-
         if (best_comm != old_comm && best_delta > 1e-12) {
           refined[node] = best_comm;
-          ref_comm_deg[old_comm] -= deg_orig[node];
-          ref_comm_deg[best_comm] += deg_orig[node];
+          ref_comm_node_count[old_comm]--;
+          ref_comm_node_count[best_comm]++;
           refined_changed = true;
         }
       }
     }
-    free(ref_comm_deg);
+    free(ref_comm_node_count);
     free(order);
 
     // Phase 3 : agrégation
@@ -978,6 +1091,18 @@ int leiden_method_CPM() {
     int n_new = aggregate_and_build_csr(n_cur, refined, N_orig, E_orig,
                                         node_comm, edges, &new_offsets,
                                         &new_neighbors, &new_weights);
+    if (n_new < 0) {
+      free(refined);
+      free(deg_orig);
+      free(node_comm);
+      free(offsets);
+      free(neighbors);
+      free(weights);
+      free(partition);
+      free(comm_node_count);
+      free(mark);
+      return -1;
+    }
 
     free(offsets);
     free(neighbors);
@@ -986,7 +1111,40 @@ int leiden_method_CPM() {
     neighbors = new_neighbors;
     weights = new_weights;
 
+    // Recalcul du nombre de nœuds originaux par communauté -----
+    int *new_comm_node_count = calloc(n_new, sizeof(int));
+    if (!new_comm_node_count) {
+      free(refined);
+      free(deg_orig);
+      free(node_comm);
+      free(offsets);
+      free(neighbors);
+      free(weights);
+      free(partition);
+      free(comm_node_count);
+      free(mark);
+      return -1;
+    }
+    for (int i = 0; i < N_orig; i++) {
+      new_comm_node_count[node_comm[i]]++;
+    }
+    free(comm_node_count);
+    comm_node_count = new_comm_node_count;
+
+    // Recalcul de deg_orig (optionnel, mais gardé pour cohérence)
     double *new_deg_orig = malloc(n_new * sizeof(double));
+    if (!new_deg_orig) {
+      free(refined);
+      free(deg_orig);
+      free(node_comm);
+      free(offsets);
+      free(neighbors);
+      free(weights);
+      free(partition);
+      free(comm_node_count);
+      free(mark);
+      return -1;
+    }
     for (int i = 0; i < n_new; i++) {
       new_deg_orig[i] = 0.0;
       for (int idx = offsets[i]; idx < offsets[i + 1]; idx++) {
@@ -1001,37 +1159,63 @@ int leiden_method_CPM() {
     free(deg_orig);
     deg_orig = new_deg_orig;
 
-    double *new_comm_deg = malloc(n_new * sizeof(double));
-    memcpy(new_comm_deg, deg_orig, n_new * sizeof(double));
-    free(comm_deg);
-    comm_deg = new_comm_deg;
-
     free(partition);
     partition = malloc(n_new * sizeof(int));
+    if (!partition) {
+      free(refined);
+      free(deg_orig);
+      free(node_comm);
+      free(offsets);
+      free(neighbors);
+      free(weights);
+      free(comm_node_count);
+      free(mark);
+      return -1;
+    }
     for (int i = 0; i < n_new; i++)
       partition[i] = i;
 
-    n_cur = n_new;
     free(refined);
+    n_cur = n_new;
+
+    if (mark_capacity < n_cur) {
+      int old_cap = mark_capacity;
+      mark = realloc(mark, n_cur * sizeof(int));
+      if (!mark) {
+        free(deg_orig);
+        free(node_comm);
+        free(offsets);
+        free(neighbors);
+        free(weights);
+        free(partition);
+        free(comm_node_count);
+        return -1;
+      }
+      for (int i = old_cap; i < n_cur; i++)
+        mark[i] = 0;
+      mark_capacity = n_cur;
+    }
   }
 
+  // Affectation finale
   for (int i = 0; i < N_orig; i++)
     communities[i] = node_comm[i];
 
   free(partition);
   free(deg_orig);
-  free(comm_deg);
+  free(comm_node_count);
   free(node_comm);
   free(offsets);
   free(neighbors);
   free(weights);
+  free(mark);
 
   int uniq = count_unique_communities(communities, N_orig);
   printf("Number of communities detected (Leiden CPM, lambda=%.2f): %d\n",
          lambda, uniq);
   return uniq;
 }
-// ------------------------------------------------------------
+
 // Fonctions utilitaires
 // ------------------------------------------------------------
 static int *community_mark = NULL;
