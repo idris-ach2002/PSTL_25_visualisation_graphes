@@ -41,12 +41,10 @@ public final class MoveModeHandler implements InteractionModeHandler {
             return;
 
         selected = bus.dispatchSync(engine -> {
-            float wx = engine.camera().screenToWorldX(sx);
-            float wy = engine.camera().screenToWorldY(sy);
             float[] posBuffer = engine.getPositionsBuffer();
             if (posBuffer == null)
                 return null;
-            Vertex v = engine.model().findVertexAt(wx, wy, posBuffer, engine.camera().getZoom());
+            Vertex v = engine.model().findVertexAt(sx, sy, posBuffer, engine.camera());
             engine.model().setSelectedVertexId(v == null ? -1 : v.getId());
             return v;
         });

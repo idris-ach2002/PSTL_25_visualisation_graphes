@@ -1,9 +1,14 @@
 package com.mongraphe.graphui.rendering;
 
+import java.util.List;
+import java.util.concurrent.locks.StampedLock;
+
 import com.jogamp.opengl.GL4;
 import com.jogamp.opengl.GLAutoDrawable;
 import com.jogamp.opengl.GLEventListener;
+import com.mongraphe.graphui.model.Edge;
 import com.mongraphe.graphui.model.GraphModel;
+import com.mongraphe.graphui.model.Vertex;
 
 public final class GraphRenderer implements GLEventListener {
 
@@ -66,11 +71,53 @@ public final class GraphRenderer implements GLEventListener {
         if (posBuffer == null)
             return;
 
-        GraphRenderOptions options = renderOptions;
-        synchronized (model.mutex()) {
-            vertexBuffer.update(model, posBuffer);
-            edgeBuffer.update(model, posBuffer, options);
+        StampedLock lock = model.lock();
+        long stamp = lock.tryOptimisticRead();
+
+        List<Vertex> vertices = model.vertices();
+        List<Edge> edges = model.edges();
+
+        int selected = model.getSelectedVertexId();
+        int maxDegree = model.getMaxDegree();
+        GraphModel.ColoringMode mode = model.getColoringMode();
+
+        float uniformR = model.getUniformNodeR();
+        float uniformG = model.getUniformNodeG();
+        float uniformB = model.getUniformNodeB();
+
+        if (!lock.validate(stamp)) {
+
+            stamp = lock.readLock();
+            try {
+                vertices = model.vertices();
+                edges = model.edges();
+
+                selected = model.getSelectedVertexId();
+                maxDegree = model.getMaxDegree();
+                mode = model.getColoringMode();
+
+                uniformR = model.getUniformNodeR();
+                uniformG = model.getUniformNodeG();
+                uniformB = model.getUniformNodeB();
+            } finally {
+                lock.unlockRead(stamp);
+            }
         }
+
+        GraphRenderOptions options = renderOptions;
+
+        vertexBuffer.update(
+                gl,
+                vertices,
+                selected,
+                maxDegree,
+                mode,
+                uniformR,
+                uniformG,
+                uniformB,
+                posBuffer);
+
+        edgeBuffer.update(edges, posBuffer, options);
 
         vertexBuffer.upload(gl);
         edgeBuffer.upload(gl);
@@ -95,7 +142,15 @@ public final class GraphRenderer implements GLEventListener {
 
     @Override
     public void reshape(GLAutoDrawable d, int x, int y, int w, int h) {
-        engine.camera().resize(w, h);
+        // On récupère les dimensions réelles de la surface de rendu
+        int surfaceW = d.getSurfaceWidth();
+        int surfaceH = d.getSurfaceHeight();
+
+        GL4 gl = d.getGL().getGL4();
+        gl.glViewport(0, 0, surfaceW, surfaceH);
+
+        // On met à jour la caméra avec ces dimensions précises
+        engine.camera().resize(surfaceW, surfaceH);
     }
 
     @Override

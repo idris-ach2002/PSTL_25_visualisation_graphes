@@ -35,7 +35,7 @@ double epsilon = 0.1;
 int espacement = 1;
 
 int no_overlap = 0;
-double initial_node_size = 5.;
+double initial_node_size = 10.;
 double degree_scale_factor = 0.5;
 
 // modifiable par utilisateur

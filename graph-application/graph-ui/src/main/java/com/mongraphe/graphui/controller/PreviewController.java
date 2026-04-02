@@ -121,7 +121,7 @@ public class PreviewController implements CommandBusLinkedI<GraphEngine> {
         if (bus != null) {
             Color bg = canvasColorPicker == null ? null : canvasColorPicker.getValue();
             if (bg != null) {
-                bus.dispatchSyncVoid(engine -> new SetBackgroundColorCommand(
+                bus.dispatch(engine -> new SetBackgroundColorCommand(
                         (float) bg.getRed(),
                         (float) bg.getGreen(),
                         (float) bg.getBlue(),
@@ -130,12 +130,12 @@ public class PreviewController implements CommandBusLinkedI<GraphEngine> {
 
             GraphModel.ColoringMode coloringMode = coloringModeCombo == null ? null : coloringModeCombo.getValue();
             if (coloringMode != null) {
-                bus.dispatchSyncVoid(engine -> engine.setColoringMode(coloringMode));
+                bus.dispatch(engine -> engine.setColoringMode(coloringMode));
             }
 
             Color uniform = uniformNodeColorPicker == null ? null : uniformNodeColorPicker.getValue();
             if (uniform != null) {
-                bus.dispatchSyncVoid(engine -> engine.setUniformNodeColor(
+                bus.dispatch(engine -> engine.setUniformNodeColor(
                         (float) uniform.getRed(),
                         (float) uniform.getGreen(),
                         (float) uniform.getBlue()));

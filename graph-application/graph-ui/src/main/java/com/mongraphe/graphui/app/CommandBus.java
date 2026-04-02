@@ -21,6 +21,10 @@ public final class CommandBus<C> implements CommandBusI<C> {
         this.executor = executor;
     }
 
+    public C getContext() {
+        return context;
+    }
+
     public void dispatch(GraphCommand<C> command) {
         executor.execute(() -> command.execute(context));
     }

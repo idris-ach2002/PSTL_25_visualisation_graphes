@@ -4,11 +4,11 @@ import java.util.ArrayList;
 
 public class Vertex {
 
-    public static double initial_node_size = 5;
-    public static double degree_scale_factor = 0;
+    public static double initial_node_size = 10;
+    public static double degree_scale_factor = 0.5;
 
     private int id;
-    private double x, y, diameter;
+    private volatile double x, y, diameter;
     private boolean isVisible = true;
     private boolean isDeleted = false;
     private final ArrayList<Edge> edges = new ArrayList<>();
@@ -39,10 +39,6 @@ public class Vertex {
     public void updatePosition(double x, double y) {
         this.x = x;
         this.y = y;
-    }
-
-    public void setDiameter(double diameter) {
-        this.diameter = diameter;
     }
 
     public double getDiameter() {

@@ -8,6 +8,7 @@ import com.mongraphe.graphui.app.UiState;
 import com.mongraphe.graphui.interaction.commands.DeleteNodeCommand;
 import com.mongraphe.graphui.interfaces.InteractionModeHandler;
 import com.mongraphe.graphui.model.Vertex;
+import com.mongraphe.graphui.rendering.Camera2D;
 import com.mongraphe.graphui.rendering.GraphEngine;
 
 public final class SelectModeHandler implements InteractionModeHandler {
@@ -22,7 +23,10 @@ public final class SelectModeHandler implements InteractionModeHandler {
 
     @Override
     public void onMousePressed(CommandBus<GraphEngine> bus, int sx, int sy, int button) {
-        if (bus == null) return;
+        if (bus == null)
+            return;
+
+        System.out.println("SelectModeHandler: mousePressed at " + sx + "," + sy);
 
         if (button == MouseEvent.BUTTON3) {
             panning = true;
@@ -32,12 +36,15 @@ public final class SelectModeHandler implements InteractionModeHandler {
         }
 
         if (button == MouseEvent.BUTTON1) {
+            System.out.println("SelectModeHandler: left click at " + sx + "," + sy);
+
             Vertex selected = bus.dispatchSync(engine -> {
-                float wx = engine.camera().screenToWorldX(sx);
-                float wy = engine.camera().screenToWorldY(sy);
                 float[] posBuffer = engine.getPositionsBuffer();
-                if (posBuffer == null) return null;
-                Vertex v = engine.model().findVertexAt(wx, wy, posBuffer, engine.camera().getZoom());
+                if (posBuffer == null) {
+                    System.out.println("NULL");
+                    return null;
+                }
+                Vertex v = engine.model().findVertexAt(sx, sy, posBuffer, engine.camera());
                 engine.model().setSelectedVertexId(v == null ? -1 : v.getId());
                 return v;
             });
@@ -51,7 +58,8 @@ public final class SelectModeHandler implements InteractionModeHandler {
 
     @Override
     public void onMouseDragged(CommandBus<GraphEngine> bus, int sx, int sy, int button) {
-        if (!panning || bus == null) return;
+        if (!panning || bus == null)
+            return;
         int dx = sx - lastX;
         int dy = sy - lastY;
         lastX = sx;
@@ -74,7 +82,8 @@ public final class SelectModeHandler implements InteractionModeHandler {
 
     @Override
     public void onKeyPressed(CommandBus<GraphEngine> bus, int keyCode, boolean ctrlDown) {
-        if (bus == null) return;
+        if (bus == null)
+            return;
         if (keyCode == KeyEvent.VK_DELETE || keyCode == KeyEvent.VK_BACK_SPACE) {
             Integer id = bus.dispatchSync(engine -> engine.model().getSelectedVertexId());
             if (id != null && id >= 0) {

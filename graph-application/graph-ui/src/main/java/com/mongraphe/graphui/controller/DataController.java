@@ -159,7 +159,6 @@ public final class DataController implements CommandBusLinkedI<GraphEngine> {
 
         table.setPrefWidth(Double.MAX_VALUE);
         table.setPrefHeight(Double.MAX_VALUE);
-        GraphEngine.GraphPage<Vertex> vPage = bus.dispatchSync(engine -> engine.getVerticesPage(0, 1));
 
         table.getColumns().addAll(
                 vertexIdCol,

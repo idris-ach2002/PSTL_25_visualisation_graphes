@@ -59,7 +59,7 @@
                 </left>
 
                 <center>
-                    <StackPane fx:id="graphHostPane"/>
+                    <BorderPane fx:id="graphHostPane"/>
                 </center>
 
                 <right>

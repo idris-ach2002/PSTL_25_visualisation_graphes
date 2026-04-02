@@ -42,6 +42,66 @@ public final class GraphEngine {
 
     private final List<GraphEngineListener> listeners = new ArrayList<>();
 
+    public interface GraphDataListener {
+        void onGraphDataChanged();
+    }
+
+    private final List<GraphDataListener> dataListeners = new ArrayList<>();
+
+    public void addDataListener(GraphDataListener listener) {
+        synchronized (dataListeners) {
+            dataListeners.add(listener);
+        }
+    }
+
+    public void removeDataListener(GraphDataListener listener) {
+        synchronized (dataListeners) {
+            dataListeners.remove(listener);
+        }
+    }
+
+    private void notifyDataChanged() {
+        List<GraphDataListener> copy;
+        synchronized (dataListeners) {
+            copy = new ArrayList<>(dataListeners);
+        }
+        for (GraphDataListener l : copy) {
+            l.onGraphDataChanged();
+        }
+    }
+
+    public record StatsSnapshot(
+            int visibleVertices, int hiddenVertices, int deletedVertices,
+            int visibleEdges, int hiddenEdges, int totalVertices, int totalEdges,
+            Metadata initMetadata, int selectedVertexId, double selectedX, double selectedY) {
+    }
+
+    public StatsSnapshot getStatsSnapshot() {
+        model.lock().asWriteLock().lock();
+        try {
+            int totalVertices = model.vertices().size();
+            int totalEdges = model.edges().size();
+            long deletedVertices = model.vertices().stream().filter(Vertex::isDeleted).count();
+            int visibleVertices = model.getVisibleVertexCount();
+            int visibleEdges = model.getVisibleEdgeCount();
+            int hiddenVertices = Math.max(0, totalVertices - visibleVertices - (int) deletedVertices);
+            int hiddenEdges = Math.max(0, totalEdges - visibleEdges);
+            Metadata initMetadata = getInitMetadata();
+            int selectedId = model.getSelectedVertexId();
+            double selectedX = 0, selectedY = 0;
+            Vertex sel = model.vertexById(selectedId);
+            if (sel != null) {
+                selectedX = sel.getX();
+                selectedY = sel.getY();
+            }
+            return new StatsSnapshot(visibleVertices, hiddenVertices, (int) deletedVertices,
+                    visibleEdges, hiddenEdges, totalVertices, totalEdges,
+                    initMetadata, selectedId, selectedX, selectedY);
+        } finally {
+            model.lock().asWriteLock().unlock();
+        }
+    }
+
     public static class GraphDataSnapshot {
         private final List<Vertex> vertices;
         private final List<Edge> edges;
@@ -100,24 +160,30 @@ public final class GraphEngine {
     }
 
     public GraphPage<Vertex> getVerticesPage(int page, int pageSize) {
-        synchronized (model.mutex()) {
+        model.lock().asWriteLock().lock();
+        try {
             List<Vertex> all = model.vertices();
             int from = page * pageSize;
             int to = Math.min(from + pageSize, all.size());
             if (from >= all.size())
                 return new GraphPage<>(List.of(), all.size());
             return new GraphPage<>(all.subList(from, to), all.size());
+        } finally {
+            model.lock().asWriteLock().unlock();
         }
     }
 
     public GraphPage<Edge> getEdgesPage(int page, int pageSize) {
-        synchronized (model.mutex()) {
+        model.lock().asWriteLock().lock();
+        try {
             List<Edge> all = model.edges();
             int from = page * pageSize;
             int to = Math.min(from + pageSize, all.size());
             if (from >= all.size())
                 return new GraphPage<>(List.of(), all.size());
             return new GraphPage<>(all.subList(from, to), all.size());
+        } finally {
+            model.lock().asWriteLock().unlock();
         }
     }
 
@@ -149,9 +215,12 @@ public final class GraphEngine {
     }
 
     public GraphDataSnapshot getDataSnapshot() {
-        synchronized (model.mutex()) {
+        model.lock().asWriteLock().lock();
+        try {
             return new GraphDataSnapshot(model.vertices(), model.edges(), model.getVisibleVertexCount(),
                     model.getVisibleEdgeCount());
+        } finally {
+            model.lock().asWriteLock().unlock();
         }
     }
 
@@ -180,6 +249,7 @@ public final class GraphEngine {
         graphLoaded = false;
         nativeEngine.initGraphCsv(path, sim, communityMode);
         rebuildModelFromNative();
+        notifyDataChanged();
         graphLoaded = true;
     }
 
@@ -222,7 +292,8 @@ public final class GraphEngine {
                 verticesArray[i].setCommunity(c);
         }
 
-        synchronized (model.mutex()) {
+        model.lock().asWriteLock().lock();
+        try {
             model.clear();
             for (Vertex v : verticesArray) {
                 if (v == null)
@@ -241,6 +312,8 @@ public final class GraphEngine {
                 Vertex end = model.vertices().get(ec.getEnd());
                 model.addEdge(new Edge(start, end, ec.getWeight()));
             }
+        } finally {
+            model.lock().asWriteLock().unlock();
         }
         visibility.apply(model);
 
@@ -262,6 +335,7 @@ public final class GraphEngine {
     }
 
     public void startSimulation() {
+        camera.reset();
         if (!graphLoaded)
             return;
         if (simulationRunning)
@@ -364,49 +438,73 @@ public final class GraphEngine {
     }
 
     public void setColoringMode(GraphModel.ColoringMode mode) {
-        synchronized (model.mutex()) {
+        model.lock().asWriteLock().lock();
+        try {
             model.setColoringMode(mode);
+        } finally {
+            model.lock().asWriteLock().unlock();
         }
+        notifyDataChanged();
     }
 
     public void setUniformNodeColor(float r, float g, float b) {
-        synchronized (model.mutex()) {
+        model.lock().asWriteLock().lock();
+        try {
             model.setUniformNodeColor(r, g, b);
+        } finally {
+            model.lock().asWriteLock().unlock();
         }
+        notifyDataChanged();
     }
 
     public void setMinimumDegree(int degree) {
-        synchronized (model.mutex()) {
+        model.lock().asWriteLock().lock();
+        try {
             model.setFilterMinDegree(degree);
+        } finally {
+            model.lock().asWriteLock().unlock();
         }
         visibility.setMinimumDegree(degree);
         visibility.apply(model);
+        notifyDataChanged();
     }
 
     public void setMinimumEdgeWeight(double weight) {
-        synchronized (model.mutex()) {
+        model.lock().asWriteLock().lock();
+        try {
             model.setFilterMinEdgeWeight(weight);
+        } finally {
+            model.lock().asWriteLock().unlock();
         }
         visibility.setEdgeWeightThreshold((float) weight);
         visibility.apply(model);
+        notifyDataChanged();
     }
 
     public void setInitialNodeSize(double size) {
         Vertex.initial_node_size = size;
         nativeEngine.setInitialNodeSize(size);
-        synchronized (model.mutex()) {
+        model.lock().asWriteLock().lock();
+        try {
             for (Vertex v : model.vertices())
                 v.updateDiameter();
+        } finally {
+            model.lock().asWriteLock().unlock();
         }
     }
 
     public void setDegreeScaleFactor(double factor) {
         Vertex.degree_scale_factor = factor;
         nativeEngine.setDegreeScaleFactor(factor);
-        synchronized (model.mutex()) {
+
+        model.lock().asWriteLock().lock();
+        try {
             for (Vertex v : model.vertices())
                 v.updateDiameter();
+        } finally {
+            model.lock().asWriteLock().unlock();
         }
+        notifyDataChanged();
     }
 
     public void setStabilizedThreshold(double t) {
@@ -465,16 +563,21 @@ public final class GraphEngine {
 
     public void deleteNode(int index) {
         nativeEngine.deleteNode(index);
-        synchronized (model.mutex()) {
+        model.lock().asWriteLock().lock();
+        try {
             Vertex v = model.vertexById(index);
             if (v != null)
                 model.deleteVertex(v);
+        } finally {
+            model.lock().asWriteLock().unlock();
         }
+        notifyDataChanged();
     }
 
     public void restoreNode(int index) {
         nativeEngine.restoreNode(index);
         rebuildModelFromNative();
+        notifyDataChanged();
     }
 
     public void setClusterUpdateFrequency(int saut) {
@@ -506,8 +609,11 @@ public final class GraphEngine {
         nativeEngine.freeAllocatedMemory();
 
         // Vider le modèle Java
-        synchronized (model.mutex()) {
+        model.lock().asWriteLock().lock();
+        try {
             model.clear();
+        } finally {
+            model.lock().asWriteLock().unlock();
         }
 
         currentPositions = null;

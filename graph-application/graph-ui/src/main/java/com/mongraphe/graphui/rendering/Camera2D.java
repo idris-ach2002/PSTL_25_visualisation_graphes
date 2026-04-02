@@ -6,18 +6,31 @@ import com.jogamp.common.nio.Buffers;
 
 public final class Camera2D {
 
-    private float zoom = 1f;
-    private float offsetX;
-    private float offsetY;
-
-    private int width = 1;
-    private int height = 1;
+    private volatile float zoom = 1f;
+    private volatile float offsetX, offsetY;
+    private volatile int width = 1, height = 1;
 
     private final FloatBuffer bufferA = Buffers.newDirectFloatBuffer(16);
     private final FloatBuffer bufferB = Buffers.newDirectFloatBuffer(16);
 
     private volatile FloatBuffer projection = bufferA;
     private FloatBuffer writeBuffer = bufferB;
+
+    public int getWidth() {
+        return width;
+    }
+
+    public int getHeight() {
+        return height;
+    }
+
+    public float getOffsetX() {
+        return offsetX;
+    }
+
+    public float getOffsetY() {
+        return offsetY;
+    }
 
     public void resize(int w, int h) {
         width = Math.max(1, w);
@@ -95,11 +108,19 @@ public final class Camera2D {
     }
 
     public float screenToWorldX(float screenX) {
-        return (screenX - width / 2f) / zoom + offsetX;
+        float hw = width / 2f / zoom;
+        float left = -hw + offsetX;
+        float right = hw + offsetX;
+
+        return left + (screenX / width) * (right - left);
     }
 
     public float screenToWorldY(float screenY) {
-        return (height / 2f - screenY) / zoom + offsetY;
+        float hh = height / 2f / zoom;
+        float bottom = -hh + offsetY;
+        float top = hh + offsetY;
+
+        return top - (screenY / height) * (top - bottom);
     }
 
     public float getZoom() {
