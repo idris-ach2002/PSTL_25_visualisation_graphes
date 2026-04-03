@@ -95,12 +95,15 @@ public class GraphModel {
         return Math.max(0f, Math.min(1f, v));
     }
 
-    public Vertex findVertexAt(double x, double y, Camera2D camera) {
+    public Vertex findVertexAt(int screenX, int screenY, Camera2D camera) {
+        double worldX = camera.screenToWorldX(screenX);
+        double worldY = camera.screenToWorldY(screenY);
+        System.out.println("Zoom :" + camera.getZoom());
         for (Vertex v : vertices) {
             if (v == null || v.isDeleted() || !v.isVisible())
                 continue;
-            double dx = x - v.getX();
-            double dy = y - v.getY();
+            double dx = worldX - v.getX();
+            double dy = worldY - v.getY();
             double dist = Math.sqrt(dx * dx + dy * dy);
             double r = (v.getDiameter() / 2.0) / camera.getZoom();
             if (dist <= r)
