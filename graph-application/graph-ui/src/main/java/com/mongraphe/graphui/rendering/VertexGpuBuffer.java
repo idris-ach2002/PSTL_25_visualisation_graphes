@@ -20,7 +20,6 @@ public final class VertexGpuBuffer {
     private static final int INITIAL_CAPACITY = 1024;
 
     public void init(GL4 gl) {
-
         int[] b = new int[4];
         gl.glGenBuffers(4, b, 0);
 
@@ -40,7 +39,6 @@ public final class VertexGpuBuffer {
     }
 
     private void allocateGpu(GL4 gl, int cap) {
-
         gl.glBindBuffer(GL4.GL_ARRAY_BUFFER, posVbo);
         gl.glBufferData(GL4.GL_ARRAY_BUFFER, cap * 2L * Float.BYTES, null, GL4.GL_DYNAMIC_DRAW);
 
@@ -55,12 +53,10 @@ public final class VertexGpuBuffer {
     }
 
     private void ensureCapacity(GL4 gl, int vertexCount) {
-
         if (vertexCount <= capacity)
             return;
 
         int newCap = capacity;
-
         while (newCap < vertexCount)
             newCap *= 2;
 
@@ -80,84 +76,64 @@ public final class VertexGpuBuffer {
             int selectedVertexId,
             int maxDegree,
             ColoringMode mode,
-            float uniformR,
-            float uniformG,
-            float uniformB,
-            float[] positionBuffer) {
+            float uniformR, float uniformG, float uniformB) {
+
+        if (vertices == null || vertices.isEmpty()) {
+            count = 0;
+            return;
+        }
 
         count = vertices.size();
-
         ensureCapacity(gl, count);
-
         int maxDeg = Math.max(1, maxDegree);
-
-        for (int i = 0; i < count; i++) {
-
-            Vertex v = vertices.get(i);
+        int i = 0;
+        for (Vertex v : vertices) {
+            if (v == null) {
+                i++;
+                continue;
+            }
 
             int p = i * 2;
             int c = i * 3;
 
-            if (positionBuffer != null && p + 1 < positionBuffer.length) {
-                pos[p] = positionBuffer[p];
-                pos[p + 1] = positionBuffer[p + 1];
-            } else {
-                pos[p] = 0f;
-                pos[p + 1] = 0f;
-            }
+            pos[p] = (float) v.getX();
+            pos[p + 1] = (float) v.getY();
 
             size[i] = (float) v.getDiameter();
-
-            boolean visible = !(v.isDeleted() || !v.isVisible());
-            vis[i] = visible ? 1f : 0f;
+            vis[i] = (v.isDeleted() || !v.isVisible()) ? 0f : 1f;
 
             float r, g, b;
 
-            if (v.getId() == selectedVertexId && selectedVertexId >= 0) {
-
-                r = 1f;
-                g = 1f;
-                b = 1f;
-
+            if (v.getId() == selectedVertexId) {
+                r = g = b = 1f;
             } else if (mode == ColoringMode.UNIFORM) {
-
                 r = uniformR;
                 g = uniformG;
                 b = uniformB;
-
             } else if (mode == ColoringMode.DEGREE) {
-
                 float t = (float) v.getDegree() / maxDeg;
                 float base = 0.15f;
                 float intensity = base + (1f - base) * t;
-
-                r = intensity;
-                g = intensity;
-                b = intensity;
-
+                r = g = b = intensity;
             } else {
-
                 Community com = v.getCommunity();
-
                 if (com != null) {
                     r = com.getR();
                     g = com.getG();
                     b = com.getB();
                 } else {
-                    r = 0.6f;
-                    g = 0.6f;
-                    b = 0.6f;
+                    r = g = b = 0.6f;
                 }
             }
 
             col[c] = r;
             col[c + 1] = g;
             col[c + 2] = b;
+            i++;
         }
     }
 
     public void upload(GL4 gl) {
-
         upload(gl, posVbo, pos, count * 2);
         upload(gl, colVbo, col, count * 3);
         upload(gl, sizeVbo, size, count);
@@ -165,9 +141,7 @@ public final class VertexGpuBuffer {
     }
 
     private void upload(GL4 gl, int vbo, float[] data, int elements) {
-
         gl.glBindBuffer(GL4.GL_ARRAY_BUFFER, vbo);
-
         gl.glBufferSubData(
                 GL4.GL_ARRAY_BUFFER,
                 0,
@@ -176,7 +150,6 @@ public final class VertexGpuBuffer {
     }
 
     public void draw(GL4 gl) {
-
         gl.glEnableVertexAttribArray(0);
         gl.glBindBuffer(GL4.GL_ARRAY_BUFFER, posVbo);
         gl.glVertexAttribPointer(0, 2, GL4.GL_FLOAT, false, 0, 0);

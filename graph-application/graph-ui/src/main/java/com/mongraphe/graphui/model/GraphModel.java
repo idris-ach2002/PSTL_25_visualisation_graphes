@@ -1,22 +1,18 @@
 package com.mongraphe.graphui.model;
 
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
-import java.util.concurrent.locks.StampedLock;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 import com.mongraphe.graphui.rendering.Camera2D;
 
 public class GraphModel {
 
     public enum ColoringMode {
-        COMMUNITY,
-        DEGREE,
-        UNIFORM
+        COMMUNITY, DEGREE, UNIFORM
     }
 
-    private final StampedLock lock = new StampedLock();
+    private final ReentrantReadWriteLock lock = new ReentrantReadWriteLock();
 
     private volatile int selectedVertexId = -1;
     private int filterMinDegree = 0;
@@ -27,15 +23,15 @@ public class GraphModel {
     private float uniformNodeB = 0.86f;
 
     private ColoringMode coloringMode = ColoringMode.COMMUNITY;
-    private final List<Vertex> vertices = new ArrayList<>();
     private final List<Edge> edges = new ArrayList<>();
-    private final Map<Integer, Vertex> verticesById = new HashMap<>();
+    private final List<Vertex> vertices = new ArrayList<>(); // index = id
 
     private int visibleVertexCount;
     private int visibleEdgeCount;
     private int maxDegree = 1;
+    private int deletedVerticesCount = 0;
 
-    public StampedLock lock() {
+    public ReentrantReadWriteLock lock() {
         return lock;
     }
 
@@ -99,58 +95,46 @@ public class GraphModel {
         return Math.max(0f, Math.min(1f, v));
     }
 
-    public Vertex findVertexAt(int screenX, int screenY, float[] posBuffer, Camera2D camera) {
-        int width = camera.getWidth();
-        int height = camera.getHeight();
-        float zoom = camera.getZoom();
-        float offsetX = camera.getOffsetX();
-        float offsetY = camera.getOffsetY();
-
-        float hw = width / 2f / zoom;
-        float hh = height / 2f / zoom;
-        float left = -hw + offsetX;
-        float right = hw + offsetX;
-        float bottom = -hh + offsetY;
-        float top = hh + offsetY;
-
-        for (int i = 0; i < vertices.size(); i++) {
-            Vertex v = vertices.get(i);
-            if (v.isDeleted() || !v.isVisible())
+    public Vertex findVertexAt(double x, double y, Camera2D camera) {
+        for (Vertex v : vertices) {
+            if (v == null || v.isDeleted() || !v.isVisible())
                 continue;
-
-            float vx = posBuffer[2 * i];
-            float vy = posBuffer[2 * i + 1];
-
-            // Projection du sommet sur l'écran
-            float projX = ((vx - left) / (right - left)) * width;
-            float projY = height - ((vy - bottom) / (top - bottom)) * height; // Y inversé
-
-            double dx = projX - screenX;
-            double dy = projY - screenY;
-            double distPixels = Math.sqrt(dx * dx + dy * dy);
-            double radiusPixels = v.getDiameter() / 2.0;
-
-            if (distPixels <= radiusPixels) {
+            double dx = x - v.getX();
+            double dy = y - v.getY();
+            double dist = Math.sqrt(dx * dx + dy * dy);
+            double r = (v.getDiameter() / 2.0) / camera.getZoom();
+            if (dist <= r)
                 return v;
-            }
         }
         return null;
     }
 
     public void buildFromData(Vertex[] verticesArray, EdgeC[] edgesArray) {
-        clear();
-        for (Vertex v : verticesArray)
-            addVertex(v);
-        for (EdgeC ec : edgesArray) {
-            Vertex start = vertices.get(ec.getStart());
-            Vertex end = vertices.get(ec.getEnd());
-            addEdge(new Edge(start, end, ec.getWeight()));
+        lock.writeLock().lock();
+        try {
+            clear();
+            for (Vertex v : verticesArray) {
+                if (v != null) {
+                    vertices.add(v);
+                }
+            }
+            for (EdgeC ec : edgesArray) {
+                Vertex start = vertices.get(ec.getStart());
+                Vertex end = vertices.get(ec.getEnd());
+                addEdge(new Edge(start, end, ec.getWeight()));
+            }
+            applyFilters();
+        } finally {
+            lock.writeLock().unlock();
         }
-        applyFilters();
     }
 
     public List<Edge> edges() {
         return edges;
+    }
+
+    public int getDeletedVerticesCount() {
+        return deletedVerticesCount;
     }
 
     public List<Vertex> vertices() {
@@ -165,40 +149,36 @@ public class GraphModel {
         return edges.size();
     }
 
-    public void addVertex(Vertex v) {
-        vertices.add(v);
-        verticesById.put(v.getId(), v);
+    public Vertex vertexById(int id) {
+        if (id < 0 || id >= vertices.size())
+            return null;
+        return vertices.get(id);
     }
 
-    public Vertex vertexById(int id) {
-        return verticesById.get(id);
+    public void addVertex(Vertex v) {
+        vertices.add(v);
     }
 
     public void addEdge(Edge e) {
         edges.add(e);
     }
 
-    public void removeVertex(Vertex v) {
-        vertices.remove(v);
-        verticesById.remove(v.getId());
-        edges.removeIf(e -> e.getStart() == v || e.getEnd() == v);
-        applyFilters();
-    }
-
     public void clear() {
         vertices.clear();
         edges.clear();
-        verticesById.clear();
         selectedVertexId = -1;
         visibleVertexCount = 0;
         visibleEdgeCount = 0;
         maxDegree = 1;
+        deletedVerticesCount = 0;
     }
 
     private void applyFilters() {
+        deletedVerticesCount = 0;
         for (Vertex v : vertices) {
             if (v.isDeleted()) {
                 v.setVisible(false);
+                deletedVerticesCount++;
                 continue;
             }
             v.setVisible(v.getDegree() >= filterMinDegree);
@@ -209,7 +189,6 @@ public class GraphModel {
             boolean wOk = e.getWeight() >= filterMinEdgeWeight;
             e.setVisible(endpointsOk && wOk);
         }
-
         computeVisibilityStats();
     }
 
@@ -217,13 +196,11 @@ public class GraphModel {
         visibleVertexCount = 0;
         visibleEdgeCount = 0;
         maxDegree = 1;
-
         for (Vertex v : vertices) {
             if (!v.isDeleted() && v.isVisible())
                 visibleVertexCount++;
             maxDegree = Math.max(maxDegree, v.getDegree());
         }
-
         for (Edge e : edges) {
             if (e.isVisible())
                 visibleEdgeCount++;
@@ -240,9 +217,8 @@ public class GraphModel {
 
     public void deleteVertex(Vertex v) {
         v.delete();
-        if (selectedVertexId == v.getId()) {
+        if (selectedVertexId == v.getId())
             selectedVertexId = -1;
-        }
         applyFilters();
     }
 }

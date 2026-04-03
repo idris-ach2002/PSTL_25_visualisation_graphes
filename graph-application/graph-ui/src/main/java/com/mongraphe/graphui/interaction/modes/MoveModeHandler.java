@@ -8,6 +8,7 @@ import com.mongraphe.graphui.app.UiState;
 import com.mongraphe.graphui.interaction.commands.DeleteNodeCommand;
 import com.mongraphe.graphui.interaction.commands.MoveVertexCommand;
 import com.mongraphe.graphui.interfaces.InteractionModeHandler;
+import com.mongraphe.graphui.model.GraphModel;
 import com.mongraphe.graphui.model.Vertex;
 import com.mongraphe.graphui.rendering.GraphEngine;
 
@@ -41,10 +42,7 @@ public final class MoveModeHandler implements InteractionModeHandler {
             return;
 
         selected = bus.dispatchSync(engine -> {
-            float[] posBuffer = engine.getPositionsBuffer();
-            if (posBuffer == null)
-                return null;
-            Vertex v = engine.model().findVertexAt(sx, sy, posBuffer, engine.camera());
+            Vertex v = engine.model().findVertexAt(sx, sy, engine.camera());
             engine.model().setSelectedVertexId(v == null ? -1 : v.getId());
             return v;
         });
@@ -52,11 +50,15 @@ public final class MoveModeHandler implements InteractionModeHandler {
         if (selected == null)
             return;
 
+        GraphModel model = bus.getContext().model();
+
         dragging = true;
         id = selected.getId();
-        float[] pos = bus.dispatchSync(engine -> engine.getVertexPosition(id));
-        startX = pos[0];
-        startY = pos[1];
+        Vertex sel = model.vertexById(id);
+        if (sel != null) {
+            startX = sel.getX();
+            startY = sel.getY();
+        }
     }
 
     @Override
@@ -93,9 +95,9 @@ public final class MoveModeHandler implements InteractionModeHandler {
             return;
         dragging = false;
 
-        float[] end = bus.dispatchSync(engine -> engine.getVertexPosition(id));
-        double endX = end[0];
-        double endY = end[1];
+        Vertex endV = bus.dispatchSync(engine -> engine.model().vertexById(id));
+        double endX = (endV != null) ? endV.getX() : startX;
+        double endY = (endV != null) ? endV.getY() : startY;
 
         if (Math.abs(endX - startX) > 1e-6 || Math.abs(endY - startY) > 1e-6) {
             bus.dispatchUndoable(new MoveVertexCommand(id, startX, startY, endX, endY));

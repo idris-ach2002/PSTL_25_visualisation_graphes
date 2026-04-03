@@ -1,6 +1,8 @@
 package com.mongraphe.graphui.rendering;
 
 import java.io.File;
+import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -36,6 +38,16 @@ public final class GraphNativeEngine {
 
     public GraphNativeEngine() {
         ensureNativeLoaded();
+    }
+
+    public ByteBuffer sharedPositionsBuffer;
+    private int sharedBufferCapacity; // nombre de floats (2 * num_nodes)
+
+    public void initSharedPositionsBuffer(int numNodes) {
+        int floatCount = numNodes * 2;
+        sharedPositionsBuffer = ByteBuffer.allocateDirect(floatCount * Float.BYTES);
+        sharedPositionsBuffer.order(ByteOrder.nativeOrder());
+        sharedBufferCapacity = floatCount;
     }
 
     public static boolean isNativeLoaded() {
@@ -88,17 +100,18 @@ public final class GraphNativeEngine {
             lastError = t;
         }
 
-        nativeLoadError = lastError == null ? new UnsatisfiedLinkError("Impossible de charger la bibliothèque native") : lastError;
+        nativeLoadError = lastError == null ? new UnsatisfiedLinkError("Impossible de charger la bibliothèque native")
+                : lastError;
         throw nativeLoadException(nativeLoadError);
     }
 
     private static UnsatisfiedLinkError nativeLoadException(Throwable cause) {
         StringBuilder sb = new StringBuilder();
         sb.append("Impossible de charger la bibliothèque native 'lib")
-          .append(LIB_BASENAME)
-          .append(nativeFileExtension())
-          .append("'.\n")
-          .append("Chemins essayés :\n");
+                .append(LIB_BASENAME)
+                .append(nativeFileExtension())
+                .append("'.\n")
+                .append("Chemins essayés :\n");
         for (Path candidate : nativeCandidates()) {
             sb.append(" - ").append(candidate.toAbsolutePath().normalize()).append('\n');
         }
@@ -225,30 +238,56 @@ public final class GraphNativeEngine {
     }
 
     public synchronized native Metadata initializeDot(String filepath, int md);
+
     public synchronized native Metadata initializeGraph(int modeCommunity, double threshold, double antiThreshold);
+
     public synchronized native double[][] startsProgram(String filename);
+
     public synchronized native Metadata computeThreshold(int modeSimilitude, int edgeFactor);
+
     public synchronized native void setDimension(double width, double height);
-    public synchronized native boolean updatePositions();
+
+    public synchronized native boolean updatePositions(ByteBuffer positionsBuffer);
+
     public synchronized native Vertex[] getPositions();
+
     public synchronized native void setNodePosition(int index, double x, double y);
+
     public synchronized native EdgeC[] getEdges();
+
     public synchronized native int[] getCommunities();
+
     public synchronized native float[][] getClusterColors();
+
     public synchronized native void setSaut(int saut);
+
     public synchronized native void setThresholdS(double thresholdS);
+
     public synchronized native void setFriction(double friction);
+
     public synchronized native void setModeRepulsion(int mode);
+
     public synchronized native void setAntiRepulsion(double antiedgeRepulsion);
+
     public synchronized native void setAttractionCoeff(double attractionCoeff);
+
     public synchronized native void setThresholdA(double thresholdA);
+
     public synchronized native void setSeuilRep(double seuilrep);
+
     public synchronized native void setAmortissement(double amortissement);
+
     public synchronized native void SetNumberClusters(int newNumberOfClusters);
+
     public synchronized native void setKmeansMode(boolean md);
+
     public synchronized native void setInitialNodeSize(double size);
+
     public synchronized native void setDegreeScaleFactor(double factor);
+
     public synchronized native void deleteNode(int index);
+
     public synchronized native void restoreNode(int index);
+
     public synchronized native void freeAllocatedMemory();
 }

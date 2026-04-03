@@ -29,10 +29,7 @@ public final class RunModeHandler implements InteractionModeHandler {
 
         if (button == MouseEvent.BUTTON1 && bus != null) {
             Vertex selected = bus.dispatchSync(engine -> {
-                float[] posBuffer = engine.getPositionsBuffer();
-                if (posBuffer == null)
-                    return null;
-                Vertex v = engine.model().findVertexAt(sx, sy, posBuffer, engine.camera());
+                Vertex v = engine.model().findVertexAt(sx, sy, engine.camera());
                 engine.model().setSelectedVertexId(v == null ? -1 : v.getId());
                 return v;
             });

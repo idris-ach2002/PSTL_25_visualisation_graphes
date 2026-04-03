@@ -41,7 +41,7 @@ short pause_updates = 0;
 
 JNIEXPORT jboolean JNICALL
 Java_com_mongraphe_graphui_rendering_GraphNativeEngine_updatePositions(
-    JNIEnv *env, jobject obj) {
+    JNIEnv *env, jobject obj, jobject buffer) {
   double FMaxX = Lx / (friction * 1000);
   double FMaxY = Ly / (friction * 1000);
 
@@ -80,6 +80,17 @@ Java_com_mongraphe_graphui_rendering_GraphNativeEngine_updatePositions(
   for (int i = 0; i < num_nodes; ++i) {
     forces[i][0] = 0.;
     forces[i][1] = 0.;
+  }
+
+  if (buffer != NULL) {
+    void *addr = (*env)->GetDirectBufferAddress(env, buffer);
+    if (addr != NULL) {
+      float *pos = (float *)addr;
+      for (int i = 0; i < num_nodes; ++i) {
+        pos[2 * i] = (float)vertices[i].x;
+        pos[2 * i + 1] = (float)vertices[i].y;
+      }
+    }
   }
 
   return 1;

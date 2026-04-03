@@ -1,6 +1,9 @@
 package com.mongraphe.graphui.rendering;
 
+import java.nio.ByteBuffer;
+import java.nio.FloatBuffer;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -20,11 +23,6 @@ public final class GraphEngine {
     private volatile float clearR = 1f, clearG = 1f, clearB = 1f, clearA = 1f;
     private int clusterUpdateFrequency = 1;
     private boolean initialized = false;
-
-    // Double‑buffering des positions
-    private float[] posBuffer0;
-    private float[] posBuffer1;
-    private volatile float[] currentPositions; // lu par le rendu
 
     private final ScheduledExecutorService simulationExecutor = Executors.newSingleThreadScheduledExecutor(r -> {
         Thread t = new Thread(r, "graph-simulation-thread");
@@ -77,29 +75,24 @@ public final class GraphEngine {
     }
 
     public StatsSnapshot getStatsSnapshot() {
-        model.lock().asWriteLock().lock();
-        try {
-            int totalVertices = model.vertices().size();
-            int totalEdges = model.edges().size();
-            long deletedVertices = model.vertices().stream().filter(Vertex::isDeleted).count();
-            int visibleVertices = model.getVisibleVertexCount();
-            int visibleEdges = model.getVisibleEdgeCount();
-            int hiddenVertices = Math.max(0, totalVertices - visibleVertices - (int) deletedVertices);
-            int hiddenEdges = Math.max(0, totalEdges - visibleEdges);
-            Metadata initMetadata = getInitMetadata();
-            int selectedId = model.getSelectedVertexId();
-            double selectedX = 0, selectedY = 0;
-            Vertex sel = model.vertexById(selectedId);
-            if (sel != null) {
-                selectedX = sel.getX();
-                selectedY = sel.getY();
-            }
-            return new StatsSnapshot(visibleVertices, hiddenVertices, (int) deletedVertices,
-                    visibleEdges, hiddenEdges, totalVertices, totalEdges,
-                    initMetadata, selectedId, selectedX, selectedY);
-        } finally {
-            model.lock().asWriteLock().unlock();
+        int totalVertices = model.vertices().size();
+        int totalEdges = model.edges().size();
+        long deletedVertices = model.getDeletedVerticesCount();
+        int visibleVertices = model.getVisibleVertexCount();
+        int visibleEdges = model.getVisibleEdgeCount();
+        int hiddenVertices = Math.max(0, totalVertices - visibleVertices - (int) deletedVertices);
+        int hiddenEdges = Math.max(0, totalEdges - visibleEdges);
+        Metadata initMetadata = getInitMetadata();
+        int selectedId = model.getSelectedVertexId();
+        double selectedX = 0, selectedY = 0;
+        Vertex sel = model.vertexById(selectedId);
+        if (sel != null) {
+            selectedX = sel.getX();
+            selectedY = sel.getY();
         }
+        return new StatsSnapshot(visibleVertices, hiddenVertices, (int) deletedVertices,
+                visibleEdges, hiddenEdges, totalVertices, totalEdges,
+                initMetadata, selectedId, selectedX, selectedY);
     }
 
     public static class GraphDataSnapshot {
@@ -160,21 +153,21 @@ public final class GraphEngine {
     }
 
     public GraphPage<Vertex> getVerticesPage(int page, int pageSize) {
-        model.lock().asWriteLock().lock();
+
+        model.lock().writeLock().lock();
         try {
-            List<Vertex> all = model.vertices();
+            int total = model().vertices().size();
             int from = page * pageSize;
-            int to = Math.min(from + pageSize, all.size());
-            if (from >= all.size())
-                return new GraphPage<>(List.of(), all.size());
-            return new GraphPage<>(all.subList(from, to), all.size());
+            int to = Math.min(from + pageSize, total);
+
+            return new GraphPage<>(model().vertices().subList(from, to), total);
         } finally {
-            model.lock().asWriteLock().unlock();
+            model.lock().writeLock().unlock();
         }
     }
 
     public GraphPage<Edge> getEdgesPage(int page, int pageSize) {
-        model.lock().asWriteLock().lock();
+        model.lock().writeLock().lock();
         try {
             List<Edge> all = model.edges();
             int from = page * pageSize;
@@ -183,7 +176,7 @@ public final class GraphEngine {
                 return new GraphPage<>(List.of(), all.size());
             return new GraphPage<>(all.subList(from, to), all.size());
         } finally {
-            model.lock().asWriteLock().unlock();
+            model.lock().writeLock().unlock();
         }
     }
 
@@ -215,12 +208,15 @@ public final class GraphEngine {
     }
 
     public GraphDataSnapshot getDataSnapshot() {
-        model.lock().asWriteLock().lock();
+        model.lock().readLock().lock();
         try {
-            return new GraphDataSnapshot(model.vertices(), model.edges(), model.getVisibleVertexCount(),
+            return new GraphDataSnapshot(
+                    new ArrayList<>(model.vertices()),
+                    model.edges(),
+                    model.getVisibleVertexCount(),
                     model.getVisibleEdgeCount());
         } finally {
-            model.lock().asWriteLock().unlock();
+            model.lock().readLock().unlock();
         }
     }
 
@@ -269,7 +265,7 @@ public final class GraphEngine {
         float[][] colors = nativeEngine.getClusterColors();
 
         if (verticesArray == null || edgesArray == null) {
-            throw new IllegalStateException("Le moteur natif n'a pas renvoyé de structure de graphe exploitable.");
+            throw new IllegalStateException("Moteur natif sans données");
         }
 
         for (int i = 0; i < verticesArray.length; i++) {
@@ -292,7 +288,7 @@ public final class GraphEngine {
                 verticesArray[i].setCommunity(c);
         }
 
-        model.lock().asWriteLock().lock();
+        model.lock().writeLock().lock();
         try {
             model.clear();
             for (Vertex v : verticesArray) {
@@ -304,34 +300,18 @@ public final class GraphEngine {
             for (EdgeC ec : edgesArray) {
                 if (ec == null)
                     continue;
-                if (ec.getStart() < 0 || ec.getStart() >= model.vertices().size())
-                    continue;
-                if (ec.getEnd() < 0 || ec.getEnd() >= model.vertices().size())
-                    continue;
-                Vertex start = model.vertices().get(ec.getStart());
-                Vertex end = model.vertices().get(ec.getEnd());
-                model.addEdge(new Edge(start, end, ec.getWeight()));
+                Vertex start = model.vertexById(ec.getStart());
+                Vertex end = model.vertexById(ec.getEnd());
+                if (start != null && end != null) {
+                    model.addEdge(new Edge(start, end, ec.getWeight()));
+                }
             }
         } finally {
-            model.lock().asWriteLock().unlock();
+            model.lock().writeLock().unlock();
         }
-        visibility.apply(model);
 
-        // Initialiser les buffers de positions
-        int vertexCount = verticesArray.length;
-        posBuffer0 = new float[vertexCount * 2];
-        posBuffer1 = new float[vertexCount * 2];
-        for (int i = 0; i < vertexCount; i++) {
-            if (verticesArray[i] == null)
-                continue;
-            float x = (float) verticesArray[i].getX();
-            float y = (float) verticesArray[i].getY();
-            posBuffer0[i * 2] = x;
-            posBuffer0[i * 2 + 1] = y;
-            posBuffer1[i * 2] = x;
-            posBuffer1[i * 2 + 1] = y;
-        }
-        currentPositions = posBuffer0;
+        nativeEngine.initSharedPositionsBuffer(model.vertexCount());
+        visibility.apply(model);
     }
 
     public void startSimulation() {
@@ -359,39 +339,30 @@ public final class GraphEngine {
     private void simulateStep() {
         if (!simulationRunning || !graphLoaded)
             return;
-        try {
-            nativeEngine.updatePositions();
-            Vertex[] positions = nativeEngine.getPositions();
-            if (positions == null || positions.length == 0)
-                return;
+        if (nativeEngine.updatePositions(nativeEngine.sharedPositionsBuffer)) {
+            updateVerticesFromBuffer();
+        }
+    }
 
-            float[] backBuffer = (currentPositions == posBuffer0) ? posBuffer1 : posBuffer0;
-            int vertexCount = positions.length;
-            for (int i = 0; i < vertexCount; i++) {
-                if (positions[i] == null)
-                    continue;
-                backBuffer[i * 2] = (float) positions[i].getX();
-                backBuffer[i * 2 + 1] = (float) positions[i].getY();
+    private void updateVerticesFromBuffer() {
+        ByteBuffer buf = nativeEngine.sharedPositionsBuffer;
+        if (buf == null)
+            return;
+        buf.rewind();
+        FloatBuffer fb = buf.asFloatBuffer();
+        int numVertices = model.vertices().size();
+        for (int i = 0; i < numVertices; i++) {
+            float x = fb.get();
+            float y = fb.get();
+            Vertex v = model.vertexById(i);
+            if (v != null) {
+                v.updatePosition(x, y);
             }
-            currentPositions = backBuffer;
-        } catch (Exception e) {
-            // log éventuel
         }
     }
 
     public boolean isSimulationRunning() {
         return simulationRunning;
-    }
-
-    public float[] getPositionsBuffer() {
-        return currentPositions;
-    }
-
-    public float[] getVertexPosition(int id) {
-        float[] buf = currentPositions;
-        if (buf == null || id < 0 || id * 2 + 1 >= buf.length)
-            return new float[] { 0f, 0f };
-        return new float[] { buf[id * 2], buf[id * 2 + 1] };
     }
 
     public GraphModel model() {
@@ -438,31 +409,31 @@ public final class GraphEngine {
     }
 
     public void setColoringMode(GraphModel.ColoringMode mode) {
-        model.lock().asWriteLock().lock();
+        model.lock().writeLock().lock();
         try {
             model.setColoringMode(mode);
         } finally {
-            model.lock().asWriteLock().unlock();
+            model.lock().writeLock().unlock();
         }
         notifyDataChanged();
     }
 
     public void setUniformNodeColor(float r, float g, float b) {
-        model.lock().asWriteLock().lock();
+        model.lock().writeLock().lock();
         try {
             model.setUniformNodeColor(r, g, b);
         } finally {
-            model.lock().asWriteLock().unlock();
+            model.lock().writeLock().unlock();
         }
         notifyDataChanged();
     }
 
     public void setMinimumDegree(int degree) {
-        model.lock().asWriteLock().lock();
+        model.lock().writeLock().lock();
         try {
             model.setFilterMinDegree(degree);
         } finally {
-            model.lock().asWriteLock().unlock();
+            model.lock().writeLock().unlock();
         }
         visibility.setMinimumDegree(degree);
         visibility.apply(model);
@@ -470,11 +441,11 @@ public final class GraphEngine {
     }
 
     public void setMinimumEdgeWeight(double weight) {
-        model.lock().asWriteLock().lock();
+        model.lock().writeLock().lock();
         try {
             model.setFilterMinEdgeWeight(weight);
         } finally {
-            model.lock().asWriteLock().unlock();
+            model.lock().writeLock().unlock();
         }
         visibility.setEdgeWeightThreshold((float) weight);
         visibility.apply(model);
@@ -484,12 +455,12 @@ public final class GraphEngine {
     public void setInitialNodeSize(double size) {
         Vertex.initial_node_size = size;
         nativeEngine.setInitialNodeSize(size);
-        model.lock().asWriteLock().lock();
+        model.lock().writeLock().lock();
         try {
             for (Vertex v : model.vertices())
                 v.updateDiameter();
         } finally {
-            model.lock().asWriteLock().unlock();
+            model.lock().writeLock().unlock();
         }
     }
 
@@ -497,12 +468,12 @@ public final class GraphEngine {
         Vertex.degree_scale_factor = factor;
         nativeEngine.setDegreeScaleFactor(factor);
 
-        model.lock().asWriteLock().lock();
+        model.lock().writeLock().lock();
         try {
             for (Vertex v : model.vertices())
                 v.updateDiameter();
         } finally {
-            model.lock().asWriteLock().unlock();
+            model.lock().writeLock().unlock();
         }
         notifyDataChanged();
     }
@@ -554,22 +525,17 @@ public final class GraphEngine {
 
     public void setNodePosition(int index, double x, double y) {
         nativeEngine.setNodePosition(index, x, y);
-        float[] cur = currentPositions;
-        if (cur != null && index * 2 + 1 < cur.length) {
-            cur[index * 2] = (float) x;
-            cur[index * 2 + 1] = (float) y;
-        }
     }
 
     public void deleteNode(int index) {
         nativeEngine.deleteNode(index);
-        model.lock().asWriteLock().lock();
+        model.lock().writeLock().lock();
         try {
             Vertex v = model.vertexById(index);
             if (v != null)
                 model.deleteVertex(v);
         } finally {
-            model.lock().asWriteLock().unlock();
+            model.lock().writeLock().unlock();
         }
         notifyDataChanged();
     }
@@ -609,14 +575,12 @@ public final class GraphEngine {
         nativeEngine.freeAllocatedMemory();
 
         // Vider le modèle Java
-        model.lock().asWriteLock().lock();
+        model.lock().writeLock().lock();
         try {
             model.clear();
         } finally {
-            model.lock().asWriteLock().unlock();
+            model.lock().writeLock().unlock();
         }
-
-        currentPositions = null;
     }
 
     private float clamp01(float v) {

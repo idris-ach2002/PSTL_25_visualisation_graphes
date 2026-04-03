@@ -35,10 +35,7 @@ public final class DeleteModeHandler implements InteractionModeHandler {
             return;
 
         Vertex selected = bus.dispatchSync(engine -> {
-            float[] posBuffer = engine.getPositionsBuffer();
-            if (posBuffer == null)
-                return null;
-            Vertex v = engine.model().findVertexAt(sx, sy, posBuffer, engine.camera());
+            Vertex v = engine.model().findVertexAt(sx, sy, engine.camera());
             return v;
         });
 

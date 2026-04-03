@@ -1,6 +1,7 @@
 package com.mongraphe.graphui.rendering;
 
 import java.util.List;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.StampedLock;
 
 import com.jogamp.opengl.GL4;
@@ -67,41 +68,28 @@ public final class GraphRenderer implements GLEventListener {
         gl.glClear(GL4.GL_COLOR_BUFFER_BIT);
 
         GraphModel model = engine.model();
-        float[] posBuffer = engine.getPositionsBuffer();
-        if (posBuffer == null)
-            return;
+        model.lock().readLock().lock();
+        List<Vertex> vertices;
+        List<Edge> edges;
+        int selected;
+        int maxDegree;
+        GraphModel.ColoringMode mode;
+        float uniformR;
+        float uniformG;
+        float uniformB; 
+        try {
+            vertices = model.vertices();
+            edges = model.edges();
 
-        StampedLock lock = model.lock();
-        long stamp = lock.tryOptimisticRead();
+            selected = model.getSelectedVertexId();
+            maxDegree = model.getMaxDegree();
+            mode = model.getColoringMode();
 
-        List<Vertex> vertices = model.vertices();
-        List<Edge> edges = model.edges();
-
-        int selected = model.getSelectedVertexId();
-        int maxDegree = model.getMaxDegree();
-        GraphModel.ColoringMode mode = model.getColoringMode();
-
-        float uniformR = model.getUniformNodeR();
-        float uniformG = model.getUniformNodeG();
-        float uniformB = model.getUniformNodeB();
-
-        if (!lock.validate(stamp)) {
-
-            stamp = lock.readLock();
-            try {
-                vertices = model.vertices();
-                edges = model.edges();
-
-                selected = model.getSelectedVertexId();
-                maxDegree = model.getMaxDegree();
-                mode = model.getColoringMode();
-
-                uniformR = model.getUniformNodeR();
-                uniformG = model.getUniformNodeG();
-                uniformB = model.getUniformNodeB();
-            } finally {
-                lock.unlockRead(stamp);
-            }
+            uniformR = model.getUniformNodeR();
+            uniformG = model.getUniformNodeG();
+            uniformB = model.getUniformNodeB();
+        } finally {
+            model.lock().readLock().unlock();
         }
 
         GraphRenderOptions options = renderOptions;
@@ -114,10 +102,9 @@ public final class GraphRenderer implements GLEventListener {
                 mode,
                 uniformR,
                 uniformG,
-                uniformB,
-                posBuffer);
+                uniformB);
 
-        edgeBuffer.update(edges, posBuffer, options);
+        edgeBuffer.update(edges, vertices, options);
 
         vertexBuffer.upload(gl);
         edgeBuffer.upload(gl);
