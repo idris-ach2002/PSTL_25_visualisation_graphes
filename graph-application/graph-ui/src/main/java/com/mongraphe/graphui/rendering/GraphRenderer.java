@@ -1,9 +1,6 @@
 package com.mongraphe.graphui.rendering;
 
 import java.util.List;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.locks.StampedLock;
-
 import com.jogamp.opengl.GL4;
 import com.jogamp.opengl.GLAutoDrawable;
 import com.jogamp.opengl.GLEventListener;

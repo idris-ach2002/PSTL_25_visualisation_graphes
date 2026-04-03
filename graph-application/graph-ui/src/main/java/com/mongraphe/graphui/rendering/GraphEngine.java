@@ -3,7 +3,6 @@ package com.mongraphe.graphui.rendering;
 import java.nio.ByteBuffer;
 import java.nio.FloatBuffer;
 import java.util.ArrayList;
-import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -339,7 +338,10 @@ public final class GraphEngine {
     private void simulateStep() {
         if (!simulationRunning || !graphLoaded)
             return;
-        if (nativeEngine.updatePositions(nativeEngine.sharedPositionsBuffer)) {
+        ByteBuffer buf = nativeEngine.sharedPositionsBuffer;
+        if (buf == null)
+            return; // déjà libéré
+        if (nativeEngine.updatePositions(buf)) {
             updateVerticesFromBuffer();
         }
     }

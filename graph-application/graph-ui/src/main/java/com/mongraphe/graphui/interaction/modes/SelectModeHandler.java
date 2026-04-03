@@ -8,7 +8,6 @@ import com.mongraphe.graphui.app.UiState;
 import com.mongraphe.graphui.interaction.commands.DeleteNodeCommand;
 import com.mongraphe.graphui.interfaces.InteractionModeHandler;
 import com.mongraphe.graphui.model.Vertex;
-import com.mongraphe.graphui.rendering.Camera2D;
 import com.mongraphe.graphui.rendering.GraphEngine;
 
 public final class SelectModeHandler implements InteractionModeHandler {

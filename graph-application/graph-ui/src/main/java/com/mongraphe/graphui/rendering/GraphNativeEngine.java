@@ -237,6 +237,11 @@ public final class GraphNativeEngine {
         return initMetadata;
     }
 
+    public void freeAllocatedMemory() {
+        nativeFreeAllocatedMemory(); // appel natif
+        sharedPositionsBuffer = null; // éviter les références pendantes
+    }
+
     public synchronized native Metadata initializeDot(String filepath, int md);
 
     public synchronized native Metadata initializeGraph(int modeCommunity, double threshold, double antiThreshold);
@@ -289,5 +294,5 @@ public final class GraphNativeEngine {
 
     public synchronized native void restoreNode(int index);
 
-    public synchronized native void freeAllocatedMemory();
+    public synchronized native void nativeFreeAllocatedMemory();
 }

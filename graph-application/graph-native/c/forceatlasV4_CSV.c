@@ -473,7 +473,7 @@ Java_com_mongraphe_graphui_rendering_GraphNativeEngine_initializeDot(
 }
 
 JNIEXPORT void JNICALL
-Java_com_mongraphe_graphui_rendering_GraphNativeEngine_freeAllocatedMemory(
+Java_com_mongraphe_graphui_rendering_GraphNativeEngine_nativeFreeAllocatedMemory(
     JNIEnv *env, jobject obj) {
 
   free_clusters();
