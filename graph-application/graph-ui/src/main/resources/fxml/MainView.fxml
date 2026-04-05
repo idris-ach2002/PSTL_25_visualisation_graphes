@@ -11,22 +11,7 @@
         <VBox>
             <fx:include source="MainMenuView.fxml" fx:id="menuView"/>
 
-            <HBox spacing="10" alignment="CENTER_LEFT" style="-fx-padding:5;">
-                <fx:define>
-                    <ToggleGroup fx:id="viewToggleGroup"/>
-                </fx:define>
-
-                <HBox spacing="5" styleClass="tool-bar">
-                    <ToggleButton text="Overview" toggleGroup="$viewToggleGroup" userData="overview" selected="true" onAction="#handleViewChange"/>
-
-                    <ToggleButton text="Data" toggleGroup="$viewToggleGroup" userData="data" onAction="#handleViewChange"/>
-
-                    <ToggleButton text="Preview" toggleGroup="$viewToggleGroup" userData="preview" onAction="#handleViewChange"/>
-
-                </HBox>
-            </HBox>
-
-            <HBox fx:id="toolsBox" spacing="10" alignment="CENTER_LEFT" style="-fx-padding:0 5 5 5;">
+            <HBox fx:id="toolsBox" spacing="10" alignment="CENTER_LEFT" style="-fx-padding:5 5 5 5;">
                 <fx:define>
                     <ToggleGroup fx:id="toolToggleGroup"/>
                 </fx:define>
@@ -45,31 +30,32 @@
     </top>
 
     <center>
-        <StackPane fx:id="rootStack">
-
-            <BorderPane fx:id="overview">
-                <left>
-                    <ScrollPane fitToWidth="true" prefWidth="340">
-                        <VBox spacing="15">
-                            <fx:include source="GraphWorkspaceView.fxml" fx:id="workspaceView"/>
-                            <fx:include source="EngineOptionsView.fxml" fx:id="engineOptionsView"/>
-                        </VBox>
-                    </ScrollPane>
-                </left>
-
-                <center>
-                    <StackPane fx:id="graphHostPane"/>
-                </center>
-
-                <right>
-                    <fx:include source="GraphStats.fxml" fx:id="graphStats" visible="true"/>
-                </right>
-            </BorderPane>
-
-            <fx:include source="DataView.fxml" fx:id="dataView" visible="false"/>
-
-            <fx:include source="Preview.fxml" fx:id="preview" visible="false"/>
-        </StackPane>
+        <TabPane fx:id="rootTabPane" tabClosingPolicy="UNAVAILABLE">
+            <Tab text="Overview" closable="false">
+                <BorderPane fx:id="overview">
+                    <left>
+                        <ScrollPane fitToWidth="true" prefWidth="340">
+                            <VBox spacing="15">
+                                <fx:include source="GraphWorkspaceView.fxml" fx:id="workspaceView"/>
+                                <fx:include source="EngineOptionsView.fxml" fx:id="engineOptionsView"/>
+                            </VBox>
+                        </ScrollPane>
+                    </left>
+                    <center>
+                        <StackPane fx:id="graphHostPane"/>
+                    </center>
+                    <right>
+                        <fx:include source="GraphStats.fxml" fx:id="graphStats" visible="true"/>
+                    </right>
+                </BorderPane>
+            </Tab>
+            <Tab text="Data" closable="false">
+                <fx:include source="DataView.fxml" fx:id="dataView" />
+            </Tab>
+            <Tab text="Preview" closable="false">
+                <fx:include source="Preview.fxml" fx:id="preview" />
+            </Tab>
+        </TabPane>
     </center>
 
     <bottom>

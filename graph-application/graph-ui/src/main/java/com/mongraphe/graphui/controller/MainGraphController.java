@@ -19,6 +19,7 @@ import javafx.application.Platform;
 import javafx.fxml.FXML;
 import javafx.scene.control.Alert;
 import javafx.scene.control.Button;
+import javafx.scene.control.TabPane;
 import javafx.scene.control.Toggle;
 import javafx.scene.control.ToggleGroup;
 import javafx.scene.layout.BorderPane;
@@ -53,9 +54,6 @@ public final class MainGraphController implements GraphEngine.GraphEngineListene
     private PreviewController previewController;
 
     @FXML
-    private ToggleGroup viewToggleGroup;
-
-    @FXML
     private HBox toolBar;
     @FXML
     private HBox toolsBox;
@@ -64,15 +62,15 @@ public final class MainGraphController implements GraphEngine.GraphEngineListene
     private boolean interactionEnabled = false;
 
     @FXML
-    private StackPane rootStack;
+    private TabPane rootTabPane; // remplace rootStack
     @FXML
-    private BorderPane overview;
+    private BorderPane overview; // contenu de l'onglet Overview
     @FXML
-    private BorderPane dataView;
+    private BorderPane dataView; // contenu de l'onglet Data (inclus via fx:include)
     @FXML
-    private StackPane graphHostPane;
+    private BorderPane preview; // contenu de l'onglet Preview (inclus via fx:include)
     @FXML
-    private BorderPane preview;
+    private StackPane graphHostPane; // zone où se trouve le panel OpenGL (dans overview)
     @FXML
     private VBox graphStats;
 
@@ -99,6 +97,7 @@ public final class MainGraphController implements GraphEngine.GraphEngineListene
         graphStatsController.setBus(bus);
         previewController.setBus(bus);
 
+        // Création du renderer et du panel pour l'aperçu (Preview)
         GraphRenderer previewRenderer = new GraphRenderer(engine, engine.camera(), GraphRenderOptions.previewView());
         previewGraphPanel = new GraphPanel(previewRenderer, interaction);
         previewGraphPanel.start();
@@ -106,22 +105,43 @@ public final class MainGraphController implements GraphEngine.GraphEngineListene
         previewController.setPreviewRenderer(previewRenderer);
         previewController.setGraphPanel(previewGraphPanel.canvas());
 
-        // Écouter les changements d'état de la simulation pour mettre à jour
-        // l'interface
         engine.addListener(this);
 
         setupGraphSurfaceResize();
         setupToolToggle();
         setupCloseWindowListener(nativeEngine);
+        setupTabPaneListener();
 
-        nativeEngine.setDimension(1300, 724); // TODO : Ajouter la possibilté de le paramétrer
+        nativeEngine.setDimension(1300, 724);
 
         graphHostPane.getChildren().add(panel.canvas());
         panel.start();
 
         setInteractionEnabled(false);
-
         uiState.setStatus("Prêt");
+    }
+
+    // Gère les actions lors du changement d'onglet
+    private void setupTabPaneListener() {
+        rootTabPane.getSelectionModel().selectedItemProperty().addListener((obs, oldTab, newTab) -> {
+            if (newTab == null)
+                return;
+            String tabText = newTab.getText();
+            boolean isOverview = "Overview".equals(tabText);
+
+            // Afficher/masquer la barre d'outils uniquement pour l'onglet Overview
+            if (toolsBox != null) {
+                toolsBox.setVisible(isOverview);
+                toolsBox.setManaged(isOverview);
+            }
+
+            if ("Data".equals(tabText)) {
+                dataViewController.refresh();
+            }
+            if ("Preview".equals(tabText)) {
+                bus.dispatch(e -> e.stopSimulation());
+            }
+        });
     }
 
     // Implémentation de GraphEngineListener
@@ -157,10 +177,8 @@ public final class MainGraphController implements GraphEngine.GraphEngineListene
         interactionEnabled = enabled;
         toolBar.setDisable(!enabled);
         if (!enabled) {
-            // Quand la simulation tourne, on force le mode RUN (camera/zoom seulement)
             interaction.setModeRun();
         } else {
-            // Quand on est en pause, on applique le mode sélectionné par l'utilisateur
             Toggle selected = toolToggleGroup.getSelectedToggle();
             if (selected != null) {
                 String mode = (String) selected.getUserData();
@@ -189,31 +207,23 @@ public final class MainGraphController implements GraphEngine.GraphEngineListene
     public void startGraph(GraphData.SimilitudeMode similitude,
             GraphData.NodeCommunity community,
             GraphData.RepulsionMode repulsion) {
-
         if (project == null) {
             alert(Alert.AlertType.WARNING, "Projet manquant",
                     "Choisissez d'abord un fichier CSV, DOT ou un projet .mongraphe.");
             return;
         }
-
         try {
             bus.dispatchSyncVoid(engine -> {
                 engine.stopSimulation();
                 engine.load(project.sourceFile().getAbsolutePath(), project.sourceType(), similitude, community);
-                if (repulsion != null) {
+                if (repulsion != null)
                     engine.setRepulsionMode(repulsion);
-                }
             });
-
             engineOptionsViewController.applyCurrentOptions(false);
             bus.dispatch(engine -> engine.startSimulation());
             uiState.setRunning(true);
             uiState.setStatus("Graph chargé : " + project.sourceFile().getName());
             graphStatsController.refreshStats();
-            if (overview != null) {
-                overview.setVisible(true);
-            }
-            // La simulation est démarrée, le listener onSimulationStarted sera appelé
         } catch (Exception e) {
             alert(Alert.AlertType.ERROR, "Erreur de chargement",
                     "Impossible de charger le graphe : " + rootCauseMessage(e));
@@ -221,44 +231,21 @@ public final class MainGraphController implements GraphEngine.GraphEngineListene
     }
 
     private void setupCloseWindowListener(GraphNativeEngine nat) {
-        rootStack.sceneProperty().addListener((obs, oldScene, scene) -> {
+        rootTabPane.sceneProperty().addListener((obs, oldScene, scene) -> {
             if (scene != null) {
                 scene.windowProperty().addListener((obsW, oldWindow, window) -> {
                     if (window != null) {
                         Stage stage = (Stage) window;
                         stage.setOnCloseRequest(e -> {
                             panel.stop();
-                            previewGraphPanel.stop();
+                            if (previewGraphPanel != null)
+                                previewGraphPanel.stop();
                             engine.dispose();
                         });
                     }
                 });
             }
         });
-    }
-
-    @FXML
-    private void handleViewChange() {
-        Toggle selected = viewToggleGroup == null ? null : viewToggleGroup.getSelectedToggle();
-        String view = selected == null ? "overview" : String.valueOf(selected.getUserData());
-
-        overview.setVisible("overview".equals(view));
-        dataView.setVisible("data".equals(view));
-        preview.setVisible("preview".equals(view));
-
-        // Masquer la barre d'outils dans les onglets Data et Preview
-        boolean isOverview = "overview".equals(view);
-        if (toolsBox != null) {
-            toolsBox.setVisible(isOverview);
-            toolsBox.setManaged(isOverview);
-        }
-
-        if ("data".equals(view)) {
-            dataViewController.refresh();
-        }
-        if ("preview".equals(view)) {
-            bus.dispatch(e -> e.stopSimulation());
-        }
     }
 
     public void openGraphFile() {
@@ -286,7 +273,6 @@ public final class MainGraphController implements GraphEngine.GraphEngineListene
             alert(Alert.AlertType.WARNING, "Export PNG", "Aucun graphe affiché.");
             return;
         }
-
         FileChooser chooser = new FileChooser();
         chooser.setTitle("Exporter en PNG");
         chooser.getExtensionFilters().add(new FileChooser.ExtensionFilter("Image PNG", "*.png"));
@@ -296,11 +282,9 @@ public final class MainGraphController implements GraphEngine.GraphEngineListene
         if (!out.getName().toLowerCase().endsWith(".png")) {
             out = new File(out.getAbsolutePath() + ".png");
         }
-
         final File outFile = out;
         int width = Math.max(1, (int) graphHostPane.getWidth());
         int height = Math.max(1, (int) graphHostPane.getHeight());
-
         new Thread(() -> {
             try {
                 if (outFile.toPath().getParent() != null) {
@@ -359,7 +343,7 @@ public final class MainGraphController implements GraphEngine.GraphEngineListene
     }
 
     public Stage getStage() {
-        return (Stage) rootStack.getScene().getWindow();
+        return (Stage) rootTabPane.getScene().getWindow();
     }
 
     private String rootCauseMessage(Throwable throwable) {
