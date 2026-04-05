@@ -394,6 +394,11 @@ public final class GraphEngine {
         clearA = clamp01(a);
     }
 
+    public void setSelectedVertexId(int id) {
+        model.setSelectedVertexId(id);
+        notifyDataChanged();
+    }
+
     public float getBackgroundColorR() {
         return clearR;
     }
@@ -527,6 +532,16 @@ public final class GraphEngine {
 
     public void setNodePosition(int index, double x, double y) {
         nativeEngine.setNodePosition(index, x, y);
+        model.lock().writeLock().lock();
+        try {
+            Vertex v = model.vertexById(index);
+            if (v != null) {
+                v.updatePosition(x, y);
+                notifyDataChanged();
+            }
+        } finally {
+            model.lock().writeLock().unlock();
+        }
     }
 
     public void deleteNode(int index) {

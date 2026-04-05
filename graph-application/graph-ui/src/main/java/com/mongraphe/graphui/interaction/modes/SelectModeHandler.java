@@ -25,8 +25,6 @@ public final class SelectModeHandler implements InteractionModeHandler {
         if (bus == null)
             return;
 
-        System.out.println("SelectModeHandler: mousePressed at " + sx + "," + sy);
-
         if (button == MouseEvent.BUTTON3) {
             panning = true;
             lastX = sx;
@@ -35,11 +33,9 @@ public final class SelectModeHandler implements InteractionModeHandler {
         }
 
         if (button == MouseEvent.BUTTON1) {
-            System.out.println("SelectModeHandler: left click at " + sx + "," + sy);
-
             Vertex selected = bus.dispatchSync(engine -> {
                 Vertex v = engine.model().findVertexAt(sx, sy, engine.camera());
-                engine.model().setSelectedVertexId(v == null ? -1 : v.getId());
+                engine.setSelectedVertexId(v == null ? -1 : v.getId());
                 return v;
             });
             if (selected != null) {
@@ -82,7 +78,7 @@ public final class SelectModeHandler implements InteractionModeHandler {
             Integer id = bus.dispatchSync(engine -> engine.model().getSelectedVertexId());
             if (id != null && id >= 0) {
                 bus.dispatchUndoable(new DeleteNodeCommand(id));
-                bus.dispatch(engine -> engine.model().setSelectedVertexId(-1));
+                bus.dispatch(engine -> engine.setSelectedVertexId(-1));
             }
         }
     }

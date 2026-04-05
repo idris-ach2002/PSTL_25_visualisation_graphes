@@ -45,7 +45,7 @@ public final class DeleteModeHandler implements InteractionModeHandler {
         }
 
         bus.dispatchUndoable(new DeleteNodeCommand(selected.getId()));
-        bus.dispatch(engine -> engine.model().setSelectedVertexId(-1));
+        bus.dispatch(engine -> engine.setSelectedVertexId(-1));
         state.setStatus("Sommet supprimé: " + selected.getId());
     }
 

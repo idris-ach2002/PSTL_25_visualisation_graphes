@@ -43,7 +43,7 @@ public final class MoveModeHandler implements InteractionModeHandler {
 
         selected = bus.dispatchSync(engine -> {
             Vertex v = engine.model().findVertexAt(sx, sy, engine.camera());
-            engine.model().setSelectedVertexId(v == null ? -1 : v.getId());
+            engine.setSelectedVertexId(v == null ? -1 : v.getId());
             return v;
         });
 
@@ -123,7 +123,7 @@ public final class MoveModeHandler implements InteractionModeHandler {
             Integer selectedId = bus.dispatchSync(engine -> engine.model().getSelectedVertexId());
             if (selectedId != null && selectedId >= 0) {
                 bus.dispatchUndoable(new DeleteNodeCommand(selectedId));
-                bus.dispatch(engine -> engine.model().setSelectedVertexId(-1));
+                bus.dispatch(engine -> engine.setSelectedVertexId(-1));
             }
         }
     }

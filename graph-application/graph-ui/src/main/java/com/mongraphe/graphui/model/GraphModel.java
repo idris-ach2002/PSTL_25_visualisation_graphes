@@ -98,8 +98,6 @@ public class GraphModel {
     public Vertex findVertexAt(int screenX, int screenY, Camera2D camera) {
         double worldX = camera.screenToWorldX(screenX);
         double worldY = camera.screenToWorldY(screenY);
-        System.out.println("wx :" + worldX);
-        System.out.println("wy :" + worldY);
         for (Vertex v : vertices) {
             if (v == null || v.isDeleted() || !v.isVisible())
                 continue;
