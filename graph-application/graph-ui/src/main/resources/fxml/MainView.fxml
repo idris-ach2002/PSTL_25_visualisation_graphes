@@ -25,6 +25,22 @@
 
                 </HBox>
             </HBox>
+
+            <HBox fx:id="toolsBox" spacing="10" alignment="CENTER_LEFT" style="-fx-padding:0 5 5 5;">
+                <fx:define>
+                    <ToggleGroup fx:id="toolToggleGroup"/>
+                </fx:define>
+                <Label text="Outils:"/>
+                <HBox fx:id="toolBar" spacing="5" styleClass="tool-bar">
+                    <ToggleButton text="Select" toggleGroup="$toolToggleGroup" userData="SELECT" selected="true"/>
+                    <ToggleButton text="Move" toggleGroup="$toolToggleGroup" userData="MOVE"/>
+                    <ToggleButton text="Delete" toggleGroup="$toolToggleGroup" userData="DELETE"/>
+                </HBox>
+                <HBox spacing="5" alignment="CENTER">
+                    <Button text="+" onAction="#zoomIn" />
+                    <Button text="-" onAction="#zoomOut" />
+                </HBox>
+            </HBox>
         </VBox>
     </top>
 
@@ -32,23 +48,6 @@
         <StackPane fx:id="rootStack">
 
             <BorderPane fx:id="overview">
-                <top>
-                    <HBox spacing="10" alignment="CENTER_LEFT" style="-fx-padding:0 5 5 5;">
-                        <fx:define>
-                            <ToggleGroup fx:id="toolToggleGroup"/>
-                        </fx:define>
-                        <Label text="Outils:"/>
-                        <HBox fx:id="toolBar" spacing="5" styleClass="tool-bar">
-                            <ToggleButton text="Select" toggleGroup="$toolToggleGroup" userData="SELECT" selected="true"/>
-                            <ToggleButton text="Move" toggleGroup="$toolToggleGroup" userData="MOVE"/>
-                            <ToggleButton text="Delete" toggleGroup="$toolToggleGroup" userData="DELETE"/>
-                        </HBox>
-                        <HBox spacing="5" alignment="CENTER">
-                            <Button text="+" onAction="#zoomIn" />
-                            <Button text="-" onAction="#zoomOut" />
-                        </HBox>
-                    </HBox>
-                </top>
                 <left>
                     <ScrollPane fitToWidth="true" prefWidth="340">
                         <VBox spacing="15">
@@ -59,7 +58,7 @@
                 </left>
 
                 <center>
-                    <BorderPane fx:id="graphHostPane"/>
+                    <StackPane fx:id="graphHostPane"/>
                 </center>
 
                 <right>

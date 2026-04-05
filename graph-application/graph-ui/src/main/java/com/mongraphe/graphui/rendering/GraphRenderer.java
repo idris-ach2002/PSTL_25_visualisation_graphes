@@ -126,15 +126,7 @@ public final class GraphRenderer implements GLEventListener {
 
     @Override
     public void reshape(GLAutoDrawable d, int x, int y, int w, int h) {
-        // On récupère les dimensions réelles de la surface de rendu
-        int surfaceW = d.getSurfaceWidth();
-        int surfaceH = d.getSurfaceHeight();
-
-        GL4 gl = d.getGL().getGL4();
-        gl.glViewport(0, 0, surfaceW, surfaceH);
-
-        // On met à jour la caméra avec ces dimensions précises
-        engine.camera().resize(surfaceW, surfaceH);
+        engine.camera().resize(w, h);
     }
 
     @Override

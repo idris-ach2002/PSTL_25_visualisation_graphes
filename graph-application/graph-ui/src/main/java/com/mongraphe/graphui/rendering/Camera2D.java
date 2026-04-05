@@ -108,19 +108,13 @@ public final class Camera2D {
     }
 
     public float screenToWorldX(float screenX) {
-        float hw = width / 2f / zoom;
-        float left = -hw + offsetX;
-        float right = hw + offsetX;
-
-        return left + (screenX / width) * (right - left);
+        System.out.println("Width :" + width);
+        System.out.println("Offset :" + offsetX);
+        return (screenX - width / 2f) / zoom + offsetX;
     }
 
     public float screenToWorldY(float screenY) {
-        float hh = height / 2f / zoom;
-        float bottom = -hh + offsetY;
-        float top = hh + offsetY;
-
-        return top - (screenY / height) * (top - bottom);
+        return (height / 2f - screenY) / zoom + offsetY;
     }
 
     public float getZoom() {

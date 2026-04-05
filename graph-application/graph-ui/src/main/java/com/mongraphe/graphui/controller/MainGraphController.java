@@ -58,6 +58,8 @@ public final class MainGraphController implements GraphEngine.GraphEngineListene
     @FXML
     private HBox toolBar;
     @FXML
+    private HBox toolsBox;
+    @FXML
     private ToggleGroup toolToggleGroup;
     private boolean interactionEnabled = false;
 
@@ -68,7 +70,7 @@ public final class MainGraphController implements GraphEngine.GraphEngineListene
     @FXML
     private BorderPane dataView;
     @FXML
-    private BorderPane graphHostPane;
+    private StackPane graphHostPane;
     @FXML
     private BorderPane preview;
     @FXML
@@ -114,9 +116,9 @@ public final class MainGraphController implements GraphEngine.GraphEngineListene
 
         nativeEngine.setDimension(1300, 724); // TODO : Ajouter la possibilté de le paramétrer
 
-        graphHostPane.setCenter(panel.canvas());
+        graphHostPane.getChildren().add(panel.canvas());
         panel.start();
-        
+
         setInteractionEnabled(false);
 
         uiState.setStatus("Prêt");
@@ -244,10 +246,16 @@ public final class MainGraphController implements GraphEngine.GraphEngineListene
         dataView.setVisible("data".equals(view));
         preview.setVisible("preview".equals(view));
 
+        // Masquer la barre d'outils dans les onglets Data et Preview
+        boolean isOverview = "overview".equals(view);
+        if (toolsBox != null) {
+            toolsBox.setVisible(isOverview);
+            toolsBox.setManaged(isOverview);
+        }
+
         if ("data".equals(view)) {
             dataViewController.refresh();
         }
-
         if ("preview".equals(view)) {
             bus.dispatch(e -> e.stopSimulation());
         }

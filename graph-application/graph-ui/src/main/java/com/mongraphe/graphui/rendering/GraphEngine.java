@@ -350,8 +350,8 @@ public final class GraphEngine {
         ByteBuffer buf = nativeEngine.sharedPositionsBuffer;
         if (buf == null)
             return;
-        buf.rewind();
         FloatBuffer fb = buf.asFloatBuffer();
+        fb.rewind();
         int numVertices = model.vertices().size();
         for (int i = 0; i < numVertices; i++) {
             float x = fb.get();
