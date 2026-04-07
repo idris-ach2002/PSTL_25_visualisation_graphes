@@ -31,7 +31,7 @@ public class GraphVisibilityFilter {
         deletedVertices = 0;
         visibleEdges = 0;
         hiddenEdges = 0;
-
+        
         for (Vertex v : model.vertices()) {
             if (v.isDeleted()) {
                 deletedVertices++;

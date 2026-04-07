@@ -74,24 +74,29 @@ public final class GraphEngine {
     }
 
     public StatsSnapshot getStatsSnapshot() {
-        int totalVertices = model.vertices().size();
-        int totalEdges = model.edges().size();
-        long deletedVertices = model.getDeletedVerticesCount();
-        int visibleVertices = model.getVisibleVertexCount();
-        int visibleEdges = model.getVisibleEdgeCount();
-        int hiddenVertices = Math.max(0, totalVertices - visibleVertices - (int) deletedVertices);
-        int hiddenEdges = Math.max(0, totalEdges - visibleEdges);
-        Metadata initMetadata = getInitMetadata();
-        int selectedId = model.getSelectedVertexId();
-        double selectedX = 0, selectedY = 0;
-        Vertex sel = model.vertexById(selectedId);
-        if (sel != null) {
-            selectedX = sel.getX();
-            selectedY = sel.getY();
+        model.lock().readLock().lock();
+        try {
+            int totalVertices = model.vertices().size();
+            int totalEdges = model.edges().size();
+            long deletedVertices = model.getDeletedVerticesCount();
+            int visibleVertices = model.getVisibleVertexCount();
+            int visibleEdges = model.getVisibleEdgeCount();
+            int hiddenVertices = Math.max(0, totalVertices - visibleVertices - (int) deletedVertices);
+            int hiddenEdges = Math.max(0, totalEdges - visibleEdges);
+            Metadata initMetadata = getInitMetadata();
+            int selectedId = model.getSelectedVertexId();
+            double selectedX = 0, selectedY = 0;
+            Vertex sel = model.vertexById(selectedId);
+            if (sel != null) {
+                selectedX = sel.getX();
+                selectedY = sel.getY();
+            }
+            return new StatsSnapshot(visibleVertices, hiddenVertices, (int) deletedVertices,
+                    visibleEdges, hiddenEdges, totalVertices, totalEdges,
+                    initMetadata, selectedId, selectedX, selectedY);
+        } finally {
+            model.lock().readLock().unlock();
         }
-        return new StatsSnapshot(visibleVertices, hiddenVertices, (int) deletedVertices,
-                visibleEdges, hiddenEdges, totalVertices, totalEdges,
-                initMetadata, selectedId, selectedX, selectedY);
     }
 
     public static class GraphDataSnapshot {
@@ -153,7 +158,7 @@ public final class GraphEngine {
 
     public GraphPage<Vertex> getVerticesPage(int page, int pageSize) {
 
-        model.lock().writeLock().lock();
+        model.lock().readLock().lock();
         try {
             int total = model().vertices().size();
             int from = page * pageSize;
@@ -161,12 +166,12 @@ public final class GraphEngine {
 
             return new GraphPage<>(model().vertices().subList(from, to), total);
         } finally {
-            model.lock().writeLock().unlock();
+            model.lock().readLock().unlock();
         }
     }
 
     public GraphPage<Edge> getEdgesPage(int page, int pageSize) {
-        model.lock().writeLock().lock();
+        model.lock().readLock().lock();
         try {
             List<Edge> all = model.edges();
             int from = page * pageSize;
@@ -175,7 +180,7 @@ public final class GraphEngine {
                 return new GraphPage<>(List.of(), all.size());
             return new GraphPage<>(all.subList(from, to), all.size());
         } finally {
-            model.lock().writeLock().unlock();
+            model.lock().readLock().unlock();
         }
     }
 
@@ -352,14 +357,19 @@ public final class GraphEngine {
             return;
         FloatBuffer fb = buf.asFloatBuffer();
         fb.rewind();
-        int numVertices = model.vertices().size();
-        for (int i = 0; i < numVertices; i++) {
-            float x = fb.get();
-            float y = fb.get();
-            Vertex v = model.vertexById(i);
-            if (v != null) {
-                v.updatePosition(x, y);
+        model.lock().readLock().lock();
+        try {
+            int numVertices = model.vertices().size();
+            for (int i = 0; i < numVertices; i++) {
+                float x = fb.get();
+                float y = fb.get();
+                Vertex v = model.vertexById(i);
+                if (v != null) {
+                    v.updatePosition(x, y);
+                }
             }
+        } finally {
+            model.lock().readLock().unlock();
         }
     }
 
@@ -438,12 +448,12 @@ public final class GraphEngine {
     public void setMinimumDegree(int degree) {
         model.lock().writeLock().lock();
         try {
+            visibility.setMinimumDegree(degree);
+            visibility.apply(model);
             model.setFilterMinDegree(degree);
         } finally {
             model.lock().writeLock().unlock();
         }
-        visibility.setMinimumDegree(degree);
-        visibility.apply(model);
         notifyDataChanged();
     }
 
@@ -451,11 +461,11 @@ public final class GraphEngine {
         model.lock().writeLock().lock();
         try {
             model.setFilterMinEdgeWeight(weight);
+            visibility.setEdgeWeightThreshold((float) weight);
+            visibility.apply(model);
         } finally {
             model.lock().writeLock().unlock();
         }
-        visibility.setEdgeWeightThreshold((float) weight);
-        visibility.apply(model);
         notifyDataChanged();
     }
 

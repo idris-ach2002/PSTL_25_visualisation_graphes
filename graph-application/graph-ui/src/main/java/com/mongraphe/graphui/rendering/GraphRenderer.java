@@ -73,7 +73,8 @@ public final class GraphRenderer implements GLEventListener {
         GraphModel.ColoringMode mode;
         float uniformR;
         float uniformG;
-        float uniformB; 
+        float uniformB;
+        GraphRenderOptions options = renderOptions;
         try {
             vertices = model.vertices();
             edges = model.edges();
@@ -85,23 +86,21 @@ public final class GraphRenderer implements GLEventListener {
             uniformR = model.getUniformNodeR();
             uniformG = model.getUniformNodeG();
             uniformB = model.getUniformNodeB();
+
+            vertexBuffer.update(
+                    gl,
+                    vertices,
+                    selected,
+                    maxDegree,
+                    mode,
+                    uniformR,
+                    uniformG,
+                    uniformB);
+
+            edgeBuffer.update(edges, vertices, options);
         } finally {
             model.lock().readLock().unlock();
         }
-
-        GraphRenderOptions options = renderOptions;
-
-        vertexBuffer.update(
-                gl,
-                vertices,
-                selected,
-                maxDegree,
-                mode,
-                uniformR,
-                uniformG,
-                uniformB);
-
-        edgeBuffer.update(edges, vertices, options);
 
         vertexBuffer.upload(gl);
         edgeBuffer.upload(gl);
