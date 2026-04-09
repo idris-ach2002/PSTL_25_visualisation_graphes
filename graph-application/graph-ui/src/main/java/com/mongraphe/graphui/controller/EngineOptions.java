@@ -13,4 +13,5 @@ public final class EngineOptions {
     public Integer nbClusters;
     public Integer minimumDegree;
     public Double minEdgeWeight;
+    public Boolean kmeansEnabled;
 }

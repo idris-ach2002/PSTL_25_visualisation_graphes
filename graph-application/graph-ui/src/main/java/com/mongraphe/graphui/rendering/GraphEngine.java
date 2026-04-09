@@ -532,7 +532,7 @@ public final class GraphEngine {
             nativeEngine.setModeRepulsion(mode.ordinal());
     }
 
-    public void enableKmeans(boolean enabled) {
+    public void setKmeansMode(boolean enabled) {
         nativeEngine.setKmeansMode(enabled);
     }
 

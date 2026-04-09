@@ -111,6 +111,7 @@ public final class EngineOptionsController implements CommandBusLinkedI<GraphEng
         validateNonNegative(repulsionThreshold, options.repulsionThreshold, errors, "Seuil de répulsion");
         validateStrictlyPositive(newAmortissement, options.newAmortissement, errors, "Amortissement");
         validateStrictlyPositive(nbClusters, options.nbClusters, errors, "Nombre de clusters");
+        options.kmeansEnabled = enableKmeans.isSelected();
         return options;
     }
 

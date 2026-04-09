@@ -17,18 +17,33 @@ public class SetEngineOptionsCommand implements GraphCommand<GraphEngine> {
         boolean wasRunning = context.isSimulationRunning();
         context.stopSimulation();
 
-        if (opts.degreeFactor != null) context.setDegreeScaleFactor(opts.degreeFactor);
-        if (opts.initialNodeSize != null) context.setInitialNodeSize(opts.initialNodeSize);
-        if (opts.stabilizedThreshold != null) context.setStabilizedThreshold(opts.stabilizedThreshold);
-        if (opts.attractionThreshold != null) context.setAttractionThreshold(opts.attractionThreshold);
-        if (opts.nbClusters != null) context.setNbClusters(opts.nbClusters);
-        if (opts.clusterUpdateFrequency != null) context.setClusterUpdateFrequency(opts.clusterUpdateFrequency);
-        if (opts.newFriction != null) context.setNewFriction(opts.newFriction);
-        if (opts.attractionCoefficient != null) context.setAttractionCoefficient(opts.attractionCoefficient);
-        if (opts.repulsionThreshold != null) context.setRepulsionThreshold(opts.repulsionThreshold);
-        if (opts.newAmortissement != null) context.setNewAmortissement(opts.newAmortissement);
-        if (opts.minimumDegree != null) context.setMinimumDegree(opts.minimumDegree);
-        if (opts.minEdgeWeight != null) context.setMinimumEdgeWeight(opts.minEdgeWeight);
+        if (opts.degreeFactor != null)
+            context.setDegreeScaleFactor(opts.degreeFactor);
+        if (opts.initialNodeSize != null)
+            context.setInitialNodeSize(opts.initialNodeSize);
+        if (opts.stabilizedThreshold != null)
+            context.setStabilizedThreshold(opts.stabilizedThreshold);
+        if (opts.attractionThreshold != null)
+            context.setAttractionThreshold(opts.attractionThreshold);
+        if (opts.nbClusters != null)
+            context.setNbClusters(opts.nbClusters);
+        if (opts.clusterUpdateFrequency != null)
+            context.setClusterUpdateFrequency(opts.clusterUpdateFrequency);
+        if (opts.newFriction != null)
+            context.setNewFriction(opts.newFriction);
+        if (opts.attractionCoefficient != null)
+            context.setAttractionCoefficient(opts.attractionCoefficient);
+        if (opts.repulsionThreshold != null)
+            context.setRepulsionThreshold(opts.repulsionThreshold);
+        if (opts.newAmortissement != null)
+            context.setNewAmortissement(opts.newAmortissement);
+        if (opts.minimumDegree != null)
+            context.setMinimumDegree(opts.minimumDegree);
+        if (opts.minEdgeWeight != null)
+            context.setMinimumEdgeWeight(opts.minEdgeWeight);
+        if (opts.kmeansEnabled != null) {
+            context.setKmeansMode(opts.kmeansEnabled);
+        }
 
         if (wasRunning) {
             context.startSimulation();
