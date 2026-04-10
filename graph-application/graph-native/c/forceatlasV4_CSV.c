@@ -546,6 +546,17 @@ Java_com_mongraphe_graphui_rendering_GraphNativeEngine_setDimension(
   Ly = height;
 }
 
+JNIEXPORT jdoubleArray JNICALL
+Java_com_mongraphe_graphui_rendering_GraphNativeEngine_getDimensions(
+    JNIEnv *env, jobject obj) {
+  jdoubleArray result = (*env)->NewDoubleArray(env, 2);
+  if (result == NULL)
+    return NULL;
+  jdouble dims[2] = {Lx, Ly};
+  (*env)->SetDoubleArrayRegion(env, result, 0, 2, dims);
+  return result;
+}
+
 JNIEXPORT void JNICALL
 Java_com_mongraphe_graphui_rendering_GraphNativeEngine_setAmortissement(
     JNIEnv *env, jobject obj, jdouble amort) {

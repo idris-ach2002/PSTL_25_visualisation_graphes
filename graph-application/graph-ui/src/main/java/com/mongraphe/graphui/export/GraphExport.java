@@ -2,6 +2,7 @@ package com.mongraphe.graphui.export;
 
 import java.awt.image.BufferedImage;
 import java.io.File;
+import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 
@@ -40,11 +41,24 @@ public class GraphExport {
         try {
             setupFramebuffer(gl, width, height, fbo, tex, rbo);
             gl.glViewport(0, 0, width, height);
+
             gl.glClear(GL4.GL_COLOR_BUFFER_BIT | GL4.GL_DEPTH_BUFFER_BIT);
+            renderer.display(drawable);
+
+            // Forcer l'exécution de toutes les commandes OpenGL
+            gl.glFinish();
+
             BufferedImage img = readPixels(gl, width, height);
-            ImageIO.write(img, "png", new File(path));
+
+            // Vérifier le succès de l'écriture
+            File outputFile = new File(path);
+            boolean written = ImageIO.write(img, "png", outputFile);
+            if (!written) {
+                throw new IOException("Aucun writer disponible pour le format PNG ou échec d'écriture.");
+            }
+
         } catch (Exception e) {
-            throw new RuntimeException(e);
+            throw new RuntimeException("Échec de l'export PNG : " + e.getMessage(), e);
         } finally {
             cleanup(gl, fbo, tex, rbo);
             gl.glBindFramebuffer(GL4.GL_FRAMEBUFFER, previousFbo[0]);
@@ -70,7 +84,14 @@ public class GraphExport {
 
         int status = gl.glCheckFramebufferStatus(GL4.GL_FRAMEBUFFER);
         if (status != GL4.GL_FRAMEBUFFER_COMPLETE) {
-            throw new RuntimeException("FBO incomplete: 0x" + Integer.toHexString(status));
+            String error = switch (status) {
+                case GL4.GL_FRAMEBUFFER_INCOMPLETE_ATTACHMENT -> "INCOMPLETE_ATTACHMENT";
+                case GL4.GL_FRAMEBUFFER_INCOMPLETE_MISSING_ATTACHMENT -> "MISSING_ATTACHMENT";
+                case GL4.GL_FRAMEBUFFER_INCOMPLETE_DIMENSIONS -> "INCOMPLETE_DIMENSIONS";
+                case GL4.GL_FRAMEBUFFER_UNSUPPORTED -> "UNSUPPORTED";
+                default -> "0x" + Integer.toHexString(status);
+            };
+            throw new RuntimeException("FBO incomplet : " + error);
         }
     }
 

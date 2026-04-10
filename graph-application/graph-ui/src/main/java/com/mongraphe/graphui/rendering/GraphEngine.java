@@ -540,6 +540,10 @@ public final class GraphEngine {
         nativeEngine.setDimension(width, height);
     }
 
+    public double[] getDimensions(){
+        return nativeEngine.getDimensions();
+    }
+
     public void setNodePosition(int index, double x, double y) {
         nativeEngine.setNodePosition(index, x, y);
         model.lock().writeLock().lock();

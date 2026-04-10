@@ -112,8 +112,6 @@ public final class MainGraphController implements GraphEngine.GraphEngineListene
         setupCloseWindowListener(nativeEngine);
         setupTabPaneListener();
 
-        nativeEngine.setDimension(1300, 724);
-
         graphHostPane.getChildren().add(panel.canvas());
         panel.start();
 
@@ -206,7 +204,9 @@ public final class MainGraphController implements GraphEngine.GraphEngineListene
 
     public void startGraph(GraphData.SimilitudeMode similitude,
             GraphData.NodeCommunity community,
-            GraphData.RepulsionMode repulsion) {
+            GraphData.RepulsionMode repulsion,
+            double width,
+            double height) {
         if (project == null) {
             alert(Alert.AlertType.WARNING, "Projet manquant",
                     "Choisissez d'abord un fichier CSV, DOT ou un projet .mongraphe.");
@@ -219,6 +219,7 @@ public final class MainGraphController implements GraphEngine.GraphEngineListene
                 if (repulsion != null)
                     engine.setRepulsionMode(repulsion);
             });
+            engine.setDimensions(width, height);
             engineOptionsViewController.applyCurrentOptions(false);
             bus.dispatch(engine -> engine.startSimulation());
             uiState.setRunning(true);
@@ -246,26 +247,6 @@ public final class MainGraphController implements GraphEngine.GraphEngineListene
                 });
             }
         });
-    }
-
-    public void openGraphFile() {
-        FileChooser chooser = new FileChooser();
-        chooser.setTitle("Ouvrir un fichier de graphe");
-        chooser.getExtensionFilters().addAll(
-                new FileChooser.ExtensionFilter("Projets MonGraphe", "*.mongraphe"),
-                new FileChooser.ExtensionFilter("Graph CSV / DOT", "*.csv", "*.dot"),
-                new FileChooser.ExtensionFilter("Tous les fichiers", "*.*"));
-        File file = chooser.showOpenDialog(getStage());
-        if (file != null) {
-            openFile(file);
-            if (!file.getName().toLowerCase().endsWith(".mongraphe")) {
-                GraphData.SimilitudeMode sim = workspaceViewController.getSelectedSimilarity();
-                GraphData.NodeCommunity community = workspaceViewController.getSelectedCommunity();
-                if (sim != null && community != null) {
-                    startGraph(sim, community, workspaceViewController.getSelectedRepulsionMode());
-                }
-            }
-        }
     }
 
     public void exportPng() {

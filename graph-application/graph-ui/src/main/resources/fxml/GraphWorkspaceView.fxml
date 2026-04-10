@@ -22,4 +22,10 @@
     <Label text="Méthode de répulsion"/>
     <ComboBox fx:id="repulsionCombo" prefWidth="220"/>
 
+    <Label text="Dimensions du canevas"/>
+    <HBox spacing="5">
+        <TextField fx:id="widthField" promptText="Largeur (px)" prefWidth="100"/>
+        <TextField fx:id="heightField" promptText="Hauteur (px)" prefWidth="100"/>
+    </HBox>
+
 </VBox>

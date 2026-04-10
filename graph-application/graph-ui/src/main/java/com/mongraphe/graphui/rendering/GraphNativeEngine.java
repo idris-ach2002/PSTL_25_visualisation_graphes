@@ -295,4 +295,6 @@ public final class GraphNativeEngine {
     public synchronized native void restoreNode(int index);
 
     public synchronized native void nativeFreeAllocatedMemory();
+
+    public synchronized native double[] getDimensions();
 }

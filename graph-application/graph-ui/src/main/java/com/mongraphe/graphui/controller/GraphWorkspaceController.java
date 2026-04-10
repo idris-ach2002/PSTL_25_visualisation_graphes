@@ -10,6 +10,7 @@ import javafx.fxml.FXML;
 import javafx.scene.control.Button;
 import javafx.scene.control.ComboBox;
 import javafx.scene.control.Control;
+import javafx.scene.control.TextField;
 import javafx.scene.control.Tooltip;
 import javafx.util.Duration;
 
@@ -17,12 +18,22 @@ public final class GraphWorkspaceController implements CommandBusLinkedI<GraphEn
 
     private MainGraphController mainController;
 
-    @FXML private ComboBox<GraphData.SimilitudeMode> similarityCombo;
-    @FXML private ComboBox<GraphData.NodeCommunity> communityCombo;
-    @FXML private ComboBox<GraphData.RepulsionMode> repulsionCombo;
+    @FXML
+    private ComboBox<GraphData.SimilitudeMode> similarityCombo;
+    @FXML
+    private ComboBox<GraphData.NodeCommunity> communityCombo;
+    @FXML
+    private ComboBox<GraphData.RepulsionMode> repulsionCombo;
 
-    @FXML private Button playPauseButton;
-    @FXML private Button restartButton;
+    @FXML
+    private Button playPauseButton;
+    @FXML
+    private Button restartButton;
+
+    @FXML
+    private TextField widthField;
+    @FXML
+    private TextField heightField;
 
     private CommandBus<GraphEngine> bus;
 
@@ -47,8 +58,9 @@ public final class GraphWorkspaceController implements CommandBusLinkedI<GraphEn
 
     // Appelée par MainGraphController via le listener du moteur
     public void updatePlayPauseIcon(boolean running) {
-        if (bus == null) return;
-        
+        if (bus == null)
+            return;
+
         if (running) {
             playPauseButton.setText("⏸");
             playPauseButton.setTooltip(new Tooltip("Mettre en pause"));
@@ -58,9 +70,41 @@ public final class GraphWorkspaceController implements CommandBusLinkedI<GraphEn
         }
     }
 
+    private boolean validateDimensions() {
+        String widthText = widthField.getText().trim();
+        String heightText = heightField.getText().trim();
+
+        if (widthText.isEmpty()) {
+            showTooltip(widthField, "La largeur est obligatoire");
+            return false;
+        }
+        if (heightText.isEmpty()) {
+            showTooltip(heightField, "La hauteur est obligatoire");
+            return false;
+        }
+
+        try {
+            double w = Double.parseDouble(widthText);
+            double h = Double.parseDouble(heightText);
+            if (w <= 0 || h <= 0) {
+                showTooltip(widthField, "Les dimensions doivent être positives");
+                return false;
+            }
+        } catch (NumberFormatException e) {
+            showTooltip(widthField, "Valeur numérique invalide");
+            return false;
+        }
+
+        // Efface les styles d'erreur éventuels
+        widthField.setStyle("");
+        heightField.setStyle("");
+        return true;
+    }
+
     @FXML
     private void handlePlayPause() {
-        if (mainController == null || bus == null) return;
+        if (mainController == null || bus == null)
+            return;
         boolean running = bus.dispatchSync(GraphEngine::isSimulationRunning);
         if (running) {
             bus.dispatch(GraphEngine::stopSimulation);
@@ -76,11 +120,18 @@ public final class GraphWorkspaceController implements CommandBusLinkedI<GraphEn
 
     @FXML
     private void handleRestart() {
-        if (mainController == null) return;
+        if (mainController == null)
+            return;
         startGraph();
     }
 
     private void startGraph() {
+        // Validation des dimensions
+        if (!validateDimensions()) {
+            return;
+        }
+
+        // Validation des sélecteurs
         if (similarityCombo.getValue() == null || communityCombo.getValue() == null) {
             if (similarityCombo.getValue() == null) {
                 showTooltip(similarityCombo, "Sélectionnez une mesure de similarité");
@@ -90,9 +141,16 @@ public final class GraphWorkspaceController implements CommandBusLinkedI<GraphEn
             }
             return;
         }
-        mainController.startGraph(similarityCombo.getValue(),
+
+        double width = Double.parseDouble(widthField.getText().trim());
+        double height = Double.parseDouble(heightField.getText().trim());
+
+        mainController.startGraph(
+                similarityCombo.getValue(),
                 communityCombo.getValue(),
-                repulsionCombo.getValue());
+                repulsionCombo.getValue(),
+                width,
+                height);
     }
 
     private void showTooltip(Control control, String message) {
@@ -107,18 +165,29 @@ public final class GraphWorkspaceController implements CommandBusLinkedI<GraphEn
         delay.play();
     }
 
-    public GraphData.SimilitudeMode getSelectedSimilarity() { return similarityCombo.getValue(); }
-    public GraphData.NodeCommunity getSelectedCommunity() { return communityCombo.getValue(); }
-    public GraphData.RepulsionMode getSelectedRepulsionMode() { return repulsionCombo.getValue(); }
+    public GraphData.SimilitudeMode getSelectedSimilarity() {
+        return similarityCombo.getValue();
+    }
+
+    public GraphData.NodeCommunity getSelectedCommunity() {
+        return communityCombo.getValue();
+    }
+
+    public GraphData.RepulsionMode getSelectedRepulsionMode() {
+        return repulsionCombo.getValue();
+    }
 
     public void setSelections(GraphData.SimilitudeMode similarity,
-                              GraphData.NodeCommunity community,
-                              GraphData.RepulsionMode repulsion) {
+            GraphData.NodeCommunity community,
+            GraphData.RepulsionMode repulsion) {
         similarityCombo.setValue(similarity);
         communityCombo.setValue(community);
-        if (repulsion != null) repulsionCombo.setValue(repulsion);
+        if (repulsion != null)
+            repulsionCombo.setValue(repulsion);
     }
 
     @Override
-    public void setBus(CommandBus<GraphEngine> bus) { this.bus = bus; }
+    public void setBus(CommandBus<GraphEngine> bus) {
+        this.bus = bus;
+    }
 }
