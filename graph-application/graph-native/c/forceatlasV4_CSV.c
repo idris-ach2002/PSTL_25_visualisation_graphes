@@ -489,20 +489,6 @@ Java_com_mongraphe_graphui_rendering_GraphNativeEngine_nativeFreeAllocatedMemory
 }
 
 JNIEXPORT void JNICALL
-Java_com_mongraphe_graphui_rendering_GraphNativeEngine_setSaut(JNIEnv *env,
-                                                               jobject obj,
-                                                               jint s) {
-  saut = s;
-  espacement = 1;
-}
-
-JNIEXPORT void JNICALL
-Java_com_mongraphe_graphui_rendering_GraphNativeEngine_setThresholdS(
-    JNIEnv *env, jobject obj, jdouble thresh) {
-  thresholdS = thresh;
-}
-
-JNIEXPORT void JNICALL
 Java_com_mongraphe_graphui_rendering_GraphNativeEngine_setFriction(JNIEnv *env,
                                                                    jobject obj,
                                                                    jdouble f) {
@@ -525,18 +511,6 @@ JNIEXPORT void JNICALL
 Java_com_mongraphe_graphui_rendering_GraphNativeEngine_setAttractionCoeff(
     JNIEnv *env, jobject obj, jdouble coeff) {
   attraction_coeff = coeff;
-}
-
-JNIEXPORT void JNICALL
-Java_com_mongraphe_graphui_rendering_GraphNativeEngine_setThresholdA(
-    JNIEnv *env, jobject obj, jdouble thresh) {
-  thresholdA = thresh;
-}
-
-JNIEXPORT void JNICALL
-Java_com_mongraphe_graphui_rendering_GraphNativeEngine_setSeuilRep(
-    JNIEnv *env, jobject obj, jdouble seuil) {
-  seuilrep = seuil;
 }
 
 JNIEXPORT void JNICALL
@@ -568,15 +542,6 @@ Java_com_mongraphe_graphui_rendering_GraphNativeEngine_setNodePosition(
     JNIEnv *env, jobject obj, jint index, jdouble x, jdouble y) {
   vertices[index].x = x;
   vertices[index].y = y;
-}
-
-JNIEXPORT void JNICALL
-Java_com_mongraphe_graphui_rendering_GraphNativeEngine_unpauseGraph(
-    JNIEnv *env, jobject obj) {
-  if (pause_updates == 1) {
-    iteration = 0;
-    pause_updates = 0;
-  }
 }
 
 JNIEXPORT void JNICALL
@@ -644,7 +609,7 @@ Java_com_mongraphe_graphui_rendering_GraphNativeEngine_setDegreeScaleFactor(
 }
 
 JNIEXPORT void JNICALL
-Java_com_mongraphe_graphui_rendering_GraphNativeEngine_setNoOverlap(
-    JNIEnv *env, jobject obj, jboolean b) {
-  no_overlap = b;
+Java_com_mongraphe_graphui_rendering_GraphNativeEngine_setRepulsionCoeff(
+    JNIEnv *env, jobject obj, jdouble coeff) {
+  repulsion_coeff = coeff;
 }

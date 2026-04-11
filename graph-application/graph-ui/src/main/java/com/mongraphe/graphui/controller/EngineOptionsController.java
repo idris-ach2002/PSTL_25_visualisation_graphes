@@ -19,9 +19,6 @@ public final class EngineOptionsController implements CommandBusLinkedI<GraphEng
     private CommandBus<GraphEngine> bus;
 
     @FXML private TextField upScale;
-    @FXML private TextField stabilizedThreshold;
-    @FXML private TextField attractionThreshold;
-    @FXML private TextField updatedFrequence;
     @FXML private TextField newFriction;
     @FXML private TextField attractionCoefficient;
     @FXML private TextField repulsionThreshold;
@@ -61,9 +58,6 @@ public final class EngineOptionsController implements CommandBusLinkedI<GraphEng
 
     public void fillProperties(Properties p) {
         put(p, "upScale", upScale.getText());
-        put(p, "stabilizedThreshold", stabilizedThreshold.getText());
-        put(p, "attractionThreshold", attractionThreshold.getText());
-        put(p, "updatedFrequence", updatedFrequence.getText());
         put(p, "newFriction", newFriction.getText());
         put(p, "attractionCoefficient", attractionCoefficient.getText());
         put(p, "repulsionThreshold", repulsionThreshold.getText());
@@ -75,9 +69,6 @@ public final class EngineOptionsController implements CommandBusLinkedI<GraphEng
 
     public void loadFromProperties(Properties p) {
         upScale.setText(p.getProperty("upScale", upScale.getText()));
-        stabilizedThreshold.setText(p.getProperty("stabilizedThreshold", stabilizedThreshold.getText()));
-        attractionThreshold.setText(p.getProperty("attractionThreshold", attractionThreshold.getText()));
-        updatedFrequence.setText(p.getProperty("updatedFrequence", updatedFrequence.getText()));
         newFriction.setText(p.getProperty("newFriction", newFriction.getText()));
         attractionCoefficient.setText(p.getProperty("attractionCoefficient", attractionCoefficient.getText()));
         repulsionThreshold.setText(p.getProperty("repulsionThreshold", repulsionThreshold.getText()));
@@ -94,19 +85,13 @@ public final class EngineOptionsController implements CommandBusLinkedI<GraphEng
     }
 
     private EngineOptions readOptions(List<String> errors) {
-        EngineOptions options = new EngineOptions();
-        options.stabilizedThreshold = parseDoubleOrNull(stabilizedThreshold, errors, "Seuil de stabilité");
-        options.attractionThreshold = parseDoubleOrNull(attractionThreshold, errors, "Seuil d'attraction");
-        options.clusterUpdateFrequency = parseIntOrNull(updatedFrequence, errors, "Fréquence des clusters");
+        EngineOptions options = new EngineOptions();;
         options.newFriction = parseDoubleOrNull(newFriction, errors, "Friction");
         options.attractionCoefficient = parseDoubleOrNull(attractionCoefficient, errors, "Coefficient d'attraction");
         options.repulsionThreshold = parseDoubleOrNull(repulsionThreshold, errors, "Seuil de répulsion");
         options.newAmortissement = parseDoubleOrNull(newAmortissement, errors, "Amortissement");
         options.nbClusters = parseIntOrNull(nbClusters, errors, "Nombre de clusters");
-        validateStrictlyPositive(updatedFrequence, options.clusterUpdateFrequency, errors, "Fréquence des clusters");
         validateStrictlyPositive(newFriction, options.newFriction, errors, "Friction");
-        validateNonNegative(stabilizedThreshold, options.stabilizedThreshold, errors, "Seuil de stabilité");
-        validateNonNegative(attractionThreshold, options.attractionThreshold, errors, "Seuil d'attraction");
         validateNonNegative(attractionCoefficient, options.attractionCoefficient, errors, "Coefficient d'attraction");
         validateNonNegative(repulsionThreshold, options.repulsionThreshold, errors, "Seuil de répulsion");
         validateStrictlyPositive(newAmortissement, options.newAmortissement, errors, "Amortissement");

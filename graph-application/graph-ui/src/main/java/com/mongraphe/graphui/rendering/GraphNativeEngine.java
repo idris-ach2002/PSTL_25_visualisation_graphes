@@ -264,10 +264,6 @@ public final class GraphNativeEngine {
 
     public synchronized native float[][] getClusterColors();
 
-    public synchronized native void setSaut(int saut);
-
-    public synchronized native void setThresholdS(double thresholdS);
-
     public synchronized native void setFriction(double friction);
 
     public synchronized native void setModeRepulsion(int mode);
@@ -275,8 +271,6 @@ public final class GraphNativeEngine {
     public synchronized native void setAntiRepulsion(double antiedgeRepulsion);
 
     public synchronized native void setAttractionCoeff(double attractionCoeff);
-
-    public synchronized native void setThresholdA(double thresholdA);
 
     public synchronized native void setSeuilRep(double seuilrep);
 
@@ -297,4 +291,6 @@ public final class GraphNativeEngine {
     public synchronized native void nativeFreeAllocatedMemory();
 
     public synchronized native double[] getDimensions();
+
+    public synchronized native void setRepulsionCoeff(double coeff);
 }

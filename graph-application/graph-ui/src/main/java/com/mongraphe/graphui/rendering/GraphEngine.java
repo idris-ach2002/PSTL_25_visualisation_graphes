@@ -461,14 +461,6 @@ public final class GraphEngine {
         notifyDataChanged();
     }
 
-    public void setStabilizedThreshold(double t) {
-        nativeEngine.setThresholdS(t);
-    }
-
-    public void setAttractionThreshold(double t) {
-        nativeEngine.setThresholdA(t);
-    }
-
     public void setNewFriction(double f) {
         nativeEngine.setFriction(f);
     }
@@ -491,6 +483,8 @@ public final class GraphEngine {
 
     public void setNbClusters(int n) {
         nativeEngine.SetNumberClusters(n);
+        rebuildModelFromNative(); // recharge les communautés
+        notifyDataChanged();
     }
 
     public void setRepulsionMode(GraphData.RepulsionMode mode) {
@@ -531,11 +525,6 @@ public final class GraphEngine {
         nativeEngine.restoreNode(index);
         rebuildModelFromNative();
         notifyDataChanged();
-    }
-
-    public void setClusterUpdateFrequency(int saut) {
-        clusterUpdateFrequency = Math.max(1, saut);
-        nativeEngine.setSaut(clusterUpdateFrequency);
     }
 
     public int getClusterUpdateFrequency() {

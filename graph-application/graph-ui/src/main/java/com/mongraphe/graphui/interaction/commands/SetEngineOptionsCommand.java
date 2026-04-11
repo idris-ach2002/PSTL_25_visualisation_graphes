@@ -21,14 +21,8 @@ public class SetEngineOptionsCommand implements GraphCommand<GraphEngine> {
             context.setDegreeScaleFactor(opts.degreeFactor);
         if (opts.initialNodeSize != null)
             context.setInitialNodeSize(opts.initialNodeSize);
-        if (opts.stabilizedThreshold != null)
-            context.setStabilizedThreshold(opts.stabilizedThreshold);
-        if (opts.attractionThreshold != null)
-            context.setAttractionThreshold(opts.attractionThreshold);
         if (opts.nbClusters != null)
             context.setNbClusters(opts.nbClusters);
-        if (opts.clusterUpdateFrequency != null)
-            context.setClusterUpdateFrequency(opts.clusterUpdateFrequency);
         if (opts.newFriction != null)
             context.setNewFriction(opts.newFriction);
         if (opts.attractionCoefficient != null)
