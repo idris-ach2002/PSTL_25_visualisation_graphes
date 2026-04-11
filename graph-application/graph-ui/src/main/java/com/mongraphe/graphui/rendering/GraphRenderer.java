@@ -1,14 +1,9 @@
 package com.mongraphe.graphui.rendering;
 
-import java.util.List;
-import java.util.concurrent.ConcurrentLinkedQueue;
-
 import com.jogamp.opengl.GL4;
 import com.jogamp.opengl.GLAutoDrawable;
 import com.jogamp.opengl.GLEventListener;
-import com.mongraphe.graphui.model.Edge;
 import com.mongraphe.graphui.model.GraphModel;
-import com.mongraphe.graphui.model.Vertex;
 
 public final class GraphRenderer implements GLEventListener {
 
@@ -67,41 +62,19 @@ public final class GraphRenderer implements GLEventListener {
         gl.glClear(GL4.GL_COLOR_BUFFER_BIT);
 
         GraphModel model = engine.model();
-        model.lock().readLock().lock();
-        List<Vertex> vertices;
-        ConcurrentLinkedQueue<Edge> edges;
-        int selected;
-        int maxDegree;
-        GraphModel.ColoringMode mode;
-        float uniformR;
-        float uniformG;
-        float uniformB;
         GraphRenderOptions options = renderOptions;
-        try {
-            vertices = model.vertices();
-            selected = model.getSelectedVertexId();
-            maxDegree = model.getMaxDegree();
-            mode = model.getColoringMode();
 
-            uniformR = model.getUniformNodeR();
-            uniformG = model.getUniformNodeG();
-            uniformB = model.getUniformNodeB();
+        vertexBuffer.update(
+                gl,
+                model.vertices(),
+                model.getSelectedVertexId(),
+                model.getMaxDegree(),
+                model.getColoringMode(),
+                model.getUniformNodeR(),
+                model.getUniformNodeG(),
+                model.getUniformNodeB());
 
-            vertexBuffer.update(
-                    gl,
-                    vertices,
-                    selected,
-                    maxDegree,
-                    mode,
-                    uniformR,
-                    uniformG,
-                    uniformB);
-        } finally {
-            model.lock().readLock().unlock();
-        }
-
-        edges = model.edges();
-        edgeBuffer.update(edges, options);
+        edgeBuffer.update(model.edges(), options);
 
         vertexBuffer.upload(gl);
         edgeBuffer.upload(gl);

@@ -1,7 +1,7 @@
 package com.mongraphe.graphui.rendering;
 
 import java.nio.FloatBuffer;
-import java.util.List;
+import java.util.concurrent.ConcurrentLinkedQueue;
 
 import com.jogamp.opengl.GL4;
 import com.mongraphe.graphui.model.Community;
@@ -70,40 +70,38 @@ public final class VertexGpuBuffer {
         allocateGpu(gl, capacity);
     }
 
-    public void update(
-            GL4 gl,
-            List<Vertex> vertices,
+    public void update(GL4 gl,
+            ConcurrentLinkedQueue<Vertex> vertices,
             int selectedVertexId,
             int maxDegree,
             ColoringMode mode,
             float uniformR, float uniformG, float uniformB) {
 
-        if (vertices == null || vertices.isEmpty()) {
+        if (vertices == null) {
             count = 0;
             return;
         }
 
-        count = vertices.size();
-        ensureCapacity(gl, count);
+        count = 0; // sera incrémenté au fur et à mesure
         int maxDeg = Math.max(1, maxDegree);
-        int i = 0;
-        for (Vertex v : vertices) {
-            if (v == null) {
-                i++;
-                continue;
-            }
 
-            int p = i * 2;
-            int c = i * 3;
+        for (Vertex v : vertices) {
+            if (v == null)
+                continue;
+
+            // S'assurer que les tableaux ont assez de place pour 1 sommet supplémentaire
+            ensureCapacity(gl, count + 1);
+
+            int p = count * 2;
+            int c = count * 3;
 
             pos[p] = (float) v.getX();
             pos[p + 1] = (float) v.getY();
 
-            size[i] = (float) v.getDiameter();
-            vis[i] = (v.isDeleted() || !v.isVisible()) ? 0f : 1f;
+            size[count] = (float) v.getDiameter();
+            vis[count] = (v.isDeleted() || !v.isVisible()) ? 0f : 1f;
 
             float r, g, b;
-
             if (v.getId() == selectedVertexId) {
                 r = g = b = 1f;
             } else if (mode == ColoringMode.UNIFORM) {
@@ -129,7 +127,8 @@ public final class VertexGpuBuffer {
             col[c] = r;
             col[c + 1] = g;
             col[c + 2] = b;
-            i++;
+
+            count++;
         }
     }
 

@@ -10,12 +10,14 @@ import com.mongraphe.graphui.model.Vertex;
 public class EdgeGpuBuffer {
 
     private static final float LOOP_OFFSET = 22f;
+    private static final int INITIAL_CAPACITY = 4096;
 
     private float[] positions;
     private float[] colors;
     private float[] sizes;
     private float[] visibility;
     private int capacity;
+    private int vertexCount; // nombre réel de sommets écrits
 
     private final float[] control = new float[2];
     private final float[] current = new float[2];
@@ -27,7 +29,6 @@ public class EdgeGpuBuffer {
     private int currentGpuCapacityVis = 0;
 
     private int posVbo, colorVbo, sizeVbo, visVbo;
-    private int vertexCount;
 
     public void init(GL4 gl) {
         int[] b = new int[4];
@@ -37,11 +38,39 @@ public class EdgeGpuBuffer {
         sizeVbo = b[2];
         visVbo = b[3];
         capacity = 0;
+        ensureCapacity(INITIAL_CAPACITY);
+        vertexCount = 0;
+    }
+
+    private void ensureCapacity(int needed) {
+        if (needed <= capacity)
+            return;
+        int newCap = Math.max(needed, capacity * 2);
+        if (newCap == 0)
+            newCap = INITIAL_CAPACITY;
+
+        float[] newPos = new float[newCap * 2];
+        float[] newCol = new float[newCap * 3];
+        float[] newSizes = new float[newCap];
+        float[] newVis = new float[newCap];
+
+        if (positions != null) {
+            System.arraycopy(positions, 0, newPos, 0, vertexCount * 2);
+            System.arraycopy(colors, 0, newCol, 0, vertexCount * 3);
+            System.arraycopy(sizes, 0, newSizes, 0, vertexCount);
+            System.arraycopy(visibility, 0, newVis, 0, vertexCount);
+        }
+
+        positions = newPos;
+        colors = newCol;
+        sizes = newSizes;
+        visibility = newVis;
+        capacity = newCap;
     }
 
     public void update(ConcurrentLinkedQueue<Edge> edges, GraphRenderOptions options) {
+        vertexCount = 0;
         if (edges == null || edges.isEmpty()) {
-            vertexCount = 0;
             ensureCapacity(1);
             return;
         }
@@ -57,74 +86,61 @@ public class EdgeGpuBuffer {
         }
     }
 
-    private void ensureCapacity(int neededVertices) {
-        if (neededVertices <= capacity)
-            return;
-        int newCap = Math.max(neededVertices, capacity * 2);
-        if (newCap == 0)
-            newCap = 1;
-        capacity = newCap;
-        positions = new float[capacity * 2];
-        colors = new float[capacity * 3];
-        sizes = new float[capacity];
-        visibility = new float[capacity];
-    }
-
     private void updateStraight(ConcurrentLinkedQueue<Edge> edges) {
-        int edgeCount = edges.size();
-        vertexCount = edgeCount * 2;
-        ensureCapacity(vertexCount);
-
-        int p = 0, c = 0, s = 0, v = 0;
         for (Edge e : edges) {
+            // On va ajouter 2 sommets (début et fin)
+            ensureCapacity(vertexCount + 2);
+
             Vertex v1 = e.getStart();
             Vertex v2 = e.getEnd();
 
-            // Coordonnées directement depuis les références (volatile)
             float x1 = (float) v1.getX();
             float y1 = (float) v1.getY();
             float x2 = (float) v2.getX();
             float y2 = (float) v2.getY();
 
+            int p = vertexCount * 2;
+            int c = vertexCount * 3;
+
             if (Float.isNaN(x1) || Float.isNaN(y1) || Float.isNaN(x2) || Float.isNaN(y2)) {
-                positions[p++] = 0f;
-                positions[p++] = 0f;
-                positions[p++] = 0f;
-                positions[p++] = 0f;
+                positions[p] = 0f;
+                positions[p + 1] = 0f;
+                positions[p + 2] = 0f;
+                positions[p + 3] = 0f;
             } else {
-                positions[p++] = x1;
-                positions[p++] = y1;
-                positions[p++] = x2;
-                positions[p++] = y2;
+                positions[p] = x1;
+                positions[p + 1] = y1;
+                positions[p + 2] = x2;
+                positions[p + 3] = y2;
             }
 
             float r = e.getR(), g = e.getG(), b = e.getB();
-            colors[c++] = r;
-            colors[c++] = g;
-            colors[c++] = b;
-            colors[c++] = r;
-            colors[c++] = g;
-            colors[c++] = b;
+            colors[c] = r;
+            colors[c + 1] = g;
+            colors[c + 2] = b;
+            colors[c + 3] = r;
+            colors[c + 4] = g;
+            colors[c + 5] = b;
 
             float w = (float) e.getWeight();
-            sizes[s++] = w;
-            sizes[s++] = w;
+            sizes[vertexCount] = w;
+            sizes[vertexCount + 1] = w;
 
             float vis = e.isVisible() ? 1f : 0f;
-            visibility[v++] = vis;
-            visibility[v++] = vis;
+            visibility[vertexCount] = vis;
+            visibility[vertexCount + 1] = vis;
+
+            vertexCount += 2;
         }
     }
 
     private void updateCurved(ConcurrentLinkedQueue<Edge> edges, GraphRenderOptions options) {
         int segments = Math.max(2, options.curveSegments());
-        int edgeCount = edges.size();
-        int lineSegmentCount = edgeCount * segments;
-        vertexCount = lineSegmentCount * 2;
-        ensureCapacity(vertexCount);
-
-        int p = 0, c = 0, s = 0, v = 0;
         for (Edge e : edges) {
+            // Chaque arête courbe produit segments * 2 sommets
+            int vertsPerEdge = segments * 2;
+            ensureCapacity(vertexCount + vertsPerEdge);
+
             Vertex v1 = e.getStart();
             Vertex v2 = e.getEnd();
             float x1 = (float) v1.getX();
@@ -133,22 +149,25 @@ public class EdgeGpuBuffer {
             float y2 = (float) v2.getY();
 
             if (Float.isNaN(x1) || Float.isNaN(y1) || Float.isNaN(x2) || Float.isNaN(y2)) {
-                // Remplissage de zéros pour les segments manquants
+                // Remplir avec des zéros
                 for (int seg = 0; seg < segments; seg++) {
-                    positions[p++] = 0f;
-                    positions[p++] = 0f;
-                    positions[p++] = 0f;
-                    positions[p++] = 0f;
-                    colors[c++] = 0f;
-                    colors[c++] = 0f;
-                    colors[c++] = 0f;
-                    colors[c++] = 0f;
-                    colors[c++] = 0f;
-                    colors[c++] = 0f;
-                    sizes[s++] = 0f;
-                    sizes[s++] = 0f;
-                    visibility[v++] = 0f;
-                    visibility[v++] = 0f;
+                    int p = vertexCount * 2;
+                    int c = vertexCount * 3;
+                    positions[p] = 0f;
+                    positions[p + 1] = 0f;
+                    positions[p + 2] = 0f;
+                    positions[p + 3] = 0f;
+                    colors[c] = 0f;
+                    colors[c + 1] = 0f;
+                    colors[c + 2] = 0f;
+                    colors[c + 3] = 0f;
+                    colors[c + 4] = 0f;
+                    colors[c + 5] = 0f;
+                    sizes[vertexCount] = 0f;
+                    sizes[vertexCount + 1] = 0f;
+                    visibility[vertexCount] = 0f;
+                    visibility[vertexCount + 1] = 0f;
+                    vertexCount += 2;
                 }
                 continue;
             }
@@ -165,29 +184,34 @@ public class EdgeGpuBuffer {
                 float t = (float) seg / segments;
                 evalQuadraticBezier(x1, y1, control[0], control[1], x2, y2, t, current);
 
-                positions[p++] = previous[0];
-                positions[p++] = previous[1];
-                positions[p++] = current[0];
-                positions[p++] = current[1];
+                int p = vertexCount * 2;
+                int c = vertexCount * 3;
 
-                colors[c++] = r;
-                colors[c++] = g;
-                colors[c++] = b;
-                colors[c++] = r;
-                colors[c++] = g;
-                colors[c++] = b;
+                positions[p] = previous[0];
+                positions[p + 1] = previous[1];
+                positions[p + 2] = current[0];
+                positions[p + 3] = current[1];
 
-                sizes[s++] = w;
-                sizes[s++] = w;
-                visibility[v++] = vis;
-                visibility[v++] = vis;
+                colors[c] = r;
+                colors[c + 1] = g;
+                colors[c + 2] = b;
+                colors[c + 3] = r;
+                colors[c + 4] = g;
+                colors[c + 5] = b;
+
+                sizes[vertexCount] = w;
+                sizes[vertexCount + 1] = w;
+                visibility[vertexCount] = vis;
+                visibility[vertexCount + 1] = vis;
 
                 previous[0] = current[0];
                 previous[1] = current[1];
+                vertexCount += 2;
             }
         }
     }
 
+    // computeControlPoint, evalQuadraticBezier inchangés
     private void computeControlPoint(Edge edge, float x1, float y1, float x2, float y2,
             GraphRenderOptions options, float[] out) {
         float dx = x2 - x1;
