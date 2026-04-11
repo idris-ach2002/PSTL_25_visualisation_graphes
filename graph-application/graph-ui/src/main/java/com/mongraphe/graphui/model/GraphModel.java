@@ -2,6 +2,7 @@ package com.mongraphe.graphui.model;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 import com.mongraphe.graphui.rendering.Camera2D;
@@ -23,7 +24,7 @@ public class GraphModel {
     private float uniformNodeB = 0.86f;
 
     private ColoringMode coloringMode = ColoringMode.COMMUNITY;
-    private final List<Edge> edges = new ArrayList<>();
+    private final ConcurrentLinkedQueue<Edge> edges = new ConcurrentLinkedQueue<>();
     private final List<Vertex> vertices = new ArrayList<>(); // index = id
 
     private int visibleVertexCount;
@@ -131,7 +132,7 @@ public class GraphModel {
         }
     }
 
-    public List<Edge> edges() {
+    public ConcurrentLinkedQueue<Edge> edges() {
         return edges;
     }
 

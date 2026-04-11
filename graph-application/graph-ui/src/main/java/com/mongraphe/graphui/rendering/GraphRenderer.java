@@ -1,6 +1,8 @@
 package com.mongraphe.graphui.rendering;
 
 import java.util.List;
+import java.util.concurrent.ConcurrentLinkedQueue;
+
 import com.jogamp.opengl.GL4;
 import com.jogamp.opengl.GLAutoDrawable;
 import com.jogamp.opengl.GLEventListener;
@@ -67,7 +69,7 @@ public final class GraphRenderer implements GLEventListener {
         GraphModel model = engine.model();
         model.lock().readLock().lock();
         List<Vertex> vertices;
-        List<Edge> edges;
+        ConcurrentLinkedQueue<Edge> edges;
         int selected;
         int maxDegree;
         GraphModel.ColoringMode mode;
@@ -77,8 +79,6 @@ public final class GraphRenderer implements GLEventListener {
         GraphRenderOptions options = renderOptions;
         try {
             vertices = model.vertices();
-            edges = model.edges();
-
             selected = model.getSelectedVertexId();
             maxDegree = model.getMaxDegree();
             mode = model.getColoringMode();
@@ -96,11 +96,12 @@ public final class GraphRenderer implements GLEventListener {
                     uniformR,
                     uniformG,
                     uniformB);
-
-            edgeBuffer.update(edges, vertices, options);
         } finally {
             model.lock().readLock().unlock();
         }
+
+        edges = model.edges();
+        edgeBuffer.update(edges, options);
 
         vertexBuffer.upload(gl);
         edgeBuffer.upload(gl);

@@ -1,7 +1,7 @@
 package com.mongraphe.graphui.rendering;
 
 import java.nio.FloatBuffer;
-import java.util.List;
+import java.util.concurrent.ConcurrentLinkedQueue;
 
 import com.jogamp.opengl.GL4;
 import com.mongraphe.graphui.model.Edge;
@@ -39,19 +39,21 @@ public class EdgeGpuBuffer {
         capacity = 0;
     }
 
-    public void update(List<Edge> edges, List<Vertex> vertices, GraphRenderOptions options) {
-        if (edges == null || vertices == null || edges.isEmpty()) {
+    public void update(ConcurrentLinkedQueue<Edge> edges, GraphRenderOptions options) {
+        if (edges == null || edges.isEmpty()) {
             vertexCount = 0;
             ensureCapacity(1);
             return;
         }
 
-        GraphRenderOptions effectiveOptions = (options == null) ? GraphRenderOptions.straight() : options;
+        GraphRenderOptions effectiveOptions = (options == null)
+                ? GraphRenderOptions.straight()
+                : options;
 
         if (effectiveOptions.edgeStyle() == GraphRenderOptions.EdgeStyle.CURVED_PARABOLIC) {
-            updateCurved(edges, vertices, effectiveOptions);
+            updateCurved(edges, effectiveOptions);
         } else {
-            updateStraight(edges, vertices);
+            updateStraight(edges);
         }
     }
 
@@ -68,35 +70,17 @@ public class EdgeGpuBuffer {
         visibility = new float[capacity];
     }
 
-    private void updateStraight(List<Edge> edges, List<Vertex> vertices) {
+    private void updateStraight(ConcurrentLinkedQueue<Edge> edges) {
         int edgeCount = edges.size();
         vertexCount = edgeCount * 2;
         ensureCapacity(vertexCount);
 
         int p = 0, c = 0, s = 0, v = 0;
         for (Edge e : edges) {
-            int id1 = e.getStartId();
-            int id2 = e.getEndId();
-            if (id1 < 0 || id1 >= vertices.size() || id2 < 0 || id2 >= vertices.size()) {
-                positions[p++] = 0f;
-                positions[p++] = 0f;
-                positions[p++] = 0f;
-                positions[p++] = 0f;
-                colors[c++] = 0f;
-                colors[c++] = 0f;
-                colors[c++] = 0f;
-                colors[c++] = 0f;
-                colors[c++] = 0f;
-                colors[c++] = 0f;
-                sizes[s++] = 0f;
-                sizes[s++] = 0f;
-                visibility[v++] = 0f;
-                visibility[v++] = 0f;
-                continue;
-            }
+            Vertex v1 = e.getStart();
+            Vertex v2 = e.getEnd();
 
-            Vertex v1 = vertices.get(id1);
-            Vertex v2 = vertices.get(id2);
+            // Coordonnées directement depuis les références (volatile)
             float x1 = (float) v1.getX();
             float y1 = (float) v1.getY();
             float x2 = (float) v2.getX();
@@ -132,7 +116,7 @@ public class EdgeGpuBuffer {
         }
     }
 
-    private void updateCurved(List<Edge> edges, List<Vertex> vertices, GraphRenderOptions options) {
+    private void updateCurved(ConcurrentLinkedQueue<Edge> edges, GraphRenderOptions options) {
         int segments = Math.max(2, options.curveSegments());
         int edgeCount = edges.size();
         int lineSegmentCount = edgeCount * segments;
@@ -141,36 +125,15 @@ public class EdgeGpuBuffer {
 
         int p = 0, c = 0, s = 0, v = 0;
         for (Edge e : edges) {
-            int id1 = e.getStartId();
-            int id2 = e.getEndId();
-            if (id1 < 0 || id1 >= vertices.size() || id2 < 0 || id2 >= vertices.size()) {
-                for (int seg = 0; seg < segments; seg++) {
-                    positions[p++] = 0f;
-                    positions[p++] = 0f;
-                    positions[p++] = 0f;
-                    positions[p++] = 0f;
-                    colors[c++] = 0f;
-                    colors[c++] = 0f;
-                    colors[c++] = 0f;
-                    colors[c++] = 0f;
-                    colors[c++] = 0f;
-                    colors[c++] = 0f;
-                    sizes[s++] = 0f;
-                    sizes[s++] = 0f;
-                    visibility[v++] = 0f;
-                    visibility[v++] = 0f;
-                }
-                continue;
-            }
-
-            Vertex v1 = vertices.get(id1);
-            Vertex v2 = vertices.get(id2);
+            Vertex v1 = e.getStart();
+            Vertex v2 = e.getEnd();
             float x1 = (float) v1.getX();
             float y1 = (float) v1.getY();
             float x2 = (float) v2.getX();
             float y2 = (float) v2.getY();
 
             if (Float.isNaN(x1) || Float.isNaN(y1) || Float.isNaN(x2) || Float.isNaN(y2)) {
+                // Remplissage de zéros pour les segments manquants
                 for (int seg = 0; seg < segments; seg++) {
                     positions[p++] = 0f;
                     positions[p++] = 0f;

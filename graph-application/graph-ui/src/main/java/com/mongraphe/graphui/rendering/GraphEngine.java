@@ -4,8 +4,10 @@ import java.nio.ByteBuffer;
 import java.nio.FloatBuffer;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
@@ -101,15 +103,15 @@ public final class GraphEngine {
 
     public static class GraphDataSnapshot {
         private final List<Vertex> vertices;
-        private final List<Edge> edges;
+        private final ConcurrentLinkedQueue<Edge> edges;
         private final Map<Integer, Vertex> verticesById;
         private final int visibleVertexCount;
         private final int visibleEdgeCount;
 
-        public GraphDataSnapshot(List<Vertex> vertices, List<Edge> edges, int visibleVertexCount,
+        public GraphDataSnapshot(List<Vertex> vertices, ConcurrentLinkedQueue<Edge> edges, int visibleVertexCount,
                 int visibleEdgeCount) {
             this.vertices = new ArrayList<>(vertices);
-            this.edges = new ArrayList<>(edges);
+            this.edges = edges;
             this.visibleVertexCount = visibleVertexCount;
             this.visibleEdgeCount = visibleEdgeCount;
             this.verticesById = new HashMap<>();
@@ -121,7 +123,7 @@ public final class GraphEngine {
             return vertices;
         }
 
-        public List<Edge> getEdges() {
+        public ConcurrentLinkedQueue<Edge> getEdges() {
             return edges;
         }
 
@@ -173,12 +175,24 @@ public final class GraphEngine {
     public GraphPage<Edge> getEdgesPage(int page, int pageSize) {
         model.lock().readLock().lock();
         try {
-            List<Edge> all = model.edges();
+            ConcurrentLinkedQueue<Edge> all = model.edges();
+            int total = all.size();
             int from = page * pageSize;
-            int to = Math.min(from + pageSize, all.size());
-            if (from >= all.size())
-                return new GraphPage<>(List.of(), all.size());
-            return new GraphPage<>(all.subList(from, to), all.size());
+            if (from >= total) {
+                return new GraphPage<>(List.of(), total);
+            }
+
+            List<Edge> pageData = new ArrayList<>(pageSize);
+            Iterator<Edge> it = all.iterator();
+            // Sauter les premiers éléments
+            for (int i = 0; i < from && it.hasNext(); i++) {
+                it.next();
+            }
+            // Collecter les 'pageSize' éléments suivants
+            for (int i = 0; i < pageSize && it.hasNext(); i++) {
+                pageData.add(it.next());
+            }
+            return new GraphPage<>(pageData, total);
         } finally {
             model.lock().readLock().unlock();
         }
@@ -540,7 +554,7 @@ public final class GraphEngine {
         nativeEngine.setDimension(width, height);
     }
 
-    public double[] getDimensions(){
+    public double[] getDimensions() {
         return nativeEngine.getDimensions();
     }
 
