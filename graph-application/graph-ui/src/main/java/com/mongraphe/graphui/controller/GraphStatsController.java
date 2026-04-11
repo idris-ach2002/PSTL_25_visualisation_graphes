@@ -1,7 +1,6 @@
 package com.mongraphe.graphui.controller;
 
 import com.mongraphe.graphui.app.CommandBus;
-import com.mongraphe.graphui.model.Metadata;
 import com.mongraphe.graphui.rendering.GraphEngine;
 
 import javafx.application.Platform;
@@ -27,10 +26,6 @@ public class GraphStatsController implements GraphEngine.GraphDataListener {
     private Label edgesHiddenLabel;
     @FXML
     private Label totalElementsLabel;
-    @FXML
-    private Label recommendedThresholdLabel;
-    @FXML
-    private Label recommendedAntiThresholdLabel;
     @FXML
     private Label selectedVertexIdLabel;
     @FXML
@@ -62,15 +57,6 @@ public class GraphStatsController implements GraphEngine.GraphDataListener {
             edgesDisplayedLabel.setText(String.valueOf(stats.visibleEdges()));
             edgesHiddenLabel.setText(String.valueOf(stats.hiddenEdges()));
             totalElementsLabel.setText(String.valueOf(stats.totalVertices() + stats.totalEdges()));
-
-            Metadata initMetadata = stats.initMetadata();
-            if (initMetadata != null) {
-                recommendedThresholdLabel.setText(String.format("%.4f", initMetadata.getEdgeThreshold()));
-                recommendedAntiThresholdLabel.setText(String.format("%.4f", initMetadata.getAntiThreshold()));
-            } else {
-                recommendedThresholdLabel.setText("-");
-                recommendedAntiThresholdLabel.setText("-");
-            }
 
             if (stats.selectedVertexId() >= 0) {
                 selectedVertexIdLabel.setText(String.valueOf(stats.selectedVertexId()));

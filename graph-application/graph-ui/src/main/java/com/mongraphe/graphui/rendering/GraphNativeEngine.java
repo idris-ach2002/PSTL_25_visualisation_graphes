@@ -13,7 +13,6 @@ import java.util.Locale;
 import java.util.Set;
 
 import com.mongraphe.graphui.model.EdgeC;
-import com.mongraphe.graphui.model.GraphData;
 import com.mongraphe.graphui.model.Metadata;
 import com.mongraphe.graphui.model.Vertex;
 
@@ -176,59 +175,6 @@ public final class GraphNativeEngine {
         return ".so";
     }
 
-    public double[][] initGraphCsv(String path, GraphData.SimilitudeMode sim, GraphData.NodeCommunity community) {
-        if (path == null || path.isBlank()) {
-            throw new IllegalArgumentException("initGraphCsv: chemin du fichier non spécifié.");
-        }
-
-        double[][] csvData = startsProgram(path);
-        int modeSimilitude = getModeSimilitude(sim);
-        initMetadata = computeThreshold(modeSimilitude, 10);
-        if (initMetadata == null) {
-            throw new IllegalStateException("initGraphCsv: impossible de calculer les seuils.");
-        }
-
-        double threshold = initMetadata.getEdgeThreshold();
-        double antiThreshold = initMetadata.getAntiThreshold();
-        metadata = initializeGraph(getModeCommunity(community), threshold, antiThreshold);
-        return csvData;
-    }
-
-    public void initGraphDot(String path, GraphData.NodeCommunity community) {
-        if (path == null || path.isBlank()) {
-            throw new IllegalArgumentException("initGraphDot: chemin du fichier non spécifié.");
-        }
-        metadata = initializeDot(path, getModeCommunity(community));
-        initMetadata = null;
-    }
-
-    private int getModeCommunity(GraphData.NodeCommunity community) {
-        if (community == null) {
-            throw new IllegalArgumentException("Le mode de communauté ne peut pas être nul.");
-        }
-        return switch (community) {
-            case LOUVAIN -> 0;
-            case LOUVAIN_PAR_COMPOSANTE -> 1;
-            case LEIDEN -> 2;
-            case LEIDEN_CPM -> 3;
-            case COULEURS_SPECIALES -> 4;
-        };
-    }
-
-    private int getModeSimilitude(GraphData.SimilitudeMode mode) {
-        if (mode == null) {
-            throw new IllegalArgumentException("Le mode de similarité ne peut pas être nul.");
-        }
-        return switch (mode) {
-            case CORRELATION -> 0;
-            case DISTANCE_COSINE -> 1;
-            case DISTANCE_EUCLIDIENNE -> 2;
-            case NORME_L1 -> 3;
-            case NORME_LINF -> 4;
-            case KL_DIVERGENCE -> 5;
-        };
-    }
-
     public Metadata getMetadata() {
         return metadata;
     }
@@ -242,9 +188,10 @@ public final class GraphNativeEngine {
         sharedPositionsBuffer = null; // éviter les références pendantes
     }
 
-    public synchronized native Metadata initializeDot(String filepath, int md);
+    public synchronized native Metadata initializeDot(String filepath, int modeCommunity);
 
-    public synchronized native Metadata initializeGraph(int modeCommunity, double threshold, double antiThreshold);
+    public synchronized native Metadata initializeGraph(int modeSimilitude, int modeCommunity, double threshold,
+            double antiThreshold);
 
     public synchronized native double[][] startsProgram(String filename);
 
@@ -262,7 +209,7 @@ public final class GraphNativeEngine {
 
     public synchronized native int[] getCommunities();
 
-    public synchronized native float[][] getClusterColors();
+    public synchronized native float[][] getCommunityColors();
 
     public synchronized native void setFriction(double friction);
 
@@ -276,7 +223,9 @@ public final class GraphNativeEngine {
 
     public synchronized native void setAmortissement(double amortissement);
 
-    public synchronized native void SetNumberClusters(int newNumberOfClusters);
+    public synchronized native void setSpatialCells(int cells);
+
+    public synchronized native void setEpsilon(double eps);
 
     public synchronized native void setKmeansMode(boolean md);
 
@@ -293,4 +242,6 @@ public final class GraphNativeEngine {
     public synchronized native double[] getDimensions();
 
     public synchronized native void setRepulsionCoeff(double coeff);
+
+    public synchronized native void loadCsvDataOnly(String filepath);
 }

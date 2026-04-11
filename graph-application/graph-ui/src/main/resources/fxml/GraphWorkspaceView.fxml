@@ -1,31 +1,97 @@
 <?xml version="1.0" encoding="UTF-8"?>
-
 <?import javafx.scene.layout.*?>
 <?import javafx.scene.control.*?>
 
 <VBox xmlns="http://javafx.com/javafx/8"
-    xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.mongraphe.graphui.controller.GraphWorkspaceController">
+    xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.mongraphe.graphui.controller.GraphWorkspaceController" spacing="12">
 
-    <HBox spacing="5">
-        <Label text="ForceAtlasCSV" style="-fx-font-weight: bold;"/>
+    <!-- En‑tête avec boutons -->
+    <HBox spacing="6" alignment="CENTER_LEFT">
+        <Label text="ForceAtlas" style="-fx-font-weight: bold;"/>
         <Region HBox.hgrow="ALWAYS"/>
-        <Button fx:id="playPauseButton" onAction="#handlePlayPause" text="▶" style="-fx-min-width: 32px; -fx-min-height: 32px; -fx-background-radius: 0;"/>
-        <Button fx:id="restartButton" onAction="#handleRestart" text="⟳" style="-fx-min-width: 32px; -fx-min-height: 32px; -fx-background-radius: 0;"/>
+        <Button fx:id="playPauseButton" onAction="#handlePlayPause" text="▶" style="-fx-min-width:32; -fx-min-height:32;"/>
+        <Button fx:id="restartButton" onAction="#handleRestart" text="⟳" style="-fx-min-width:32; -fx-min-height:32;"/>
     </HBox>
 
-    <Label text="Mesure de similarité"/>
-    <ComboBox fx:id="similarityCombo" prefWidth="220"/>
+    <!-- ==================== PARAMÈTRES DE CONSTRUCTION (STATIQUES) ==================== -->
+    <Label text="Construction du graphe" style="-fx-font-weight: bold; -fx-text-fill: #2a6496;"/>
+    <Label text="Toute modification de ces valeurs nécessite de relancer la simulation." style="-fx-font-size: 11; -fx-text-fill: #666;" wrapText="true"/>
 
-    <Label text="Mode de communauté"/>
+    <!-- Section CSV (affichée uniquement pour les CSV) -->
+    <VBox fx:id="csvSpecificBox" spacing="6">
+        <Label text="Similarité">
+            <tooltip>
+                <Tooltip text="Mesure utilisée pour comparer les lignes du CSV. Obligatoire."/>
+            </tooltip>
+        </Label>
+        <ComboBox fx:id="similarityCombo" prefWidth="220"/>
+
+        <Label text="Seuils d'arêtes" style="-fx-font-weight: bold;"/>
+        <CheckBox fx:id="useRecommendedThresholds" text="Automatique (recommandé)" selected="true">
+            <tooltip>
+                <Tooltip text="Calcule automatiquement les seuils pour une densité raisonnable."/>
+            </tooltip>
+        </CheckBox>
+        <HBox spacing="6">
+            <TextField fx:id="edgeThresholdField" promptText="Seuil arêtes" disable="true"/>
+            <TextField fx:id="antiThresholdField" promptText="Anti-seuil" disable="true"/>
+        </HBox>
+        <Label fx:id="recommendedThresholdsLabel" text="Recommandés : - / -" style="-fx-text-fill: #666;"/>
+    </VBox>
+
+    <Label text="Communautés">
+        <tooltip>
+            <Tooltip text="Algorithme de détection des communautés. Obligatoire."/>
+        </tooltip>
+    </Label>
     <ComboBox fx:id="communityCombo" prefWidth="220"/>
 
-    <Label text="Méthode de répulsion"/>
+    <Label text="Mode de répulsion">
+        <tooltip>
+            <Tooltip text="Stratégie de pondération de la répulsion."/>
+        </tooltip>
+    </Label>
     <ComboBox fx:id="repulsionCombo" prefWidth="220"/>
 
-    <Label text="Dimensions du canevas"/>
-    <HBox spacing="5">
-        <TextField fx:id="widthField" promptText="Largeur (px)" prefWidth="100"/>
-        <TextField fx:id="heightField" promptText="Hauteur (px)" prefWidth="100"/>
+        <Label text="Dimensions *">
+        <tooltip>
+            <Tooltip text="Taille de l'espace de simulation. Obligatoire."/>
+        </tooltip>
+    </Label>
+    <HBox spacing="6">
+        <TextField fx:id="widthField" promptText="Largeur" style="-fx-border-color: #d33; -fx-border-width: 1;"/>
+        <TextField fx:id="heightField" promptText="Hauteur" style="-fx-border-color: #d33; -fx-border-width: 1;"/>
     </HBox>
+
+    <!-- Partition spatiale -->
+    <Label text="Partition spatiale (optionnelle)">
+        <tooltip>
+            <Tooltip text="Découpe l'espace pour accélérer la répulsion. Laissez vide pour la valeur automatique."/>
+        </tooltip>
+    </Label>
+    <GridPane hgap="10" vgap="8">
+        <Label text="Zones :" GridPane.rowIndex="0" GridPane.columnIndex="0">
+            <tooltip>
+                <Tooltip text="Nombre de cellules. √(nb nœuds) par défaut. Plus de zones = plus rapide mais moins précis."/>
+            </tooltip>
+        </Label>
+        <TextField fx:id="spatialCellsField" promptText="auto" GridPane.rowIndex="0" GridPane.columnIndex="1"/>
+
+        <CheckBox fx:id="enableKmeans" text="K-Means" GridPane.rowIndex="1" GridPane.columnSpan="2">
+            <tooltip>
+                <Tooltip text="Active le clustering dynamique (k-means) au lieu d'une grille fixe."/>
+            </tooltip>
+        </CheckBox>
+
+        <Label text="Epsilon :" GridPane.rowIndex="2" GridPane.columnIndex="0">
+            <tooltip>
+                <Tooltip text="Seuil de convergence du k-means."/>
+            </tooltip>
+        </Label>
+        <TextField fx:id="epsilonField" promptText="0.1" GridPane.rowIndex="2" GridPane.columnIndex="1"/>
+    </GridPane>
+
+    <Separator/>
+    <Label text="* Champs obligatoires" style="-fx-font-size: 11; -fx-text-fill: #d33;"/>
 
 </VBox>

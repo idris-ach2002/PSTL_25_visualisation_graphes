@@ -194,28 +194,37 @@ public final class MainGraphController implements GraphEngine.GraphEngineListene
     public void openFile(File file) {
         if (file == null)
             return;
-        this.project = new GraphProject(file, detectType(file));
+        GraphProject.SourceType type = detectType(file);
+        this.project = new GraphProject(file, type);
+        workspaceViewController.setProjectType(type == GraphProject.SourceType.CSV);
         uiState.setStatus("Fichier sélectionné : " + file.getName());
+    }
+
+    public File getFile() {
+        if (project == null) {
+            return null;
+        }
+        return project.sourceFile();
     }
 
     public void setProject(GraphProject project) {
         this.project = project;
     }
 
-    public void startGraph(GraphData.SimilitudeMode similitude,
+    public void startGraphCsv(GraphData.SimilitudeMode similitude,
             GraphData.NodeCommunity community,
             GraphData.RepulsionMode repulsion,
-            double width,
-            double height) {
+            double width, double height,
+            double edgeThreshold, double antiThreshold) {
         if (project == null) {
-            alert(Alert.AlertType.WARNING, "Projet manquant",
-                    "Choisissez d'abord un fichier CSV, DOT ou un projet .mongraphe.");
+            alert(Alert.AlertType.WARNING, "Projet manquant", "Choisissez d'abord un fichier.");
             return;
         }
         try {
             bus.dispatchSyncVoid(engine -> {
                 engine.stopSimulation();
-                engine.load(project.sourceFile().getAbsolutePath(), project.sourceType(), similitude, community);
+                engine.loadCsv(similitude, community,
+                        edgeThreshold, antiThreshold);
                 if (repulsion != null)
                     engine.setRepulsionMode(repulsion);
             });
@@ -226,8 +235,28 @@ public final class MainGraphController implements GraphEngine.GraphEngineListene
             uiState.setStatus("Graph chargé : " + project.sourceFile().getName());
             graphStatsController.refreshStats();
         } catch (Exception e) {
-            alert(Alert.AlertType.ERROR, "Erreur de chargement",
-                    "Impossible de charger le graphe : " + rootCauseMessage(e));
+            alert(Alert.AlertType.ERROR, "Erreur de chargement", rootCauseMessage(e));
+        }
+    }
+
+    public void startGraphDot(GraphData.NodeCommunity community, double width, double height) {
+        if (project == null) {
+            alert(Alert.AlertType.WARNING, "Projet manquant", "Choisissez d'abord un fichier.");
+            return;
+        }
+        try {
+            bus.dispatchSyncVoid(engine -> {
+                engine.stopSimulation();
+                engine.loadDot(project.sourceFile().getAbsolutePath(), community);
+            });
+            engine.setDimensions(width, height);
+            engineOptionsViewController.applyCurrentOptions(false);
+            bus.dispatch(engine -> engine.startSimulation());
+            uiState.setRunning(true);
+            uiState.setStatus("Graph chargé : " + project.sourceFile().getName());
+            graphStatsController.refreshStats();
+        } catch (Exception e) {
+            alert(Alert.AlertType.ERROR, "Erreur de chargement", rootCauseMessage(e));
         }
     }
 

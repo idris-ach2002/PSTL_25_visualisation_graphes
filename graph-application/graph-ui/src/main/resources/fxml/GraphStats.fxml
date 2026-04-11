@@ -29,16 +29,6 @@
     </GridPane>
 
     <Separator/>
-    <Label text="Seuils" style="-fx-font-weight: bold;"/>
-    <GridPane hgap="8" vgap="4">
-        <Label text="Seuil conseillé:" GridPane.rowIndex="0" GridPane.columnIndex="0"/>
-        <Label fx:id="recommendedThresholdLabel" text="-" GridPane.rowIndex="0" GridPane.columnIndex="1"/>
-
-        <Label text="Anti-seuil conseillé:" GridPane.rowIndex="1" GridPane.columnIndex="0"/>
-        <Label fx:id="recommendedAntiThresholdLabel" text="-" GridPane.rowIndex="1" GridPane.columnIndex="1"/>
-    </GridPane>
-
-    <Separator/>
     <Label text="Sélection" style="-fx-font-weight: bold;"/>
     <GridPane hgap="8" vgap="4">
         <Label text="ID:" GridPane.rowIndex="0" GridPane.columnIndex="0"/>

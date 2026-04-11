@@ -231,30 +231,50 @@ public final class GraphEngine {
                 model.getVisibleEdgeCount());
     }
 
-    public boolean load(String path, GraphProject.SourceType type, GraphData.SimilitudeMode sim,
-            GraphData.NodeCommunity communityMode) {
-        switch (type) {
-            case CSV -> {
-                loadCsv(path, sim, communityMode);
-                initialized = true;
-                return true;
-            }
-            case DOT -> {
-                loadDot(path, communityMode);
-                initialized = true;
-                return true;
-            }
-            default -> {
-                return false;
-            }
+    private int getModeCommunity(GraphData.NodeCommunity community) {
+        if (community == null) {
+            throw new IllegalArgumentException("Le mode de communauté ne peut pas être nul.");
         }
+        return switch (community) {
+            case LOUVAIN -> 0;
+            case LOUVAIN_PAR_COMPOSANTE -> 1;
+            case LEIDEN -> 2;
+            case LEIDEN_CPM -> 3;
+            case COULEURS_SPECIALES -> 4;
+        };
     }
 
-    public void loadCsv(String path, GraphData.SimilitudeMode sim, GraphData.NodeCommunity communityMode) {
+    private int getModeSimilitude(GraphData.SimilitudeMode mode) {
+        if (mode == null) {
+            throw new IllegalArgumentException("Le mode de similarité ne peut pas être nul.");
+        }
+        return switch (mode) {
+            case CORRELATION -> 0;
+            case DISTANCE_COSINE -> 1;
+            case DISTANCE_EUCLIDIENNE -> 2;
+            case NORME_L1 -> 3;
+            case NORME_LINF -> 4;
+            case KL_DIVERGENCE -> 5;
+        };
+    }
+
+    public void startProgram(String path) {
         if (path == null || path.isBlank())
             throw new IllegalArgumentException("CSV path missing");
+        nativeEngine.startsProgram(path);
+    }
+
+    public void loadCsv(GraphData.SimilitudeMode sim,
+            GraphData.NodeCommunity communityMode,
+            double edgeThreshold, double antiThreshold) {
         graphLoaded = false;
-        nativeEngine.initGraphCsv(path, sim, communityMode);
+
+        int modeSim = getModeSimilitude(sim);
+        int modeComm = getModeCommunity(communityMode);
+
+        // Appeler l'initialisation native avec les seuils
+        nativeEngine.initializeGraph(modeSim, modeComm, edgeThreshold, antiThreshold);
+
         rebuildModelFromNative();
         notifyDataChanged();
         graphLoaded = true;
@@ -264,16 +284,24 @@ public final class GraphEngine {
         if (path == null || path.isBlank())
             throw new IllegalArgumentException("DOT path missing");
         graphLoaded = false;
-        nativeEngine.initGraphDot(path, communityMode);
+
+        int modeComm = getModeCommunity(communityMode);
+
+        nativeEngine.initializeDot(path, modeComm);
         rebuildModelFromNative();
         graphLoaded = true;
+    }
+
+    public Metadata computeThreshold(GraphData.SimilitudeMode md, int edgeFactor) {
+        int i = getModeSimilitude(md);
+        return nativeEngine.computeThreshold(i, edgeFactor);
     }
 
     private void rebuildModelFromNative() {
         Vertex[] verticesArray = nativeEngine.getPositions();
         EdgeC[] edgesArray = nativeEngine.getEdges();
         int[] communityIds = nativeEngine.getCommunities();
-        float[][] colors = nativeEngine.getClusterColors();
+        float[][] colors = nativeEngine.getCommunityColors();
 
         if (verticesArray == null || edgesArray == null) {
             throw new IllegalStateException("Moteur natif sans données");
@@ -465,6 +493,14 @@ public final class GraphEngine {
         nativeEngine.setFriction(f);
     }
 
+    public void setRepulsionCoeff(double coeff) {
+        nativeEngine.setRepulsionCoeff(coeff);
+    }
+
+    public void setEpsilon(double eps) {
+        nativeEngine.setEpsilon(eps);
+    }
+
     public void setAttractionCoefficient(double c) {
         nativeEngine.setAttractionCoeff(c);
     }
@@ -481,9 +517,8 @@ public final class GraphEngine {
         nativeEngine.setAmortissement(a);
     }
 
-    public void setNbClusters(int n) {
-        nativeEngine.SetNumberClusters(n);
-        rebuildModelFromNative(); // recharge les communautés
+    public void setSpatialCells(int cells) {
+        nativeEngine.setSpatialCells(cells);
         notifyDataChanged();
     }
 

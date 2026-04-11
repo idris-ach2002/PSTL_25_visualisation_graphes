@@ -112,7 +112,7 @@ Java_com_mongraphe_graphui_rendering_GraphNativeEngine_getCommunities(
 }
 
 JNIEXPORT jobjectArray JNICALL
-Java_com_mongraphe_graphui_rendering_GraphNativeEngine_getClusterColors(
+Java_com_mongraphe_graphui_rendering_GraphNativeEngine_getCommunityColors(
     JNIEnv *env, jobject obj) {
   jclass float_array_class = (*env)->FindClass(env, "[F");
   if (float_array_class == NULL) {
@@ -339,32 +339,34 @@ Java_com_mongraphe_graphui_rendering_GraphNativeEngine_computeThreshold(
 
 JNIEXPORT jobject JNICALL
 Java_com_mongraphe_graphui_rendering_GraphNativeEngine_initializeGraph(
-    JNIEnv *env, jobject obj, jint md, jdouble thresh, jdouble anti_thresh) {
+    JNIEnv *env, jobject obj, jint modeSimilitude, jint modeCommunity,
+    jdouble thresh, jdouble anti_thresh) {
 
-  // Réinitialiser les compteurs
+  num_nodes = num_rows;
+  live_nodes = num_nodes;
+
   num_edges = 0;
   num_antiedges = 0;
 
   InitPool(&pool, 1000, 8);
 
-  create_edges_from_thresholds(md, thresh, anti_thresh);
-
-  // Construire le CSR après avoir les arêtes
+  // Création des arêtes avec le mode de similarité
+  create_edges_from_thresholds(modeSimilitude, thresh, anti_thresh);
   build_csr_adjacency();
 
+  // Détection des communautés avec le mode communauté
   modeA = 0;
-  if (md == 0) {
+  if (modeCommunity == 0) {
     num_communities = louvain_method();
-  } else if (md == 1) {
+  } else if (modeCommunity == 1) {
     num_communities = louvain_methodC();
-  } else if (md == 2) {
+  } else if (modeCommunity == 2) {
     num_communities = leiden_method();
-  } else if (md == 3) {
+  } else if (modeCommunity == 3) {
     num_communities = leiden_method_CPM();
-  } else if (md == 4) {
+  } else if (modeCommunity == 4) {
     init_S(num_nodes);
     num_communities = leiden_method_CPM();
-    // Demander le chemin du fichier à l'utilisateur
     lireColonneCSV(S, &nbValeurs);
     modeA = 1;
     compute_ratio_S(S);
@@ -390,6 +392,7 @@ Java_com_mongraphe_graphui_rendering_GraphNativeEngine_initializeGraph(
       (*env)->NewObject(env, res_class, constructor, num_nodes, thresh,
                         anti_thresh, num_edges, num_antiedges, n_clusters);
 
+  // Initialisation des paramètres par défaut
   thresholdS = (Lx / 4000) * (Ly / 4000);
   thresholdA = (Lx / 4000) * (Ly / 4000);
   epsilon = (Lx / 800) * (Ly / 800);
@@ -406,35 +409,31 @@ Java_com_mongraphe_graphui_rendering_GraphNativeEngine_initializeGraph(
 
 JNIEXPORT jobject JNICALL
 Java_com_mongraphe_graphui_rendering_GraphNativeEngine_initializeDot(
-    JNIEnv *env, jobject obj, jstring filepath, jint md) {
+    JNIEnv *env, jobject obj, jstring filepath, jint modeCommunity) {
 
-  jboolean b = JNI_FALSE;
-  const char *str = (*env)->GetStringUTFChars(env, filepath, &b);
-
+  const char *str = (*env)->GetStringUTFChars(env, filepath, NULL);
   parse_dot_file(str);
-  build_csr_adjacency();
+  (*env)->ReleaseStringUTFChars(env, filepath, str);
 
+  build_csr_adjacency();
   InitPool(&pool, 1000, 8);
 
   modeA = 0;
-  if (md == 0) {
+  if (modeCommunity == 0) {
     num_communities = louvain_method();
-  } else if (md == 1) {
+  } else if (modeCommunity == 1) {
     num_communities = louvain_methodC();
-  } else if (md == 2) {
+  } else if (modeCommunity == 2) {
     num_communities = leiden_method();
-  } else if (md == 3) {
+  } else if (modeCommunity == 3) {
     num_communities = leiden_method_CPM();
-  } else if (md == 4) {
+  } else if (modeCommunity == 4) {
     init_S(num_nodes);
     num_communities = leiden_method_CPM();
-    // Demander le chemin du fichier à l'utilisateur
     lireColonneCSV(S, &nbValeurs);
     modeA = 1;
     compute_ratio_S(S);
     free_S();
-  } else {
-    printf("Option invalide\n");
   }
 
   initialize_community_colors();
@@ -454,8 +453,6 @@ Java_com_mongraphe_graphui_rendering_GraphNativeEngine_initializeDot(
       (*env)->GetMethodID(env, res_class, "<init>", "(IDDD)V");
   jobject res =
       (*env)->NewObject(env, res_class, constructor, num_nodes, 0., 0., 0.);
-
-  (*env)->ReleaseStringUTFChars(env, filepath, str);
 
   live_nodes = num_nodes;
   thresholdS = (Lx / 4000) * (Ly / 4000);
@@ -545,14 +542,20 @@ Java_com_mongraphe_graphui_rendering_GraphNativeEngine_setNodePosition(
 }
 
 JNIEXPORT void JNICALL
-Java_com_mongraphe_graphui_rendering_GraphNativeEngine_SetNumberClusters(
+Java_com_mongraphe_graphui_rendering_GraphNativeEngine_setSpatialCells(
     JNIEnv *env, jobject obj, jint new_n_clusters) {
   free_clusters();
   n_clusters = new_n_clusters;
-
   init_clusters(n_clusters);
   initialize_centers();
   assign_cluster_colors();
+}
+
+JNIEXPORT void JNICALL
+Java_com_mongraphe_graphui_rendering_GraphNativeEngine_setEpsilon(JNIEnv *env,
+                                                                  jobject obj,
+                                                                  jdouble eps) {
+  epsilon = eps;
 }
 
 JNIEXPORT void JNICALL

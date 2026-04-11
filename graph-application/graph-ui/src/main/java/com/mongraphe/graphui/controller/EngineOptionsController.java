@@ -2,7 +2,6 @@ package com.mongraphe.graphui.controller;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Properties;
 
 import com.mongraphe.graphui.app.CommandBus;
 import com.mongraphe.graphui.interaction.commands.SetEngineOptionsCommand;
@@ -10,26 +9,51 @@ import com.mongraphe.graphui.interfaces.CommandBusLinkedI;
 import com.mongraphe.graphui.rendering.GraphEngine;
 
 import javafx.fxml.FXML;
-import javafx.scene.control.Alert;
-import javafx.scene.control.CheckBox;
-import javafx.scene.control.TextField;
+import javafx.scene.control.*;
+import javafx.util.StringConverter;
 
 public final class EngineOptionsController implements CommandBusLinkedI<GraphEngine> {
 
     private CommandBus<GraphEngine> bus;
 
-    @FXML private TextField upScale;
-    @FXML private TextField newFriction;
-    @FXML private TextField attractionCoefficient;
-    @FXML private TextField repulsionThreshold;
-    @FXML private TextField newAmortissement;
-    @FXML private TextField nbClusters;
-
-    @FXML private CheckBox enableKmeans;
+    @FXML
+    private TextField frictionField;
+    @FXML
+    private TextField attractionCoeffField;
+    @FXML
+    private TextField repulsionCoeffField;
+    @FXML
+    private TextField antiRepulsionField;
+    @FXML
+    private TextField amortissementField;
+    @FXML
+    private ComboBox<Integer> repulsionModeCombo;
 
     @Override
     public void setBus(CommandBus<GraphEngine> bus) {
         this.bus = bus;
+    }
+
+    @FXML
+    private void initialize() {
+        repulsionModeCombo.getItems().addAll(0, 1, 2);
+        repulsionModeCombo.setConverter(new StringConverter<>() {
+            @Override
+            public String toString(Integer mode) {
+                return switch (mode) {
+                    case 0 -> "Pondéré par degrés";
+                    case 1 -> "Uniforme";
+                    case 2 -> "Renforcé inter-communautés";
+                    default -> "";
+                };
+            }
+
+            @Override
+            public Integer fromString(String s) {
+                return null;
+            }
+        });
+        repulsionModeCombo.getSelectionModel().selectFirst();
     }
 
     @FXML
@@ -38,9 +62,8 @@ public final class EngineOptionsController implements CommandBusLinkedI<GraphEng
     }
 
     public void applyCurrentOptions(boolean undoable) {
-        if (bus == null) {
+        if (bus == null)
             return;
-        }
 
         List<String> errors = new ArrayList<>();
         EngineOptions options = readOptions(errors);
@@ -56,70 +79,33 @@ public final class EngineOptionsController implements CommandBusLinkedI<GraphEng
         }
     }
 
-    public void fillProperties(Properties p) {
-        put(p, "upScale", upScale.getText());
-        put(p, "newFriction", newFriction.getText());
-        put(p, "attractionCoefficient", attractionCoefficient.getText());
-        put(p, "repulsionThreshold", repulsionThreshold.getText());
-        put(p, "newAmortissement", newAmortissement.getText());
-        put(p, "nbClusters", nbClusters.getText());
-
-        p.setProperty("kmeansEnabled", Boolean.toString(enableKmeans.isSelected()));
-    }
-
-    public void loadFromProperties(Properties p) {
-        upScale.setText(p.getProperty("upScale", upScale.getText()));
-        newFriction.setText(p.getProperty("newFriction", newFriction.getText()));
-        attractionCoefficient.setText(p.getProperty("attractionCoefficient", attractionCoefficient.getText()));
-        repulsionThreshold.setText(p.getProperty("repulsionThreshold", repulsionThreshold.getText()));
-        newAmortissement.setText(p.getProperty("newAmortissement", newAmortissement.getText()));
-        nbClusters.setText(p.getProperty("nbClusters", nbClusters.getText()));
-
-        enableKmeans.setSelected(Boolean.parseBoolean(p.getProperty("kmeansEnabled", "false")));
-    }
-
-    private void put(Properties p, String key, String value) {
-        if (value != null) {
-            p.setProperty(key, value);
-        }
-    }
-
     private EngineOptions readOptions(List<String> errors) {
-        EngineOptions options = new EngineOptions();;
-        options.newFriction = parseDoubleOrNull(newFriction, errors, "Friction");
-        options.attractionCoefficient = parseDoubleOrNull(attractionCoefficient, errors, "Coefficient d'attraction");
-        options.repulsionThreshold = parseDoubleOrNull(repulsionThreshold, errors, "Seuil de répulsion");
-        options.newAmortissement = parseDoubleOrNull(newAmortissement, errors, "Amortissement");
-        options.nbClusters = parseIntOrNull(nbClusters, errors, "Nombre de clusters");
-        validateStrictlyPositive(newFriction, options.newFriction, errors, "Friction");
-        validateNonNegative(attractionCoefficient, options.attractionCoefficient, errors, "Coefficient d'attraction");
-        validateNonNegative(repulsionThreshold, options.repulsionThreshold, errors, "Seuil de répulsion");
-        validateStrictlyPositive(newAmortissement, options.newAmortissement, errors, "Amortissement");
-        validateStrictlyPositive(nbClusters, options.nbClusters, errors, "Nombre de clusters");
-        options.kmeansEnabled = enableKmeans.isSelected();
+        EngineOptions options = new EngineOptions();
+        options.friction = parsePositiveDouble(frictionField, errors, "Friction");
+        options.attractionCoefficient = parseNonNegativeDouble(attractionCoeffField, errors, "Attraction");
+        options.repulsionCoeff = parseNonNegativeDouble(repulsionCoeffField, errors, "Répulsion intra-zone");
+        options.antiRepulsion = parseNonNegativeDouble(antiRepulsionField, errors, "Répulsion anti-arêtes");
+        options.amortissement = parsePositiveDouble(amortissementField, errors, "Amortissement");
+        options.repulsionMode = repulsionModeCombo.getValue();
         return options;
     }
 
-    private void validateStrictlyPositive(TextField field, Number value, List<String> errors, String label) {
-        if (value == null) {
-            return;
+    private Double parsePositiveDouble(TextField field, List<String> errors, String label) {
+        Double value = parseDoubleOrNull(field, errors, label);
+        if (value != null && value <= 0) {
+            markInvalid(field, errors, label, String.valueOf(value));
+            return null;
         }
-        if (value.doubleValue() > 0d) {
-            clearInvalid(field);
-            return;
-        }
-        markInvalid(field, errors, label, String.valueOf(value));
+        return value;
     }
 
-    private void validateNonNegative(TextField field, Number value, List<String> errors, String label) {
-        if (value == null) {
-            return;
+    private Double parseNonNegativeDouble(TextField field, List<String> errors, String label) {
+        Double value = parseDoubleOrNull(field, errors, label);
+        if (value != null && value < 0) {
+            markInvalid(field, errors, label, String.valueOf(value));
+            return null;
         }
-        if (value.doubleValue() >= 0d) {
-            clearInvalid(field);
-            return;
-        }
-        markInvalid(field, errors, label, String.valueOf(value));
+        return value;
     }
 
     private Double parseDoubleOrNull(TextField field, List<String> errors, String label) {
@@ -130,20 +116,6 @@ public final class EngineOptionsController implements CommandBusLinkedI<GraphEng
         try {
             clearInvalid(field);
             return Double.parseDouble(value.replace(',', '.'));
-        } catch (NumberFormatException e) {
-            markInvalid(field, errors, label, value);
-            return null;
-        }
-    }
-
-    private Integer parseIntOrNull(TextField field, List<String> errors, String label) {
-        String value = normalize(field);
-        if (value == null) {
-            return null;
-        }
-        try {
-            clearInvalid(field);
-            return Integer.parseInt(value);
         } catch (NumberFormatException e) {
             markInvalid(field, errors, label, value);
             return null;

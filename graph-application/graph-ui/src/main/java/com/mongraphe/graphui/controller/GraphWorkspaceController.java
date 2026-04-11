@@ -1,23 +1,26 @@
 package com.mongraphe.graphui.controller;
 
+import java.io.File;
+
 import com.mongraphe.graphui.app.CommandBus;
 import com.mongraphe.graphui.interfaces.CommandBusLinkedI;
 import com.mongraphe.graphui.model.GraphData;
+import com.mongraphe.graphui.model.Metadata;
 import com.mongraphe.graphui.rendering.GraphEngine;
 
 import javafx.animation.PauseTransition;
+import javafx.application.Platform;
 import javafx.fxml.FXML;
-import javafx.scene.control.Button;
-import javafx.scene.control.ComboBox;
-import javafx.scene.control.Control;
-import javafx.scene.control.TextField;
-import javafx.scene.control.Tooltip;
+import javafx.scene.control.*;
+import javafx.scene.layout.VBox;
 import javafx.util.Duration;
 
 public final class GraphWorkspaceController implements CommandBusLinkedI<GraphEngine> {
 
     private MainGraphController mainController;
 
+    @FXML
+    private VBox csvSpecificBox;
     @FXML
     private ComboBox<GraphData.SimilitudeMode> similarityCombo;
     @FXML
@@ -35,7 +38,27 @@ public final class GraphWorkspaceController implements CommandBusLinkedI<GraphEn
     @FXML
     private TextField heightField;
 
+    @FXML
+    private CheckBox useRecommendedThresholds;
+    @FXML
+    private TextField edgeThresholdField;
+    @FXML
+    private TextField antiThresholdField;
+    @FXML
+    private Label recommendedThresholdsLabel;
+
+    // Nouveaux champs pour la partition spatiale
+    @FXML
+    private TextField spatialCellsField;
+    @FXML
+    private CheckBox enableKmeans;
+    @FXML
+    private TextField epsilonField;
+
     private CommandBus<GraphEngine> bus;
+    private boolean isCsvProject = false;
+    private double recommendedEdge = 0.0;
+    private double recommendedAnti = 0.0;
 
     public void setMainController(MainGraphController controller) {
         this.mainController = controller;
@@ -43,7 +66,6 @@ public final class GraphWorkspaceController implements CommandBusLinkedI<GraphEn
 
     @FXML
     private void initialize() {
-        similarityCombo.getItems().setAll(GraphData.SimilitudeMode.values());
         communityCombo.getItems().setAll(GraphData.NodeCommunity.values());
         repulsionCombo.getItems().setAll(GraphData.RepulsionMode.values());
         if (!repulsionCombo.getItems().isEmpty()) {
@@ -54,13 +76,46 @@ public final class GraphWorkspaceController implements CommandBusLinkedI<GraphEn
         restartButton.setText("⟳");
         restartButton.setTooltip(new Tooltip("Relancer l'algorithme depuis zéro"));
         playPauseButton.setTooltip(new Tooltip("Lancer"));
+
+        communityCombo.getSelectionModel().selectFirst();
+        repulsionCombo.getSelectionModel().selectFirst();
+
+        // CSV
+        similarityCombo.getItems().setAll(GraphData.SimilitudeMode.values());
+        similarityCombo.getSelectionModel().selectFirst();
+        useRecommendedThresholds.selectedProperty().addListener((obs, old, sel) -> {
+            edgeThresholdField.setDisable(sel);
+            antiThresholdField.setDisable(sel);
+            if (sel) {
+                edgeThresholdField.setText(String.format("%.4f", recommendedEdge));
+                antiThresholdField.setText(String.format("%.4f", recommendedAnti));
+            }
+        });
+
+        // Valeurs par défaut pour la partition spatiale
+        enableKmeans.setSelected(false);
+        epsilonField.setText("0.1");
     }
 
-    // Appelée par MainGraphController via le listener du moteur
+    public void setProjectType(boolean isCsv) {
+        this.isCsvProject = isCsv;
+        csvSpecificBox.setVisible(isCsv);
+        csvSpecificBox.setManaged(isCsv);
+    }
+
+    public void setRecommendedThresholds(double edge, double anti) {
+        this.recommendedEdge = edge;
+        this.recommendedAnti = anti;
+        recommendedThresholdsLabel.setText(String.format("Recommandés : %.4f / %.4f", edge, anti));
+        if (useRecommendedThresholds.isSelected()) {
+            edgeThresholdField.setText(String.format("%.4f", edge));
+            antiThresholdField.setText(String.format("%.4f", anti));
+        }
+    }
+
     public void updatePlayPauseIcon(boolean running) {
         if (bus == null)
             return;
-
         if (running) {
             playPauseButton.setText("⏸");
             playPauseButton.setTooltip(new Tooltip("Mettre en pause"));
@@ -95,7 +150,6 @@ public final class GraphWorkspaceController implements CommandBusLinkedI<GraphEn
             return false;
         }
 
-        // Efface les styles d'erreur éventuels
         widthField.setStyle("");
         heightField.setStyle("");
         return true;
@@ -126,31 +180,100 @@ public final class GraphWorkspaceController implements CommandBusLinkedI<GraphEn
     }
 
     private void startGraph() {
-        // Validation des dimensions
-        if (!validateDimensions()) {
+        if (!validateDimensions())
             return;
-        }
-
-        // Validation des sélecteurs
-        if (similarityCombo.getValue() == null || communityCombo.getValue() == null) {
-            if (similarityCombo.getValue() == null) {
-                showTooltip(similarityCombo, "Sélectionnez une mesure de similarité");
-            }
-            if (communityCombo.getValue() == null) {
-                showTooltip(communityCombo, "Sélectionnez une méthode de communauté");
-            }
-            return;
-        }
 
         double width = Double.parseDouble(widthField.getText().trim());
         double height = Double.parseDouble(heightField.getText().trim());
 
-        mainController.startGraph(
-                similarityCombo.getValue(),
-                communityCombo.getValue(),
-                repulsionCombo.getValue(),
-                width,
-                height);
+        File f = mainController.getFile();
+        String path = f.getAbsolutePath();
+        bus.dispatchSyncVoid(e -> e.startProgram(path));
+
+        // Initialisation automatique du champ spatialCells
+        Platform.runLater(() -> {
+            if (spatialCellsField.getText().isEmpty()) {
+                Integer nodeCount = bus.dispatchSync(engine -> engine.model().vertexCount());
+                if (nodeCount != null && nodeCount > 0) {
+                    int cells = (int) Math.sqrt(nodeCount);
+                    spatialCellsField.setText(String.valueOf(cells));
+                }
+            }
+        });
+
+        if (isCsvProject) {
+            if (similarityCombo.getValue() == null) {
+                showTooltip(similarityCombo, "Sélectionnez une mesure de similarité");
+                return;
+            }
+
+            double edgeThreshold, antiThreshold;
+            if (useRecommendedThresholds.isSelected()) {
+                Metadata recommended = bus
+                        .dispatchSync(engine -> engine.computeThreshold(similarityCombo.getValue(), 10));
+                recommendedEdge = recommended.getEdgeThreshold();
+                recommendedAnti = recommended.getAntiThreshold();
+                edgeThreshold = recommendedEdge;
+                antiThreshold = recommendedAnti;
+                setRecommendedThresholds(recommendedEdge, recommendedAnti);
+            } else {
+                try {
+                    edgeThreshold = Double.parseDouble(edgeThresholdField.getText().trim());
+                    antiThreshold = Double.parseDouble(antiThresholdField.getText().trim());
+                } catch (NumberFormatException e) {
+                    showTooltip(edgeThresholdField, "Seuil invalide");
+                    return;
+                }
+            }
+
+            // Récupérer les paramètres de partition spatiale (peuvent être vides)
+            Integer spatialCells = parseSpatialCells();
+            Boolean kmeans = enableKmeans.isSelected();
+            Double epsilon = parseEpsilon();
+
+            if (spatialCells != null) {
+                bus.dispatchSyncVoid(e -> e.setSpatialCells(spatialCells));
+            }
+
+            bus.dispatchSyncVoid(e -> e.setKmeansMode(kmeans));
+
+            if (kmeans && epsilon != null) {
+                bus.dispatchSyncVoid(e -> e.setEpsilon(epsilon));
+            }
+
+            mainController.startGraphCsv(
+                    similarityCombo.getValue(),
+                    communityCombo.getValue(),
+                    repulsionCombo.getValue(),
+                    width, height,
+                    edgeThreshold, antiThreshold);
+        } else {
+            mainController.startGraphDot(
+                    communityCombo.getValue(),
+                    width, height);
+        }
+    }
+
+    private Integer parseSpatialCells() {
+        String text = spatialCellsField.getText().trim();
+        if (text.isEmpty() || text.equalsIgnoreCase("auto"))
+            return null;
+        try {
+            return Integer.parseInt(text);
+        } catch (NumberFormatException e) {
+            return null;
+        }
+    }
+
+    private Double parseEpsilon() {
+        String text = epsilonField.getText().trim();
+        if (text.isEmpty())
+            return null;
+        try {
+            return Double.parseDouble(text);
+        } catch (NumberFormatException e) {
+            return null;
+        }
     }
 
     private void showTooltip(Control control, String message) {
@@ -165,10 +288,6 @@ public final class GraphWorkspaceController implements CommandBusLinkedI<GraphEn
         delay.play();
     }
 
-    public GraphData.SimilitudeMode getSelectedSimilarity() {
-        return similarityCombo.getValue();
-    }
-
     public GraphData.NodeCommunity getSelectedCommunity() {
         return communityCombo.getValue();
     }
@@ -177,10 +296,7 @@ public final class GraphWorkspaceController implements CommandBusLinkedI<GraphEn
         return repulsionCombo.getValue();
     }
 
-    public void setSelections(GraphData.SimilitudeMode similarity,
-            GraphData.NodeCommunity community,
-            GraphData.RepulsionMode repulsion) {
-        similarityCombo.setValue(similarity);
+    public void setSelections(GraphData.NodeCommunity community, GraphData.RepulsionMode repulsion) {
         communityCombo.setValue(community);
         if (repulsion != null)
             repulsionCombo.setValue(repulsion);

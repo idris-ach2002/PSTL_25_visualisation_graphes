@@ -1,14 +1,24 @@
 package com.mongraphe.graphui.controller;
 
 public final class EngineOptions {
-    public Double degreeFactor;
-    public Double initialNodeSize;
-    public Double newFriction;
+    // Dynamique
+    public Double friction;
     public Double attractionCoefficient;
-    public Double repulsionThreshold;
-    public Double newAmortissement;
-    public Integer nbClusters;
+    public Double repulsionCoeff; // intra‑cluster
+    public Double antiRepulsion; // anti‑arêtes
+    public Double amortissement;
+    public Integer repulsionMode; // 0,1,2
+
+    // Partition spatiale
+    public Integer spatialCells;
+    public Boolean kmeansEnabled;
+    public Double epsilon; // convergence k‑means
+
+    // Filtres (visuels)
     public Integer minimumDegree;
     public Double minEdgeWeight;
-    public Boolean kmeansEnabled;
+
+    // Apparence
+    public Double initialNodeSize;
+    public Double degreeFactor;
 }

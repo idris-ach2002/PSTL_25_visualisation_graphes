@@ -1,34 +1,34 @@
 <?xml version="1.0" encoding="UTF-8"?>
-
 <?import javafx.scene.layout.*?>
 <?import javafx.scene.control.*?>
 
 <VBox xmlns="http://javafx.com/javafx/8"
-  xmlns:fx="http://javafx.com/fxml/1"
-  fx:controller="com.mongraphe.graphui.controller.EngineOptionsController">
+  xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.mongraphe.graphui.controller.EngineOptionsController" spacing="12">
 
-  <Label text="Paramètres du graphe" style="-fx-font-weight: bold; -fx-padding: 10 0 0 0;" />
-  <GridPane hgap="10" vgap="5">
+  <Label text="Paramètres dynamiques" style="-fx-font-weight: bold; -fx-text-fill: #2a6496;"/>
+  <Label text="Ces valeurs peuvent être modifiées pendant la simulation sans redémarrage." style="-fx-font-size: 11; -fx-text-fill: #666;" wrapText="true"/>
 
-    <Label text="Friction:" GridPane.rowIndex="6" GridPane.columnIndex="0" />
-    <TextField fx:id="newFriction" promptText="auto" GridPane.rowIndex="6" GridPane.columnIndex="1" />
+  <GridPane hgap="10" vgap="8">
+    <Label text="Friction :" />
+    <TextField fx:id="frictionField" promptText="0.1" GridPane.columnIndex="1"/>
 
-    <Label text="Coefficient d'attraction:" GridPane.rowIndex="7" GridPane.columnIndex="0" />
-    <TextField fx:id="attractionCoefficient" promptText="auto" GridPane.rowIndex="7" GridPane.columnIndex="1" />
+    <Label text="Attraction :" GridPane.rowIndex="1"/>
+    <TextField fx:id="attractionCoeffField" promptText="10" GridPane.rowIndex="1" GridPane.columnIndex="1"/>
 
-    <Label text="Seuil de répulsion:" GridPane.rowIndex="8" GridPane.columnIndex="0" />
-    <TextField fx:id="repulsionThreshold" promptText="auto" GridPane.rowIndex="8" GridPane.columnIndex="1" />
+    <Label text="Répulsion intra-zone :" GridPane.rowIndex="2"/>
+    <TextField fx:id="repulsionCoeffField" promptText="10" GridPane.rowIndex="2" GridPane.columnIndex="1"/>
 
-    <Label text="Amortissement:" GridPane.rowIndex="9" GridPane.columnIndex="0" />
-    <TextField fx:id="newAmortissement" promptText="auto" GridPane.rowIndex="9" GridPane.columnIndex="1" />
+    <Label text="Répulsion anti-arêtes :" GridPane.rowIndex="3"/>
+    <TextField fx:id="antiRepulsionField" promptText="50" GridPane.rowIndex="3" GridPane.columnIndex="1"/>
 
-    <Label text="Nombre de clusters:" GridPane.rowIndex="10" GridPane.columnIndex="0" />
-    <TextField fx:id="nbClusters" promptText="désactivé" GridPane.rowIndex="10" GridPane.columnIndex="1" />
+    <Label text="Amortissement :" GridPane.rowIndex="4"/>
+    <TextField fx:id="amortissementField" promptText="0.999" GridPane.rowIndex="4" GridPane.columnIndex="1"/>
+
+    <Label text="Mode répulsion :" GridPane.rowIndex="5"/>
+    <ComboBox fx:id="repulsionModeCombo" GridPane.rowIndex="5" GridPane.columnIndex="1" prefWidth="160"/>
   </GridPane>
 
-  <CheckBox fx:id="enableKmeans" text="Activer K-Means"/>
-
-  <HBox spacing="8" alignment="CENTER_RIGHT">
-    <Button text="Appliquer" onAction="#applyOptions" styleClass="button"/>
+  <HBox alignment="CENTER_RIGHT">
+    <Button text="Appliquer" onAction="#applyOptions"/>
   </HBox>
 </VBox>
