@@ -11,6 +11,7 @@
         <MenuItem text="Ouvrir..." onAction="#handleOpen"/>
         <MenuItem text="Enregistrer le projet..." onAction="#handleSaveProject"/>
         <MenuItem text="Exporter en PNG..." onAction="#handleExportPng"/>
+        <MenuItem text="Exporter en SVG..." onAction="#handleExportSvg"/>
         <MenuItem text="Fermer l'espace de travail" onAction="#handleCloseWorkspace"/>
         <MenuItem text="Quitter" onAction="#handleQuit"/>
     </Menu>

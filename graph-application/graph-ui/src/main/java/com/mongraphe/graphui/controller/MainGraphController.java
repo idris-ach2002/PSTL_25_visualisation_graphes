@@ -2,9 +2,11 @@ package com.mongraphe.graphui.controller;
 
 import java.io.File;
 import java.nio.file.Files;
+import java.util.ArrayList;
 
 import com.mongraphe.graphui.app.CommandBus;
 import com.mongraphe.graphui.app.UiState;
+import com.mongraphe.graphui.export.SvgExporter;
 import com.mongraphe.graphui.interaction.InteractionService;
 import com.mongraphe.graphui.model.GraphData;
 import com.mongraphe.graphui.model.GraphProject;
@@ -307,6 +309,41 @@ public final class MainGraphController implements GraphEngine.GraphEngineListene
                         () -> alert(Alert.AlertType.ERROR, "Erreur", "Export PNG impossible : " + e.getMessage()));
             }
         }, "graph-export-thread").start();
+    }
+
+    public void exportSvg() {
+        if (engine == null || !engine.isGraphLoaded()) {
+            alert(Alert.AlertType.WARNING, "Export SVG", "Aucun graphe chargé.");
+            return;
+        }
+        FileChooser chooser = new FileChooser();
+        chooser.setTitle("Exporter en SVG");
+        chooser.getExtensionFilters().add(new FileChooser.ExtensionFilter("Fichier SVG", "*.svg"));
+        File out = chooser.showSaveDialog(getStage());
+        if (out == null)
+            return;
+        if (!out.getName().toLowerCase().endsWith(".svg")) {
+            out = new File(out.getAbsolutePath() + ".svg");
+        }
+        final File outFile = out;
+
+        GraphEngine.GraphDataSnapshot snapshot = engine.getDataSnapshot();
+        double[] dims = engine.getDimensions();
+        GraphRenderOptions options = panel.renderer().getRenderOptions();
+
+        new Thread(() -> {
+            try {
+                SvgExporter.export(outFile,
+                        snapshot.getVertices(),
+                        new ArrayList<>(snapshot.getEdges()), // conversion en List
+                        dims[0], dims[1],
+                        options);
+                Platform.runLater(() -> uiState.setStatus("Export SVG : " + outFile.getName()));
+            } catch (Exception e) {
+                Platform.runLater(() -> alert(Alert.AlertType.ERROR, "Erreur",
+                        "Export SVG impossible : " + e.getMessage()));
+            }
+        }, "svg-export-thread").start();
     }
 
     public void setStatsVisible(boolean show) {

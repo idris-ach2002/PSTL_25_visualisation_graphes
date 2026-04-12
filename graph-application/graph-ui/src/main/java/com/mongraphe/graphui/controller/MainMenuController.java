@@ -106,10 +106,10 @@ public final class MainMenuController implements CommandBusLinkedI<GraphEngine> 
 
     @FXML
     private void handleSaveProject() {
-        if (mainController != null){
+        if (mainController != null) {
 
         }
-            //mainController.saveProject();
+        // mainController.saveProject();
     }
 
     @FXML
@@ -219,6 +219,12 @@ public final class MainMenuController implements CommandBusLinkedI<GraphEngine> 
     private void handleExportPng() {
         if (mainController != null)
             mainController.exportPng();
+    }
+
+    @FXML
+    private void handleExportSvg() {
+        if (mainController != null)
+            mainController.exportSvg();
     }
 
     @Override
