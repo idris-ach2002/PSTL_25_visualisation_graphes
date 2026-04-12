@@ -30,20 +30,33 @@ public class PreviewController implements CommandBusLinkedI<GraphEngine> {
     private CommandBus<GraphEngine> bus;
     private GraphRenderer previewRenderer;
 
-    @FXML private TextField degreeFactor;
-    @FXML private TextField initNodeSize;
+    @FXML
+    private TextField degreeFactor;
+    @FXML
+    private TextField initNodeSize;
 
-    @FXML private TextField minimumDegree;
-    @FXML private TextField minEdgeWeight;
+    @FXML
+    private TextField minimumDegree;
+    @FXML
+    private TextField minEdgeWeight;
 
-    @FXML private CheckBox curvedEdgesToggle;
-    @FXML private TextField curveAngleField;
+    @FXML
+    private TextField edgeLineWidthField;
 
-    @FXML private BorderPane graphContainer;
+    @FXML
+    private CheckBox curvedEdgesToggle;
+    @FXML
+    private TextField curveAngleField;
 
-    @FXML private ComboBox<GraphModel.ColoringMode> coloringModeCombo;
-    @FXML private ColorPicker canvasColorPicker;
-    @FXML private ColorPicker uniformNodeColorPicker;
+    @FXML
+    private BorderPane graphContainer;
+
+    @FXML
+    private ComboBox<GraphModel.ColoringMode> coloringModeCombo;
+    @FXML
+    private ColorPicker canvasColorPicker;
+    @FXML
+    private ColorPicker uniformNodeColorPicker;
 
     @FXML
     private void initialize() {
@@ -61,7 +74,8 @@ public class PreviewController implements CommandBusLinkedI<GraphEngine> {
 
         if (curvedEdgesToggle != null) {
             curvedEdgesToggle.setSelected(true);
-            curvedEdgesToggle.selectedProperty().addListener((obs, oldValue, selected) -> updateCurveAngleFieldState(selected));
+            curvedEdgesToggle.selectedProperty()
+                    .addListener((obs, oldValue, selected) -> updateCurveAngleFieldState(selected));
         }
         if (curveAngleField != null) {
             curveAngleField.setText(formatAngle(DEFAULT_CURVE_ANGLE));
@@ -161,7 +175,35 @@ public class PreviewController implements CommandBusLinkedI<GraphEngine> {
 
         boolean curved = curvedEdgesToggle == null || curvedEdgesToggle.isSelected();
         double effectiveAngle = previewCurveAngle == null ? DEFAULT_CURVE_ANGLE : previewCurveAngle.doubleValue();
-        previewRenderer.setRenderOptions(GraphRenderOptions.previewView(curved, (float) effectiveAngle));
+
+        // Récupérer l'épaisseur des lignes
+        float lineWidth = 1.35f;
+        if (edgeLineWidthField != null) {
+            try {
+                lineWidth = Float.parseFloat(edgeLineWidthField.getText().trim());
+                if (lineWidth < 0.5f)
+                    lineWidth = 0.5f;
+            } catch (NumberFormatException ignored) {
+            }
+        }
+
+        // Construire les options de rendu avec l'épaisseur personnalisée
+        GraphRenderOptions options;
+        if (curved) {
+            options = new GraphRenderOptions(
+                    GraphRenderOptions.EdgeStyle.CURVED_PARABOLIC,
+                    20,
+                    (float) effectiveAngle,
+                    64f,
+                    lineWidth,
+                    true);
+        } else {
+            options = new GraphRenderOptions(
+                    GraphRenderOptions.EdgeStyle.STRAIGHT,
+                    1, 0f, 0f, lineWidth, false);
+        }
+
+        previewRenderer.setRenderOptions(options);
     }
 
     public void fillProperties(Properties p) {
@@ -170,6 +212,7 @@ public class PreviewController implements CommandBusLinkedI<GraphEngine> {
         put(p, "minimumDegree", textOf(minimumDegree));
         put(p, "minEdgeWeight", textOf(minEdgeWeight));
         put(p, "previewCurveAngle", textOf(curveAngleField));
+        put(p, "edgeLineWidth", textOf(edgeLineWidthField));
 
         if (curvedEdgesToggle != null) {
             p.setProperty("previewCurvedEdges", Boolean.toString(curvedEdgesToggle.isSelected()));
@@ -191,6 +234,7 @@ public class PreviewController implements CommandBusLinkedI<GraphEngine> {
         setTextIfPresent(minimumDegree, p.getProperty("minimumDegree"));
         setTextIfPresent(minEdgeWeight, p.getProperty("minEdgeWeight"));
         setTextIfPresent(curveAngleField, p.getProperty("previewCurveAngle", formatAngle(DEFAULT_CURVE_ANGLE)));
+        setTextIfPresent(edgeLineWidthField, p.getProperty("edgeLineWidth", "1"));
 
         if (curvedEdgesToggle != null) {
             curvedEdgesToggle.setSelected(Boolean.parseBoolean(p.getProperty("previewCurvedEdges", "true")));
