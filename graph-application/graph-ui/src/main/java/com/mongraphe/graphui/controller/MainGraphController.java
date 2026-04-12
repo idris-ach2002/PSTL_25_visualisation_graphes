@@ -3,6 +3,7 @@ package com.mongraphe.graphui.controller;
 import java.io.File;
 import java.nio.file.Files;
 import java.util.ArrayList;
+import java.util.Optional;
 
 import com.mongraphe.graphui.app.CommandBus;
 import com.mongraphe.graphui.app.UiState;
@@ -16,6 +17,8 @@ import com.mongraphe.graphui.rendering.GraphNativeEngine;
 import com.mongraphe.graphui.rendering.GraphRenderer;
 import com.mongraphe.graphui.rendering.GraphRenderOptions;
 import com.mongraphe.graphui.view.GraphPanel;
+import com.mongraphe.graphui.view.PngResolutionDialog;
+import com.mongraphe.graphui.view.SvgResolutionDialog;
 
 import javafx.application.Platform;
 import javafx.fxml.FXML;
@@ -285,6 +288,20 @@ public final class MainGraphController implements GraphEngine.GraphEngineListene
             alert(Alert.AlertType.WARNING, "Export PNG", "Aucun graphe affiché.");
             return;
         }
+
+        // Dimensions par défaut = taille actuelle du panneau d'affichage
+        int currentWidth = Math.max(1, (int) graphHostPane.getWidth());
+        int currentHeight = Math.max(1, (int) graphHostPane.getHeight());
+
+        PngResolutionDialog dialog = new PngResolutionDialog(currentWidth, currentHeight);
+        java.util.Optional<int[]> result = dialog.showAndWait();
+        if (result.isEmpty())
+            return;
+
+        int[] dims = result.get();
+        int width = dims[0];
+        int height = dims[1];
+
         FileChooser chooser = new FileChooser();
         chooser.setTitle("Exporter en PNG");
         chooser.getExtensionFilters().add(new FileChooser.ExtensionFilter("Image PNG", "*.png"));
@@ -295,8 +312,7 @@ public final class MainGraphController implements GraphEngine.GraphEngineListene
             out = new File(out.getAbsolutePath() + ".png");
         }
         final File outFile = out;
-        int width = Math.max(1, (int) graphHostPane.getWidth());
-        int height = Math.max(1, (int) graphHostPane.getHeight());
+
         new Thread(() -> {
             try {
                 if (outFile.toPath().getParent() != null) {
@@ -305,8 +321,8 @@ public final class MainGraphController implements GraphEngine.GraphEngineListene
                 panel.createExporter().exportPng(outFile, width, height);
                 Platform.runLater(() -> uiState.setStatus("Export PNG : " + outFile.getName()));
             } catch (Exception e) {
-                Platform.runLater(
-                        () -> alert(Alert.AlertType.ERROR, "Erreur", "Export PNG impossible : " + e.getMessage()));
+                Platform.runLater(() -> alert(Alert.AlertType.ERROR, "Erreur",
+                        "Export PNG impossible : " + e.getMessage()));
             }
         }, "graph-export-thread").start();
     }
@@ -316,6 +332,14 @@ public final class MainGraphController implements GraphEngine.GraphEngineListene
             alert(Alert.AlertType.WARNING, "Export SVG", "Aucun graphe chargé.");
             return;
         }
+
+        // Demander la résolution souhaitée (par défaut 2000)
+        SvgResolutionDialog resDialog = new SvgResolutionDialog(2000);
+        Optional<Double> resolution = resDialog.showAndWait();
+        if (resolution.isEmpty())
+            return;
+        double svgSize = resolution.get();
+
         FileChooser chooser = new FileChooser();
         chooser.setTitle("Exporter en SVG");
         chooser.getExtensionFilters().add(new FileChooser.ExtensionFilter("Fichier SVG", "*.svg"));
@@ -329,15 +353,17 @@ public final class MainGraphController implements GraphEngine.GraphEngineListene
 
         GraphEngine.GraphDataSnapshot snapshot = engine.getDataSnapshot();
         double[] dims = engine.getDimensions();
-        GraphRenderOptions options = panel.renderer().getRenderOptions();
+
+        GraphRenderOptions renderOptions = panel.renderer().getRenderOptions();
 
         new Thread(() -> {
             try {
                 SvgExporter.export(outFile,
                         snapshot.getVertices(),
-                        new ArrayList<>(snapshot.getEdges()), // conversion en List
+                        new ArrayList<>(snapshot.getEdges()),
                         dims[0], dims[1],
-                        options);
+                        renderOptions,
+                        svgSize); //
                 Platform.runLater(() -> uiState.setStatus("Export SVG : " + outFile.getName()));
             } catch (Exception e) {
                 Platform.runLater(() -> alert(Alert.AlertType.ERROR, "Erreur",

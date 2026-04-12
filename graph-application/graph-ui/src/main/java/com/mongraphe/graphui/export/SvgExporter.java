@@ -20,10 +20,8 @@ public final class SvgExporter {
             List<Edge> edges,
             double worldWidth,
             double worldHeight,
-            GraphRenderOptions renderOptions) throws IOException {
-
-        // Taille du SVG (viewBox carrée)
-        double svgSize = 1000.0;
+            GraphRenderOptions renderOptions,
+            double svgSize) throws IOException {
         double scale = svgSize / Math.max(worldWidth, worldHeight);
         double offsetX = (svgSize - worldWidth * scale) / 2.0;
         double offsetY = (svgSize - worldHeight * scale) / 2.0;
