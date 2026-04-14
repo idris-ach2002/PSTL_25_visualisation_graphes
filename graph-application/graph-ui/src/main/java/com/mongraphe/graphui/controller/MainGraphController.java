@@ -23,28 +23,79 @@ import com.mongraphe.graphui.view.SvgResolutionDialog;
 import javafx.application.Platform;
 import javafx.fxml.FXML;
 import javafx.scene.control.Alert;
-import javafx.scene.control.Button;
 import javafx.scene.control.TabPane;
 import javafx.scene.control.Toggle;
 import javafx.scene.control.ToggleGroup;
-import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
 import javafx.stage.FileChooser;
 import javafx.stage.Stage;
 
+/**
+ * Contrôleur JavaFX principal coordonnant la visualisation et la gestion du
+ * graphe.
+ *
+ * <p>
+ * Cette classe agit comme le point central de l'application (Main Controller).
+ * Elle orchestre
+ * les interactions entre le moteur de rendu OpenGL (JOGL), le système de
+ * commandes,
+ * l'état de l'UI et les différents sous-contrôleurs injectés via FXML.
+ * </p>
+ *
+ * <h2>Responsabilités</h2>
+ * <ul>
+ * <li>Initialiser le moteur de rendu {@code GraphEngine} et le bus de commandes
+ * {@code CommandBus}.</li>
+ * <li>Gérer le cycle de vie de la fenêtre et des ressources natives
+ * (dispose).</li>
+ * <li>Coordonner les sous-vues (Menu, Workspace, Options, Data, Stats,
+ * Preview).</li>
+ * <li>Piloter le chargement des données (CSV/DOT) et le lancement des
+ * simulations de forces.</li>
+ * <li>Gérer les exports d'images (PNG) et de fichiers vectoriels (SVG) avec
+ * choix de résolution.</li>
+ * <li>Assurer la navigation entre les onglets (Vue générale, Données,
+ * Aperçu).</li>
+ * </ul>
+ *
+ * <h2>Architecture et Flux</h2>
+ * <ol>
+ * <li>L'initialisation configure les deux panels OpenGL (principal et
+ * aperçu).</li>
+ * <li>Les actions utilisateur sont capturées par {@code InteractionService} et
+ * dispatchées via le bus.</li>
+ * <li>Le contrôleur écoute les événements du moteur (simulation
+ * démarrée/arrêtée) pour mettre à jour l'interface.</li>
+ * </ol>
+ */
 public final class MainGraphController implements GraphEngine.GraphEngineListener {
 
+    /** État interne de l'interface utilisateur (Statut, mode de fonctionnement). */
     private final UiState uiState = new UiState();
 
+    /** Données du projet en cours (Fichier source et type). */
     private GraphProject project;
+
+    /** Panneau d'affichage principal utilisant JOGL pour le rendu OpenGL. */
     private GraphPanel panel;
+
+    /** Système de transport des commandes pour manipuler le moteur de rendu. */
     private CommandBus<GraphEngine> bus;
+
+    /**
+     * Service gérant les modes d'interaction souris/clavier (Move, Select, etc.).
+     */
     private InteractionService interaction;
+
+    /** Cœur logique gérant les calculs et la structure du graphe. */
     private GraphEngine engine;
+
+    /** Panneau d'affichage secondaire utilisé pour l'onglet de prévisualisation. */
     private GraphPanel previewGraphPanel;
 
+    // --- Sous-contrôleurs injectés ---
     @FXML
     private MainMenuController menuViewController;
     @FXML
@@ -58,32 +109,30 @@ public final class MainGraphController implements GraphEngine.GraphEngineListene
     @FXML
     private PreviewController previewController;
 
+    // --- Éléments UI ---
     @FXML
     private HBox toolBar;
     @FXML
     private HBox toolsBox;
     @FXML
     private ToggleGroup toolToggleGroup;
-    private boolean interactionEnabled = false;
-
     @FXML
-    private TabPane rootTabPane; // remplace rootStack
+    private TabPane rootTabPane;
     @FXML
-    private BorderPane overview; // contenu de l'onglet Overview
-    @FXML
-    private BorderPane dataView; // contenu de l'onglet Data (inclus via fx:include)
-    @FXML
-    private BorderPane preview; // contenu de l'onglet Preview (inclus via fx:include)
-    @FXML
-    private StackPane graphHostPane; // zone où se trouve le panel OpenGL (dans overview)
+    private StackPane graphHostPane;
     @FXML
     private VBox graphStats;
 
-    @FXML
-    private Button zoomInButton;
-    @FXML
-    private Button zoomOutButton;
+    /** Flag indiquant si l'interaction directe avec le graphe est active. */
+    private boolean interactionEnabled = false;
 
+    /**
+     * Méthode d'initialisation appelée automatiquement par JavaFX.
+     * <p>
+     * Configure le moteur natif, les systèmes de rendu, injecte les dépendances
+     * dans tous les sous-contrôleurs et lance les threads de rendu OpenGL.
+     * </p>
+     */
     @FXML
     private void initialize() {
         GraphNativeEngine nativeEngine = new GraphNativeEngine();
@@ -93,6 +142,7 @@ public final class MainGraphController implements GraphEngine.GraphEngineListene
         interaction = new InteractionService(bus, uiState);
         panel = new GraphPanel(mainRenderer, interaction);
 
+        // Injection des dépendances croisées
         menuViewController.setBus(bus);
         menuViewController.setMainController(this);
         workspaceViewController.setMainController(this);
@@ -102,7 +152,7 @@ public final class MainGraphController implements GraphEngine.GraphEngineListene
         graphStatsController.setBus(bus);
         previewController.setBus(bus);
 
-        // Création du renderer et du panel pour l'aperçu (Preview)
+        // Configuration de l'aperçu (Preview)
         GraphRenderer previewRenderer = new GraphRenderer(engine, engine.camera(), GraphRenderOptions.previewView());
         previewGraphPanel = new GraphPanel(previewRenderer, interaction);
         previewGraphPanel.start();
@@ -124,7 +174,14 @@ public final class MainGraphController implements GraphEngine.GraphEngineListene
         uiState.setStatus("Prêt");
     }
 
-    // Gère les actions lors du changement d'onglet
+    /**
+     * Gère les comportements spécifiques lors du changement d'onglet
+     * (Overview/Data/Preview).
+     * <p>
+     * Masque les outils inutiles, rafraîchit les tables de données ou arrête la
+     * simulation lors du passage à l'aperçu pour économiser les ressources.
+     * </p>
+     */
     private void setupTabPaneListener() {
         rootTabPane.getSelectionModel().selectedItemProperty().addListener((obs, oldTab, newTab) -> {
             if (newTab == null)
@@ -132,7 +189,6 @@ public final class MainGraphController implements GraphEngine.GraphEngineListene
             String tabText = newTab.getText();
             boolean isOverview = "Overview".equals(tabText);
 
-            // Afficher/masquer la barre d'outils uniquement pour l'onglet Overview
             if (toolsBox != null) {
                 toolsBox.setVisible(isOverview);
                 toolsBox.setManaged(isOverview);
@@ -147,7 +203,10 @@ public final class MainGraphController implements GraphEngine.GraphEngineListene
         });
     }
 
-    // Implémentation de GraphEngineListener
+    /**
+     * Met à jour l'interface lorsque la simulation de force démarre.
+     * Désactive l'interaction manuelle pour éviter les conflits de calcul.
+     */
     @Override
     public void onSimulationStarted() {
         Platform.runLater(() -> {
@@ -157,6 +216,10 @@ public final class MainGraphController implements GraphEngine.GraphEngineListene
         });
     }
 
+    /**
+     * Met à jour l'interface lorsque la simulation s'arrête.
+     * Réactive l'interaction manuelle (sélection, déplacement de sommets).
+     */
     @Override
     public void onSimulationStopped() {
         Platform.runLater(() -> {
@@ -166,16 +229,23 @@ public final class MainGraphController implements GraphEngine.GraphEngineListene
         });
     }
 
+    /** Zoom avant sur la caméra du graphe. */
     @FXML
     private void zoomIn() {
         bus.dispatch(engine -> engine.camera().zoomIn());
     }
 
+    /** Zoom arrière sur la caméra du graphe. */
     @FXML
     private void zoomOut() {
         bus.dispatch(engine -> engine.camera().zoomOut());
     }
 
+    /**
+     * Active ou désactive les contrôles d'interaction.
+     * 
+     * @param enabled vrai si les outils sont accessibles.
+     */
     private void setInteractionEnabled(boolean enabled) {
         interactionEnabled = enabled;
         toolBar.setDisable(!enabled);
@@ -196,6 +266,11 @@ public final class MainGraphController implements GraphEngine.GraphEngineListene
         }
     }
 
+    /**
+     * Associe un fichier physique au projet actuel.
+     * 
+     * @param file Le fichier .csv ou .dot à charger.
+     */
     public void openFile(File file) {
         if (file == null)
             return;
@@ -205,17 +280,18 @@ public final class MainGraphController implements GraphEngine.GraphEngineListene
         uiState.setStatus("Fichier sélectionné : " + file.getName());
     }
 
-    public File getFile() {
-        if (project == null) {
-            return null;
-        }
-        return project.sourceFile();
-    }
-
-    public void setProject(GraphProject project) {
-        this.project = project;
-    }
-
+    /**
+     * Déclenche le chargement et la simulation d'un graphe à partir d'un fichier
+     * CSV.
+     * * @param similitude Méthode de calcul des similitudes.
+     * 
+     * @param community     Algorithme de détection de communautés.
+     * @param repulsion     Mode de gestion de la répulsion entre nœuds.
+     * @param width         Largeur de l'espace de simulation.
+     * @param height        Hauteur de l'espace de simulation.
+     * @param edgeThreshold Seuil de filtrage des arêtes.
+     * @param antiThreshold Seuil de répulsion négative.
+     */
     public void startGraphCsv(GraphData.SimilitudeMode similitude,
             GraphData.NodeCommunity community,
             GraphData.RepulsionMode repulsion,
@@ -228,8 +304,7 @@ public final class MainGraphController implements GraphEngine.GraphEngineListene
         try {
             bus.dispatchSyncVoid(engine -> {
                 engine.stopSimulation();
-                engine.loadCsv(similitude, community,
-                        edgeThreshold, antiThreshold);
+                engine.loadCsv(similitude, community, edgeThreshold, antiThreshold);
                 if (repulsion != null)
                     engine.setRepulsionMode(repulsion);
             });
@@ -244,6 +319,10 @@ public final class MainGraphController implements GraphEngine.GraphEngineListene
         }
     }
 
+    /**
+     * Déclenche le chargement et la simulation d'un graphe à partir d'un fichier
+     * DOT.
+     */
     public void startGraphDot(GraphData.NodeCommunity community, double width, double height) {
         if (project == null) {
             alert(Alert.AlertType.WARNING, "Projet manquant", "Choisissez d'abord un fichier.");
@@ -265,6 +344,149 @@ public final class MainGraphController implements GraphEngine.GraphEngineListene
         }
     }
 
+    /**
+     * Capture le contenu du panel OpenGL et l'enregistre au format PNG.
+     * <p>
+     * Une boîte de dialogue permet de définir une résolution personnalisée
+     * (ex: 4K) indépendante de la taille de la fenêtre.
+     * </p>
+     */
+    public void exportPng() {
+        if (panel == null) {
+            alert(Alert.AlertType.WARNING, "Export PNG", "Aucun graphe affiché.");
+            return;
+        }
+
+        int currentWidth = Math.max(1, (int) graphHostPane.getWidth());
+        int currentHeight = Math.max(1, (int) graphHostPane.getHeight());
+
+        PngResolutionDialog dialog = new PngResolutionDialog(currentWidth, currentHeight);
+        java.util.Optional<int[]> result = dialog.showAndWait();
+        if (result.isEmpty())
+            return;
+
+        int[] dims = result.get();
+        FileChooser chooser = new FileChooser();
+        chooser.setTitle("Exporter en PNG");
+        chooser.getExtensionFilters().add(new FileChooser.ExtensionFilter("Image PNG", "*.png"));
+        File out = chooser.showSaveDialog(getStage());
+        if (out == null)
+            return;
+
+        final File outFile = out.getName().toLowerCase().endsWith(".png") ? out
+                : new File(out.getAbsolutePath() + ".png");
+
+        new Thread(() -> {
+            try {
+                if (outFile.toPath().getParent() != null)
+                    Files.createDirectories(outFile.toPath().getParent());
+                panel.createExporter().exportPng(outFile, dims[0], dims[1]);
+                Platform.runLater(() -> uiState.setStatus("Export PNG : " + outFile.getName()));
+            } catch (Exception e) {
+                Platform.runLater(
+                        () -> alert(Alert.AlertType.ERROR, "Erreur", "Export PNG impossible : " + e.getMessage()));
+            }
+        }, "graph-export-thread").start();
+    }
+
+    /**
+     * Génère un fichier vectoriel SVG représentant le graphe actuel.
+     * <p>
+     * Utilise les positions actuelles des sommets via un snapshot pour garantir
+     * la cohérence de l'export même si le moteur continue de tourner.
+     * </p>
+     */
+    public void exportSvg() {
+        if (engine == null || !engine.isGraphLoaded()) {
+            alert(Alert.AlertType.WARNING, "Export SVG", "Aucun graphe chargé.");
+            return;
+        }
+
+        SvgResolutionDialog resDialog = new SvgResolutionDialog(2000);
+        Optional<Double> resolution = resDialog.showAndWait();
+        if (resolution.isEmpty())
+            return;
+
+        FileChooser chooser = new FileChooser();
+        chooser.setTitle("Exporter en SVG");
+        chooser.getExtensionFilters().add(new FileChooser.ExtensionFilter("Fichier SVG", "*.svg"));
+        File out = chooser.showSaveDialog(getStage());
+        if (out == null)
+            return;
+
+        final File outFile = out.getName().toLowerCase().endsWith(".svg") ? out
+                : new File(out.getAbsolutePath() + ".svg");
+
+        GraphEngine.GraphDataSnapshot snapshot = engine.getDataSnapshot();
+        double[] dims = engine.getDimensions();
+        GraphRenderOptions renderOptions = panel.renderer().getRenderOptions();
+
+        new Thread(() -> {
+            try {
+                SvgExporter.export(outFile, snapshot.getVertices(), new ArrayList<>(snapshot.getEdges()),
+                        dims[0], dims[1], renderOptions, resolution.get());
+                Platform.runLater(() -> uiState.setStatus("Export SVG : " + outFile.getName()));
+            } catch (Exception e) {
+                Platform.runLater(
+                        () -> alert(Alert.AlertType.ERROR, "Erreur", "Export SVG impossible : " + e.getMessage()));
+            }
+        }, "svg-export-thread").start();
+    }
+
+    /** Affiche ou masque le panneau des statistiques de performance. */
+    public void setStatsVisible(boolean show) {
+        if (graphStats == null)
+            return;
+        graphStats.setVisible(show);
+        graphStats.setManaged(show);
+    }
+
+    /** Détecte le type de fichier source à partir de son extension. */
+    private GraphProject.SourceType detectType(File file) {
+        String name = file.getName().toLowerCase();
+        if (name.endsWith(".csv"))
+            return GraphProject.SourceType.CSV;
+        if (name.endsWith(".dot"))
+            return GraphProject.SourceType.DOT;
+        throw new IllegalArgumentException("Type de fichier inconnu : " + name);
+    }
+
+    /**
+     * Configure les listeners pour redimensionner le canvas OpenGL quand la fenêtre
+     * change de taille.
+     */
+    private void setupGraphSurfaceResize() {
+        graphHostPane.widthProperty().addListener((obs, oldV, newV) -> resizeGraphSurface());
+        graphHostPane.heightProperty().addListener((obs, oldV, newV) -> resizeGraphSurface());
+    }
+
+    /** Transmet les nouvelles dimensions au panel et à la caméra du moteur. */
+    private void resizeGraphSurface() {
+        int width = Math.max(1, (int) graphHostPane.getWidth());
+        int height = Math.max(1, (int) graphHostPane.getHeight());
+        panel.resize(width, height);
+        bus.dispatch(engine -> engine.camera().resize(width, height));
+    }
+
+    /** Lie le groupe de boutons d'outils au service d'interaction. */
+    private void setupToolToggle() {
+        if (toolToggleGroup == null)
+            return;
+        toolToggleGroup.selectedToggleProperty().addListener((obs, oldToggle, newToggle) -> {
+            if (interactionEnabled && newToggle != null) {
+                String mode = (String) newToggle.getUserData();
+                try {
+                    interaction.setMode(InteractionService.Mode.valueOf(mode));
+                } catch (IllegalArgumentException e) {
+                    interaction.setMode(InteractionService.Mode.SELECT);
+                }
+            }
+        });
+    }
+
+    /**
+     * Libère les ressources JOGL et natif lors de la fermeture de l'application.
+     */
     private void setupCloseWindowListener(GraphNativeEngine nat) {
         rootTabPane.sceneProperty().addListener((obs, oldScene, scene) -> {
             if (scene != null) {
@@ -283,151 +505,33 @@ public final class MainGraphController implements GraphEngine.GraphEngineListene
         });
     }
 
-    public void exportPng() {
-        if (panel == null) {
-            alert(Alert.AlertType.WARNING, "Export PNG", "Aucun graphe affiché.");
-            return;
-        }
-
-        // Dimensions par défaut = taille actuelle du panneau d'affichage
-        int currentWidth = Math.max(1, (int) graphHostPane.getWidth());
-        int currentHeight = Math.max(1, (int) graphHostPane.getHeight());
-
-        PngResolutionDialog dialog = new PngResolutionDialog(currentWidth, currentHeight);
-        java.util.Optional<int[]> result = dialog.showAndWait();
-        if (result.isEmpty())
-            return;
-
-        int[] dims = result.get();
-        int width = dims[0];
-        int height = dims[1];
-
-        FileChooser chooser = new FileChooser();
-        chooser.setTitle("Exporter en PNG");
-        chooser.getExtensionFilters().add(new FileChooser.ExtensionFilter("Image PNG", "*.png"));
-        File out = chooser.showSaveDialog(getStage());
-        if (out == null)
-            return;
-        if (!out.getName().toLowerCase().endsWith(".png")) {
-            out = new File(out.getAbsolutePath() + ".png");
-        }
-        final File outFile = out;
-
-        new Thread(() -> {
-            try {
-                if (outFile.toPath().getParent() != null) {
-                    Files.createDirectories(outFile.toPath().getParent());
-                }
-                panel.createExporter().exportPng(outFile, width, height);
-                Platform.runLater(() -> uiState.setStatus("Export PNG : " + outFile.getName()));
-            } catch (Exception e) {
-                Platform.runLater(() -> alert(Alert.AlertType.ERROR, "Erreur",
-                        "Export PNG impossible : " + e.getMessage()));
-            }
-        }, "graph-export-thread").start();
-    }
-
-    public void exportSvg() {
-        if (engine == null || !engine.isGraphLoaded()) {
-            alert(Alert.AlertType.WARNING, "Export SVG", "Aucun graphe chargé.");
-            return;
-        }
-
-        // Demander la résolution souhaitée (par défaut 2000)
-        SvgResolutionDialog resDialog = new SvgResolutionDialog(2000);
-        Optional<Double> resolution = resDialog.showAndWait();
-        if (resolution.isEmpty())
-            return;
-        double svgSize = resolution.get();
-
-        FileChooser chooser = new FileChooser();
-        chooser.setTitle("Exporter en SVG");
-        chooser.getExtensionFilters().add(new FileChooser.ExtensionFilter("Fichier SVG", "*.svg"));
-        File out = chooser.showSaveDialog(getStage());
-        if (out == null)
-            return;
-        if (!out.getName().toLowerCase().endsWith(".svg")) {
-            out = new File(out.getAbsolutePath() + ".svg");
-        }
-        final File outFile = out;
-
-        GraphEngine.GraphDataSnapshot snapshot = engine.getDataSnapshot();
-        double[] dims = engine.getDimensions();
-
-        GraphRenderOptions renderOptions = panel.renderer().getRenderOptions();
-
-        new Thread(() -> {
-            try {
-                SvgExporter.export(outFile,
-                        snapshot.getVertices(),
-                        new ArrayList<>(snapshot.getEdges()),
-                        dims[0], dims[1],
-                        renderOptions,
-                        svgSize); //
-                Platform.runLater(() -> uiState.setStatus("Export SVG : " + outFile.getName()));
-            } catch (Exception e) {
-                Platform.runLater(() -> alert(Alert.AlertType.ERROR, "Erreur",
-                        "Export SVG impossible : " + e.getMessage()));
-            }
-        }, "svg-export-thread").start();
-    }
-
-    public void setStatsVisible(boolean show) {
-        if (graphStats == null)
-            return;
-        graphStats.setVisible(show);
-        graphStats.setManaged(show);
-    }
-
-    private GraphProject.SourceType detectType(File file) {
-        String name = file.getName().toLowerCase();
-        if (name.endsWith(".csv"))
-            return GraphProject.SourceType.CSV;
-        if (name.endsWith(".dot"))
-            return GraphProject.SourceType.DOT;
-        throw new IllegalArgumentException("Type de fichier inconnu : " + name);
-    }
-
-    private void setupGraphSurfaceResize() {
-        graphHostPane.widthProperty().addListener((obs, oldV, newV) -> resizeGraphSurface());
-        graphHostPane.heightProperty().addListener((obs, oldV, newV) -> resizeGraphSurface());
-    }
-
-    private void resizeGraphSurface() {
-        int width = Math.max(1, (int) graphHostPane.getWidth());
-        int height = Math.max(1, (int) graphHostPane.getHeight());
-        panel.resize(width, height);
-        bus.dispatch(engine -> engine.camera().resize(width, height));
-    }
-
-    private void setupToolToggle() {
-        if (toolToggleGroup == null)
-            return;
-        toolToggleGroup.selectedToggleProperty().addListener((obs, oldToggle, newToggle) -> {
-            if (interactionEnabled && newToggle != null) {
-                String mode = (String) newToggle.getUserData();
-                try {
-                    interaction.setMode(InteractionService.Mode.valueOf(mode));
-                } catch (IllegalArgumentException e) {
-                    interaction.setMode(InteractionService.Mode.SELECT);
-                }
-            }
-        });
-    }
-
+    /** @return La fenêtre principale du contrôleur. */
     public Stage getStage() {
         return (Stage) rootTabPane.getScene().getWindow();
     }
 
+    /** @return Le fichier source du projet actuel. */
+    public File getFile() {
+        return (project == null) ? null : project.sourceFile();
+    }
+
+    /** Définit le projet en cours. */
+    public void setProject(GraphProject project) {
+        this.project = project;
+    }
+
+    /**
+     * Parcourt les exceptions parentes pour trouver le message d'erreur d'origine.
+     */
     private String rootCauseMessage(Throwable throwable) {
         Throwable current = throwable;
-        while (current.getCause() != null && current.getCause() != current) {
+        while (current.getCause() != null && current.getCause() != current)
             current = current.getCause();
-        }
         String message = current.getMessage();
         return message == null || message.isBlank() ? current.toString() : message;
     }
 
+    /** Affiche une boîte de dialogue standard. */
     private void alert(Alert.AlertType type, String title, String content) {
         Alert alert = new Alert(type);
         alert.setTitle(title);

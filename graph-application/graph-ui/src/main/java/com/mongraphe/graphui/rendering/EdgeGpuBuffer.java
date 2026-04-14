@@ -7,6 +7,27 @@ import com.jogamp.opengl.GL4;
 import com.mongraphe.graphui.model.Edge;
 import com.mongraphe.graphui.model.Vertex;
 
+/**
+ * Gestionnaire de tampons GPU pour le rendu haute performance des arêtes.
+ *
+ * <p>
+ * Cette classe gère le cycle de vie des Vertex Buffer Objects (VBO) pour le
+ * dessin
+ * des arêtes en OpenGL 4. Elle supporte le rendu de lignes droites et de
+ * courbes
+ * de Bézier quadratiques.
+ * </p>
+ *
+ * <h2>Fonctionnement</h2>
+ * <ul>
+ * <li><b>Streaming :</b> Les données sont préparées côté CPU puis envoyées au
+ * GPU via {@code glBufferSubData}.</li>
+ * <li><b>Batching :</b> Toutes les arêtes sont dessinées en un seul appel (Draw
+ * Call) pour optimiser les performances.</li>
+ * <li><b>Géométrie dynamique :</b> Les arêtes courbes sont discrétisées en
+ * segments de lignes.</li>
+ * </ul>
+ */
 public class EdgeGpuBuffer {
 
     private static final float LOOP_OFFSET = 22f;
@@ -30,6 +51,11 @@ public class EdgeGpuBuffer {
 
     private int posVbo, colorVbo, sizeVbo, visVbo;
 
+    /**
+     * Initialise les identifiants de buffers OpenGL et alloue la mémoire initiale.
+     * 
+     * @param gl Le contexte OpenGL.
+     */
     public void init(GL4 gl) {
         int[] b = new int[4];
         gl.glGenBuffers(4, b, 0);
@@ -42,6 +68,11 @@ public class EdgeGpuBuffer {
         vertexCount = 0;
     }
 
+    /**
+     * Ajuste la taille des tableaux CPU si le nombre de sommets à stocker augmente.
+     * 
+     * @param needed Capacité totale nécessaire.
+     */
     private void ensureCapacity(int needed) {
         if (needed <= capacity)
             return;
@@ -68,6 +99,13 @@ public class EdgeGpuBuffer {
         capacity = newCap;
     }
 
+    /**
+     * Analyse la file d'arêtes et génère les sommets correspondants dans les
+     * tableaux CPU.
+     * 
+     * @param edges   File des arêtes du graphe.
+     * @param options Options de rendu (Style, Segments, etc.).
+     */
     public void update(ConcurrentLinkedQueue<Edge> edges, GraphRenderOptions options) {
         vertexCount = 0;
         if (edges == null || edges.isEmpty()) {
@@ -86,6 +124,9 @@ public class EdgeGpuBuffer {
         }
     }
 
+    /**
+     * Génère les sommets pour un rendu de lignes droites.
+     */
     private void updateStraight(ConcurrentLinkedQueue<Edge> edges) {
         for (Edge e : edges) {
             // On va ajouter 2 sommets (début et fin)
@@ -134,6 +175,9 @@ public class EdgeGpuBuffer {
         }
     }
 
+    /**
+     * Génère les sommets pour un rendu de lignes courbes (Bézier).
+     */
     private void updateCurved(ConcurrentLinkedQueue<Edge> edges, GraphRenderOptions options) {
         int segments = Math.max(2, options.curveSegments());
         for (Edge e : edges) {
@@ -211,7 +255,9 @@ public class EdgeGpuBuffer {
         }
     }
 
-    // computeControlPoint, evalQuadraticBezier inchangés
+    /**
+     * Calcule le point de contrôle pour la courbure parabolique de l'arête.
+     */
     private void computeControlPoint(Edge edge, float x1, float y1, float x2, float y2,
             GraphRenderOptions options, float[] out) {
         float dx = x2 - x1;
@@ -244,6 +290,9 @@ public class EdgeGpuBuffer {
         out[1] = my + ny * offset * sign;
     }
 
+    /**
+     * Calcule un point sur une courbe de Bézier quadratique.
+     */
     private void evalQuadraticBezier(float x0, float y0, float cx, float cy,
             float x1, float y1, float t, float[] out) {
         float u = 1f - t;
@@ -251,6 +300,11 @@ public class EdgeGpuBuffer {
         out[1] = u * u * y0 + 2f * u * t * cy + t * t * y1;
     }
 
+    /**
+     * Transfère les données des tableaux CPU vers la mémoire vidéo du GPU.
+     * 
+     * @param gl Le contexte OpenGL.
+     */
     public void upload(GL4 gl) {
         if (vertexCount == 0)
             return;
@@ -293,6 +347,11 @@ public class EdgeGpuBuffer {
                 FloatBuffer.wrap(visibility, 0, vertexCount));
     }
 
+    /**
+     * Active les attributs et dessine les arêtes en utilisant GL_LINES.
+     * 
+     * @param gl Le contexte OpenGL.
+     */
     public void draw(GL4 gl) {
         gl.glEnableVertexAttribArray(0);
         gl.glBindBuffer(GL4.GL_ARRAY_BUFFER, posVbo);

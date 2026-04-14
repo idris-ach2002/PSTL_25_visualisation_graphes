@@ -14,6 +14,29 @@ import java.util.concurrent.TimeUnit;
 
 import com.mongraphe.graphui.model.*;
 
+/**
+ * Cœur logique de l'application orchestrant la simulation, les données et le
+ * rendu du graphe.
+ *
+ * <p>
+ * Cette classe fait le pont entre la couche utilisateur JavaFX et le moteur de
+ * calcul natif.
+ * Elle gère le cycle de vie de la simulation de forces, le filtrage de
+ * visibilité,
+ * ainsi que la synchronisation des positions des sommets via un tampon mémoire
+ * partagé (Direct ByteBuffer).
+ * </p>
+ *
+ * <h2>Architecture</h2>
+ * <ul>
+ * <li><b>Thread de Simulation :</b> Un exécuteur dédié rafraîchit les positions
+ * à intervalle régulier (16ms).</li>
+ * <li><b>Modèle de Données :</b> Maintient une structure {@link GraphModel}
+ * synchronisée avec les données natives.</li>
+ * <li><b>Système d'Événements :</b> Notifie les auditeurs lors des changements
+ * de données ou d'état de simulation.</li>
+ * </ul>
+ */
 public final class GraphEngine {
 
     private final GraphNativeEngine nativeEngine;
@@ -25,6 +48,7 @@ public final class GraphEngine {
     private int clusterUpdateFrequency = 1;
     private boolean initialized = false;
 
+    /** Exécuteur gérant le thread de calcul de la simulation de forces. */
     private final ScheduledExecutorService simulationExecutor = Executors.newSingleThreadScheduledExecutor(r -> {
         Thread t = new Thread(r, "graph-simulation-thread");
         t.setDaemon(true);
@@ -33,6 +57,7 @@ public final class GraphEngine {
     private volatile boolean simulationRunning = false;
     private volatile boolean graphLoaded = false;
 
+    /** Interface pour suivre l'état d'exécution de la simulation. */
     public interface GraphEngineListener {
         void onSimulationStarted();
 
@@ -41,6 +66,7 @@ public final class GraphEngine {
 
     private final List<GraphEngineListener> listeners = new ArrayList<>();
 
+    /** Interface pour être notifié des modifications structurelles du graphe. */
     public interface GraphDataListener {
         void onGraphDataChanged();
     }
@@ -69,12 +95,16 @@ public final class GraphEngine {
         }
     }
 
+    /**
+     * Snapshot immuable des statistiques actuelles du graphe (pour l'UI).
+     */
     public record StatsSnapshot(
             int visibleVertices, int hiddenVertices, int deletedVertices,
             int visibleEdges, int hiddenEdges, int totalVertices, int totalEdges,
             Metadata initMetadata, int selectedVertexId, double selectedX, double selectedY) {
     }
 
+    /** Calcule et retourne un état instantané des statistiques. */
     public StatsSnapshot getStatsSnapshot() {
         int totalVertices = model.vertices().size();
         int totalEdges = model.edges().size();
@@ -96,6 +126,10 @@ public final class GraphEngine {
                 initMetadata, selectedId, selectedX, selectedY);
     }
 
+    /**
+     * Snapshot complet des données pour les opérations d'export ou de rendu
+     * statique.
+     */
     public static class GraphDataSnapshot {
         private final List<Vertex> vertices;
         private final ConcurrentLinkedQueue<Edge> edges;
@@ -135,6 +169,9 @@ public final class GraphEngine {
         }
     }
 
+    /**
+     * Représentation d'une page de données pour la pagination dans les tables UI.
+     */
     public static class GraphPage<T> {
         private final List<T> data;
         private final int totalSize;
@@ -153,46 +190,35 @@ public final class GraphEngine {
         }
     }
 
+    /** Récupère une portion paginée des sommets. */
     public GraphPage<Vertex> getVerticesPage(int page, int pageSize) {
         ConcurrentLinkedQueue<Vertex> all = model.vertices();
-
         int total = all.size();
         int from = page * pageSize;
-        if (from >= total) {
+        if (from >= total)
             return new GraphPage<>(List.of(), total);
-        }
         List<Vertex> pageData = new ArrayList<>(pageSize);
         Iterator<Vertex> it = all.iterator();
-        // Sauter les premiers éléments
-        for (int i = 0; i < from && it.hasNext(); i++) {
+        for (int i = 0; i < from && it.hasNext(); i++)
             it.next();
-        }
-        // Collecter les pageSize éléments suivants
-        for (int i = 0; i < pageSize && it.hasNext(); i++) {
+        for (int i = 0; i < pageSize && it.hasNext(); i++)
             pageData.add(it.next());
-        }
         return new GraphPage<>(pageData, total);
-
     }
 
+    /** Récupère une portion paginée des arêtes. */
     public GraphPage<Edge> getEdgesPage(int page, int pageSize) {
         ConcurrentLinkedQueue<Edge> all = model.edges();
         int total = all.size();
         int from = page * pageSize;
-        if (from >= total) {
+        if (from >= total)
             return new GraphPage<>(List.of(), total);
-        }
-
         List<Edge> pageData = new ArrayList<>(pageSize);
         Iterator<Edge> it = all.iterator();
-        // Sauter les premiers éléments
-        for (int i = 0; i < from && it.hasNext(); i++) {
+        for (int i = 0; i < from && it.hasNext(); i++)
             it.next();
-        }
-        // Collecter les pageSize éléments suivants
-        for (int i = 0; i < pageSize && it.hasNext(); i++) {
+        for (int i = 0; i < pageSize && it.hasNext(); i++)
             pageData.add(it.next());
-        }
         return new GraphPage<>(pageData, total);
     }
 
@@ -231,10 +257,10 @@ public final class GraphEngine {
                 model.getVisibleEdgeCount());
     }
 
+    /** Mappe l'énumération de communauté vers l'index entier du moteur natif. */
     private int getModeCommunity(GraphData.NodeCommunity community) {
-        if (community == null) {
+        if (community == null)
             throw new IllegalArgumentException("Le mode de communauté ne peut pas être nul.");
-        }
         return switch (community) {
             case LOUVAIN -> 0;
             case LOUVAIN_PAR_COMPOSANTE -> 1;
@@ -244,10 +270,10 @@ public final class GraphEngine {
         };
     }
 
+    /** Mappe l'énumération de similitude vers l'index entier du moteur natif. */
     private int getModeSimilitude(GraphData.SimilitudeMode mode) {
-        if (mode == null) {
+        if (mode == null)
             throw new IllegalArgumentException("Le mode de similarité ne peut pas être nul.");
-        }
         return switch (mode) {
             case CORRELATION -> 0;
             case DISTANCE_COSINE -> 1;
@@ -264,39 +290,43 @@ public final class GraphEngine {
         nativeEngine.startsProgram(path);
     }
 
+    /**
+     * Charge un graphe depuis un CSV en configurant les seuils et modes
+     * algorithmiques.
+     */
     public void loadCsv(GraphData.SimilitudeMode sim,
             GraphData.NodeCommunity communityMode,
             double edgeThreshold, double antiThreshold) {
         graphLoaded = false;
-
         int modeSim = getModeSimilitude(sim);
         int modeComm = getModeCommunity(communityMode);
-
-        // Appeler l'initialisation native avec les seuils
         nativeEngine.initializeGraph(modeSim, modeComm, edgeThreshold, antiThreshold);
-
         rebuildModelFromNative();
         notifyDataChanged();
         graphLoaded = true;
     }
 
+    /** Charge un graphe depuis un fichier au format DOT. */
     public void loadDot(String path, GraphData.NodeCommunity communityMode) {
         if (path == null || path.isBlank())
             throw new IllegalArgumentException("DOT path missing");
         graphLoaded = false;
-
         int modeComm = getModeCommunity(communityMode);
-
         nativeEngine.initializeDot(path, modeComm);
         rebuildModelFromNative();
         graphLoaded = true;
     }
 
+    /** Calcule les seuils de distribution pour les données chargées. */
     public Metadata computeThreshold(GraphData.SimilitudeMode md, int edgeFactor) {
         int i = getModeSimilitude(md);
         return nativeEngine.computeThreshold(i, edgeFactor);
     }
 
+    /**
+     * Synchronise intégralement le modèle Java avec les structures de données
+     * natives.
+     */
     private void rebuildModelFromNative() {
         Vertex[] verticesArray = nativeEngine.getPositions();
         EdgeC[] edgesArray = nativeEngine.getEdges();
@@ -348,6 +378,7 @@ public final class GraphEngine {
         visibility.apply(model);
     }
 
+    /** Démarre le thread de simulation de forces. */
     public void startSimulation() {
         camera.reset();
         if (!graphLoaded)
@@ -362,6 +393,7 @@ public final class GraphEngine {
         }
     }
 
+    /** Arrête la simulation. */
     public void stopSimulation() {
         simulationRunning = false;
         synchronized (listeners) {
@@ -370,17 +402,22 @@ public final class GraphEngine {
         }
     }
 
+    /** Exécute une itération de simulation et synchronise les positions. */
     private void simulateStep() {
         if (!simulationRunning || !graphLoaded)
             return;
         ByteBuffer buf = nativeEngine.sharedPositionsBuffer;
         if (buf == null)
-            return; // déjà libéré
+            return;
         if (nativeEngine.updatePositions(buf)) {
             updateVerticesFromBuffer();
         }
     }
 
+    /**
+     * Lit le tampon natif partagé pour mettre à jour les coordonnées des Vertex
+     * Java.
+     */
     private void updateVerticesFromBuffer() {
         ByteBuffer buf = nativeEngine.sharedPositionsBuffer;
         if (buf == null)
@@ -455,7 +492,6 @@ public final class GraphEngine {
 
     public void setUniformNodeColor(float r, float g, float b) {
         model.setUniformNodeColor(r, g, b);
-
         notifyDataChanged();
     }
 
@@ -470,7 +506,6 @@ public final class GraphEngine {
         model.setFilterMinEdgeWeight(weight);
         visibility.setEdgeWeightThreshold((float) weight);
         visibility.apply(model);
-
         notifyDataChanged();
     }
 
@@ -566,12 +601,10 @@ public final class GraphEngine {
         return clusterUpdateFrequency;
     }
 
+    /** Libère proprement les ressources natives et arrête les threads. */
     public void dispose() {
-        // Arrêter la simulation
         simulationRunning = false;
         graphLoaded = false;
-
-        // Arrêter l'exécuteur et attendre la fin des tâches en cours
         simulationExecutor.shutdown();
         try {
             if (!simulationExecutor.awaitTermination(1, TimeUnit.SECONDS)) {
@@ -581,11 +614,7 @@ public final class GraphEngine {
             simulationExecutor.shutdownNow();
             Thread.currentThread().interrupt();
         }
-
-        // Libérer la mémoire native
         nativeEngine.freeAllocatedMemory();
-
-        // Vider le modèle Java
         model.clear();
     }
 

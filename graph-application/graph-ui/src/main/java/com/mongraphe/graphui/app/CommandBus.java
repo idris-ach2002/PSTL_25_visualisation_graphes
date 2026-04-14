@@ -8,7 +8,7 @@ import java.util.function.Function;
 import com.mongraphe.graphui.interaction.UndoManager;
 import com.mongraphe.graphui.interfaces.CommandBusI;
 import com.mongraphe.graphui.interfaces.GraphCommand;
-import com.mongraphe.graphui.interfaces.UndoableGraphCommand;
+import com.mongraphe.graphui.interfaces.app.UndoableGraphCommand;
 
 public final class CommandBus<C> implements CommandBusI<C> {
 

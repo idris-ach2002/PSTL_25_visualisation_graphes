@@ -2,6 +2,7 @@ package com.mongraphe.graphui.controller;
 
 import com.mongraphe.graphui.app.CommandBus;
 import com.mongraphe.graphui.interfaces.CommandBusLinkedI;
+import com.mongraphe.graphui.interfaces.controller.DataControllerDocumentation;
 import com.mongraphe.graphui.model.Edge;
 import com.mongraphe.graphui.model.Vertex;
 import com.mongraphe.graphui.rendering.GraphEngine;
@@ -14,7 +15,8 @@ import javafx.scene.control.TableView;
 import javafx.scene.control.TextField;
 import javafx.scene.control.cell.PropertyValueFactory;
 import javafx.scene.input.KeyCode;
-public final class DataController implements CommandBusLinkedI<GraphEngine> {
+
+public final class DataController implements CommandBusLinkedI<GraphEngine>, DataControllerDocumentation {
 
     private static final int ROWS_PER_PAGE = 100;
 
@@ -54,6 +56,20 @@ public final class DataController implements CommandBusLinkedI<GraphEngine> {
         this.bus = bus;
     }
 
+    /**
+     * Méthode d'initialisation automatique appelée par le chargeur FXML
+     * après l'injection des composants annotés {@code @FXML}.
+     *
+     * <p>
+     * Elle prépare les colonnes des tables, configure les fabriques de page
+     * des paginations et attache les comportements de navigation aux champs
+     * de texte.
+     * </p>
+     *
+     * <p>
+     * Cette méthode n'est pas destinée à être appelée manuellement.
+     * </p>
+     */
     @FXML
     private void initialize() {
         // Vertex columns
@@ -155,7 +171,7 @@ public final class DataController implements CommandBusLinkedI<GraphEngine> {
         TableView<Vertex> table = new TableView<>();
 
         // Permet aux colonnes de s'étendre pour remplir la largeur
-        table.setColumnResizePolicy(TableView. CONSTRAINED_RESIZE_POLICY_FLEX_LAST_COLUMN);
+        table.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY_FLEX_LAST_COLUMN);
 
         table.setPrefWidth(Double.MAX_VALUE);
         table.setPrefHeight(Double.MAX_VALUE);
@@ -182,7 +198,7 @@ public final class DataController implements CommandBusLinkedI<GraphEngine> {
         TableView<Edge> table = new TableView<>();
 
         // Permet aux colonnes de s'étendre pour remplir la largeur
-        table.setColumnResizePolicy(TableView. CONSTRAINED_RESIZE_POLICY_FLEX_LAST_COLUMN);
+        table.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY_FLEX_LAST_COLUMN);
 
         table.setPrefWidth(Double.MAX_VALUE);
         table.setPrefHeight(Double.MAX_VALUE);

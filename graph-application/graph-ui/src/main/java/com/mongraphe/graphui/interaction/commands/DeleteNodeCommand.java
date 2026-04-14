@@ -1,6 +1,6 @@
 package com.mongraphe.graphui.interaction.commands;
 
-import com.mongraphe.graphui.interfaces.UndoableGraphCommand;
+import com.mongraphe.graphui.interfaces.app.UndoableGraphCommand;
 import com.mongraphe.graphui.rendering.GraphEngine;
 
 public final class DeleteNodeCommand

@@ -23,11 +23,41 @@ import javafx.scene.control.TextField;
 import javafx.scene.layout.BorderPane;
 import javafx.scene.paint.Color;
 
+/**
+ * Contrôleur JavaFX responsable du panneau de configuration et de
+ * prévisualisation
+ * de l'apparence du graphe.
+ *
+ * <p>
+ * Cette classe permet à l'utilisateur de modifier diverses options visuelles et
+ * structurelles :
+ * taille des nœuds, épaisseur et courbure des arêtes, couleurs de fond et des
+ * nœuds, ainsi que
+ * les critères de filtrage (degré minimum, poids minimum).
+ * </p>
+ *
+ * <h2>Fonctionnement</h2>
+ * <ul>
+ * <li>Récupère les saisies utilisateur via les composants JavaFX (TextField,
+ * ColorPicker, etc.).</li>
+ * <li>Valide les données saisies (vérification des nombres positifs, formats
+ * corrects).</li>
+ * <li>Met à jour un moteur de rendu d'aperçu (Preview) en temps réel.</li>
+ * <li>Envoie des commandes via le {@link CommandBus} pour appliquer les
+ * modifications au graphe principal.</li>
+ * <li>Permet la sauvegarde et le chargement de ces paramètres via l'objet
+ * {@link Properties}.</li>
+ * </ul>
+ */
 public class PreviewController implements CommandBusLinkedI<GraphEngine> {
 
+    /** Angle de courbure par défaut pour les arêtes incurvées (en degrés). */
     private static final double DEFAULT_CURVE_ANGLE = 22d;
 
+    /** Bus de commandes pour interagir avec le moteur de graphe principal. */
     private CommandBus<GraphEngine> bus;
+
+    /** Moteur de rendu dédié exclusivement à la zone de prévisualisation. */
     private GraphRenderer previewRenderer;
 
     @FXML
@@ -58,6 +88,16 @@ public class PreviewController implements CommandBusLinkedI<GraphEngine> {
     @FXML
     private ColorPicker uniformNodeColorPicker;
 
+    /**
+     * Méthode d'initialisation appelée automatiquement par JavaFX après le
+     * chargement du fichier FXML.
+     * <p>
+     * Elle configure les valeurs par défaut des composants (couleurs, mode de
+     * coloration,
+     * état des arêtes incurvées) et met en place les écouteurs d'événements de
+     * base.
+     * </p>
+     */
     @FXML
     private void initialize() {
         if (coloringModeCombo != null) {
@@ -83,27 +123,63 @@ public class PreviewController implements CommandBusLinkedI<GraphEngine> {
         updateCurveAngleFieldState(curvedEdgesToggle == null || curvedEdgesToggle.isSelected());
     }
 
+    /**
+     * Associe le bus de commandes au contrôleur.
+     *
+     * @param bus Le bus de commandes permettant d'accéder et de modifier le
+     *            {@link GraphEngine}.
+     */
     @Override
     public void setBus(CommandBus<GraphEngine> bus) {
         this.bus = bus;
     }
 
+    /**
+     * Définit le moteur de rendu utilisé pour la prévisualisation locale des
+     * paramètres.
+     * Applique immédiatement les options de rendu actuelles à ce moteur.
+     *
+     * @param previewRenderer L'instance du renderer d'aperçu.
+     */
     public void setPreviewRenderer(GraphRenderer previewRenderer) {
         this.previewRenderer = previewRenderer;
         applyPreviewRenderOptions();
     }
 
+    /**
+     * Intègre le composant d'affichage Swing (contenant le graphe) dans l'interface
+     * JavaFX.
+     *
+     * @param panel Le {@link SwingNode} encapsulant le canvas de rendu du graphe.
+     */
     public void setGraphPanel(SwingNode panel) {
         if (graphContainer != null) {
             graphContainer.setCenter(panel);
         }
     }
 
+    /**
+     * Action déclenchée depuis l'interface (par exemple, clic sur le bouton
+     * "Appliquer").
+     * Applique les options avec possibilité d'annulation (undoable).
+     */
     @FXML
     private void applyOptions() {
         applyCurrentOptions(true);
     }
 
+    /**
+     * Lit, valide et applique les options de configuration saisies par
+     * l'utilisateur.
+     * <p>
+     * Si les champs contiennent des valeurs invalides, une alerte est affichée.
+     * Sinon, les commandes appropriées sont envoyées au moteur de graphe.
+     * </p>
+     *
+     * @param undoable {@code true} si l'action doit être enregistrée dans
+     *                 l'historique (UndoManager), {@code false} pour une exécution
+     *                 directe synchrone.
+     */
     public void applyCurrentOptions(boolean undoable) {
         if (bus == null) {
             applyPreviewRenderOptions();
@@ -113,6 +189,7 @@ public class PreviewController implements CommandBusLinkedI<GraphEngine> {
         List<String> errors = new ArrayList<>();
         EngineOptions options = readOptions(errors);
         Double previewCurveAngle = readCurveAngle(errors);
+
         if (!errors.isEmpty()) {
             alert("Valeurs invalides", String.join("\n", errors));
             return;
@@ -127,10 +204,22 @@ public class PreviewController implements CommandBusLinkedI<GraphEngine> {
         applyAppearance(previewCurveAngle);
     }
 
+    /**
+     * Applique les modifications liées à l'apparence générale (couleur de fond,
+     * mode de coloration, couleur uniforme des nœuds) sans préciser d'angle de
+     * courbure.
+     */
     public void applyAppearance() {
         applyAppearance(null);
     }
 
+    /**
+     * Applique les modifications d'apparence au moteur principal et met à jour
+     * l'aperçu.
+     *
+     * @param previewCurveAngle L'angle de courbure à appliquer pour l'aperçu (si
+     *                          non nul).
+     */
     private void applyAppearance(Double previewCurveAngle) {
         if (bus != null) {
             Color bg = canvasColorPicker == null ? null : canvasColorPicker.getValue();
@@ -159,6 +248,10 @@ public class PreviewController implements CommandBusLinkedI<GraphEngine> {
         applyPreviewRenderOptions(previewCurveAngle);
     }
 
+    /**
+     * Met à jour les options de rendu de l'aperçu en lisant l'angle de courbure
+     * depuis le champ texte.
+     */
     private void applyPreviewRenderOptions() {
         List<String> errors = new ArrayList<>();
         Double previewCurveAngle = readCurveAngle(errors);
@@ -168,6 +261,13 @@ public class PreviewController implements CommandBusLinkedI<GraphEngine> {
         applyPreviewRenderOptions(previewCurveAngle);
     }
 
+    /**
+     * Construit et applique l'objet {@link GraphRenderOptions} au moteur de
+     * prévisualisation,
+     * gérant ainsi l'épaisseur des traits et la courbure des arêtes.
+     *
+     * @param previewCurveAngle L'angle de courbure spécifié.
+     */
     private void applyPreviewRenderOptions(Double previewCurveAngle) {
         if (previewRenderer == null) {
             return;
@@ -206,6 +306,12 @@ public class PreviewController implements CommandBusLinkedI<GraphEngine> {
         previewRenderer.setRenderOptions(options);
     }
 
+    /**
+     * Extrait l'état actuel des composants de l'interface et les sauvegarde dans un
+     * objet {@link Properties}.
+     *
+     * @param p L'objet Properties dans lequel stocker les paramètres.
+     */
     public void fillProperties(Properties p) {
         put(p, "degreeFactor", textOf(degreeFactor));
         put(p, "initNodeSize", textOf(initNodeSize));
@@ -228,6 +334,12 @@ public class PreviewController implements CommandBusLinkedI<GraphEngine> {
         }
     }
 
+    /**
+     * Restaure l'état des composants de l'interface à partir des valeurs contenues
+     * dans un objet {@link Properties}.
+     *
+     * @param p L'objet Properties contenant les paramètres sauvegardés.
+     */
     public void loadFromProperties(Properties p) {
         setTextIfPresent(degreeFactor, p.getProperty("degreeFactor"));
         setTextIfPresent(initNodeSize, p.getProperty("initNodeSize"));
@@ -255,6 +367,10 @@ public class PreviewController implements CommandBusLinkedI<GraphEngine> {
         applyPreviewRenderOptions();
     }
 
+    /**
+     * Assigne une valeur d'énumération à une ComboBox à partir d'une chaîne de
+     * caractères.
+     */
     private <E extends Enum<E>> void setEnumValue(ComboBox<E> comboBox, String name, Class<E> enumClass) {
         if (comboBox == null || name == null || name.isBlank()) {
             return;
@@ -265,12 +381,24 @@ public class PreviewController implements CommandBusLinkedI<GraphEngine> {
         }
     }
 
+    /**
+     * Ajoute une paire clé-valeur dans les Properties, si la valeur n'est pas
+     * nulle.
+     */
     private void put(Properties p, String key, String value) {
         if (value != null) {
             p.setProperty(key, value);
         }
     }
 
+    /**
+     * Lit, analyse et valide les champs de saisie pour construire l'objet des
+     * options du moteur.
+     *
+     * @param errors Liste dans laquelle ajouter les messages d'erreur de
+     *               validation.
+     * @return Une instance contenant les options configurées par l'utilisateur.
+     */
     private EngineOptions readOptions(List<String> errors) {
         EngineOptions options = new EngineOptions();
         options.degreeFactor = parseDoubleOrNull(degreeFactor, errors, "Agrandissement par degré");
@@ -285,6 +413,12 @@ public class PreviewController implements CommandBusLinkedI<GraphEngine> {
         return options;
     }
 
+    /**
+     * Lit et valide l'angle de courbure renseigné.
+     *
+     * @param errors Liste dans laquelle ajouter les messages d'erreur.
+     * @return L'angle de courbure validé (entre 0 et 85), ou la valeur par défaut.
+     */
     private Double readCurveAngle(List<String> errors) {
         if (curveAngleField == null) {
             return DEFAULT_CURVE_ANGLE;
@@ -303,6 +437,9 @@ public class PreviewController implements CommandBusLinkedI<GraphEngine> {
         return null;
     }
 
+    /**
+     * Vérifie qu'une valeur numérique est strictement supérieure à zéro.
+     */
     private void validateStrictlyPositive(TextField field, Number value, List<String> errors, String label) {
         if (field == null || value == null) {
             return;
@@ -314,6 +451,9 @@ public class PreviewController implements CommandBusLinkedI<GraphEngine> {
         markInvalid(field, errors, label, String.valueOf(value));
     }
 
+    /**
+     * Vérifie qu'une valeur numérique est positive ou nulle.
+     */
     private void validateNonNegative(TextField field, Number value, List<String> errors, String label) {
         if (field == null || value == null) {
             return;
@@ -325,6 +465,10 @@ public class PreviewController implements CommandBusLinkedI<GraphEngine> {
         markInvalid(field, errors, label, String.valueOf(value));
     }
 
+    /**
+     * Parse le texte d'un champ en Double, en gérant la conversion de virgule en
+     * point.
+     */
     private Double parseDoubleOrNull(TextField field, List<String> errors, String label) {
         String value = normalize(field);
         if (value == null) {
@@ -339,6 +483,9 @@ public class PreviewController implements CommandBusLinkedI<GraphEngine> {
         }
     }
 
+    /**
+     * Parse le texte d'un champ en Integer.
+     */
     private Integer parseIntOrNull(TextField field, List<String> errors, String label) {
         String value = normalize(field);
         if (value == null) {
@@ -353,6 +500,11 @@ public class PreviewController implements CommandBusLinkedI<GraphEngine> {
         }
     }
 
+    /**
+     * Nettoie la valeur texte d'un champ en supprimant les espaces inutiles.
+     *
+     * @return La chaîne nettoyée, ou null si le champ est vide.
+     */
     private String normalize(TextField field) {
         if (field == null) {
             return null;
@@ -370,6 +522,10 @@ public class PreviewController implements CommandBusLinkedI<GraphEngine> {
         return value;
     }
 
+    /**
+     * Signale visuellement une erreur sur un champ (bordure rouge) et ajoute le
+     * message aux erreurs.
+     */
     private void markInvalid(TextField field, List<String> errors, String label, String value) {
         if (field != null) {
             field.setStyle("-fx-border-color: #d33; -fx-border-width: 2;");
@@ -377,12 +533,19 @@ public class PreviewController implements CommandBusLinkedI<GraphEngine> {
         errors.add(label + " : valeur invalide ('" + value + "')");
     }
 
+    /**
+     * Supprime le signalement visuel d'erreur d'un champ.
+     */
     private void clearInvalid(TextField field) {
         if (field != null) {
             field.setStyle("");
         }
     }
 
+    /**
+     * Active ou désactive le champ de saisie de l'angle de courbure en fonction de
+     * l'état de la case à cocher.
+     */
     private void updateCurveAngleFieldState(boolean curvedEnabled) {
         if (curveAngleField == null) {
             return;
@@ -393,16 +556,26 @@ public class PreviewController implements CommandBusLinkedI<GraphEngine> {
         }
     }
 
+    /**
+     * Récupère le texte d'un champ de manière sécurisée (gère le cas null).
+     */
     private String textOf(TextField field) {
         return field == null ? null : field.getText();
     }
 
+    /**
+     * Affecte un texte à un champ s'il est présent (non null).
+     */
     private void setTextIfPresent(TextField field, String value) {
         if (field != null && value != null) {
             field.setText(value);
         }
     }
 
+    /**
+     * Formate un angle pour affichage : retire la décimale si c'est un entier
+     * parfait.
+     */
     private String formatAngle(double angle) {
         if (Math.rint(angle) == angle) {
             return Integer.toString((int) angle);
@@ -410,6 +583,13 @@ public class PreviewController implements CommandBusLinkedI<GraphEngine> {
         return Double.toString(angle);
     }
 
+    /**
+     * Affiche une boîte de dialogue d'avertissement JavaFX contenant des messages
+     * d'erreur.
+     *
+     * @param title   Le titre de la fenêtre d'alerte.
+     * @param content Le détail des erreurs à afficher à l'utilisateur.
+     */
     private void alert(String title, String content) {
         Alert alert = new Alert(Alert.AlertType.WARNING);
         alert.setTitle(title);

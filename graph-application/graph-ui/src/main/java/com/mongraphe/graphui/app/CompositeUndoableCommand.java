@@ -4,7 +4,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
-import com.mongraphe.graphui.interfaces.UndoableGraphCommand;
+import com.mongraphe.graphui.interfaces.app.UndoableGraphCommand;
 
 public final class CompositeUndoableCommand<C>
         implements UndoableGraphCommand<C> {

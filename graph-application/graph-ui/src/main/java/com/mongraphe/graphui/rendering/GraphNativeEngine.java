@@ -17,12 +17,35 @@ import com.mongraphe.graphui.model.Metadata;
 import com.mongraphe.graphui.model.Vertex;
 
 /**
- * Pont JNI avec le moteur natif C.
+ * Pont JNI (Java Native Interface) assurant la communication avec le moteur de
+ * calcul en C.
  *
- * La bibliothèque n'est pas chargée dans un bloc statique pour éviter de
- * faire échouer brutalement tout le chargement FXML avec un
- * ExceptionInInitializerError. On charge explicitement la librairie au moment
- * de construire le moteur, avec plusieurs chemins de repli et un message clair.
+ * <p>
+ * Cette classe est responsable du chargement de la bibliothèque native
+ * ({@code .so}, {@code .dll} ou {@code .dylib})
+ * et de l'exposition des méthodes de calcul intensif (layout, simulation de
+ * forces, clustering).
+ * </p>
+ *
+ * <h2>Optimisation de la Mémoire</h2>
+ * <p>
+ * Pour éviter les surcoûts liés au passage d'objets entre Java et C, cette
+ * classe utilise un
+ * <b>Direct ByteBuffer</b> ({@code sharedPositionsBuffer}). Ce tampon mémoire
+ * est alloué
+ * en dehors du tas Java (Heap), permettant au code natif d'y écrire directement
+ * les nouvelles
+ * positions des sommets sans copie intermédiaire.
+ * </p>
+ *
+ * <h2>Chargement Dynamique</h2>
+ * <p>
+ * Contrairement à un chargement statique classique, le moteur cherche la
+ * bibliothèque dans
+ * plusieurs répertoires (chemins relatifs, {@code java.library.path}, variables
+ * d'environnement)
+ * pour faciliter le déploiement sur différents environnements de développement.
+ * </p>
  */
 public final class GraphNativeEngine {
 
@@ -39,12 +62,23 @@ public final class GraphNativeEngine {
         ensureNativeLoaded();
     }
 
+    /**
+     * * Buffer de communication direct.
+     * [x0, y0, x1, y1, ...] en float 32 bits.
+     */
     public ByteBuffer sharedPositionsBuffer;
     private int sharedBufferCapacity; // nombre de floats (2 * num_nodes)
 
+    /**
+     * Alloue un espace mémoire "Direct" partagé avec le moteur C.
+     * 
+     * @param numNodes Nombre de sommets du graphe.
+     */
     public void initSharedPositionsBuffer(int numNodes) {
         int floatCount = numNodes * 2;
         sharedPositionsBuffer = ByteBuffer.allocateDirect(floatCount * Float.BYTES);
+        // Important : aligner l'ordre des octets sur celui du processeur (Little/Big
+        // Endian)
         sharedPositionsBuffer.order(ByteOrder.nativeOrder());
         sharedBufferCapacity = floatCount;
     }
@@ -65,6 +99,11 @@ public final class GraphNativeEngine {
         return message == null || message.isBlank() ? nativeLoadError.toString() : message;
     }
 
+    /**
+     * Tente de charger la bibliothèque native selon une liste de candidats.
+     * 
+     * @throws UnsatisfiedLinkError si la bibliothèque reste introuvable.
+     */
     public static synchronized void ensureNativeLoaded() {
         if (nativeLoaded) {
             return;
@@ -104,6 +143,7 @@ public final class GraphNativeEngine {
         throw nativeLoadException(nativeLoadError);
     }
 
+    /** Génère une erreur détaillée en cas d'échec de chargement. */
     private static UnsatisfiedLinkError nativeLoadException(Throwable cause) {
         StringBuilder sb = new StringBuilder();
         sb.append("Impossible de charger la bibliothèque native 'lib")
@@ -127,6 +167,7 @@ public final class GraphNativeEngine {
         return err;
     }
 
+    /** Liste les chemins potentiels où la librairie pourrait se trouver. */
     private static List<Path> nativeCandidates() {
         Set<Path> candidates = new LinkedHashSet<>();
         String ext = nativeFileExtension();
@@ -164,6 +205,7 @@ public final class GraphNativeEngine {
         candidates.add(Paths.get(rawPath.trim()));
     }
 
+    /** Identifie l'extension de fichier selon l'OS. */
     private static String nativeFileExtension() {
         String os = System.getProperty("os.name", "").toLowerCase(Locale.ROOT);
         if (os.contains("win")) {
@@ -183,10 +225,17 @@ public final class GraphNativeEngine {
         return initMetadata;
     }
 
+    /**
+     * * Nettoyage de la mémoire native.
+     * Indispensable pour éviter les fuites de mémoire (le GC Java ne voit pas la
+     * mémoire C).
+     */
     public void freeAllocatedMemory() {
         nativeFreeAllocatedMemory(); // appel natif
         sharedPositionsBuffer = null; // éviter les références pendantes
     }
+
+    // --- Méthodes Natives (Implémentées en C) ---
 
     public synchronized native Metadata initializeDot(String filepath, int modeCommunity);
 
@@ -199,6 +248,7 @@ public final class GraphNativeEngine {
 
     public synchronized native void setDimension(double width, double height);
 
+    /** Met à jour les positions dans le buffer partagé. Retourne true si succès. */
     public synchronized native boolean updatePositions(ByteBuffer positionsBuffer);
 
     public synchronized native Vertex[] getPositions();
@@ -237,6 +287,7 @@ public final class GraphNativeEngine {
 
     public synchronized native void restoreNode(int index);
 
+    /** Libère les structures de données (listes d'adjacence, etc.) côté C. */
     public synchronized native void nativeFreeAllocatedMemory();
 
     public synchronized native double[] getDimensions();
