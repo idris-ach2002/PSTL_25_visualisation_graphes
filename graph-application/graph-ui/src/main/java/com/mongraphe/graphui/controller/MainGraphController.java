@@ -304,11 +304,11 @@ public final class MainGraphController implements GraphEngine.GraphEngineListene
         try {
             bus.dispatchSyncVoid(engine -> {
                 engine.stopSimulation();
+                engine.setDimensions(width, height);
                 engine.loadCsv(similitude, community, edgeThreshold, antiThreshold);
                 if (repulsion != null)
                     engine.setRepulsionMode(repulsion);
             });
-            engine.setDimensions(width, height);
             engineOptionsViewController.applyCurrentOptions(false);
             bus.dispatch(engine -> engine.startSimulation());
             uiState.setRunning(true);
@@ -331,9 +331,9 @@ public final class MainGraphController implements GraphEngine.GraphEngineListene
         try {
             bus.dispatchSyncVoid(engine -> {
                 engine.stopSimulation();
+                engine.setDimensions(width, height);
                 engine.loadDot(project.sourceFile().getAbsolutePath(), community);
             });
-            engine.setDimensions(width, height);
             engineOptionsViewController.applyCurrentOptions(false);
             bus.dispatch(engine -> engine.startSimulation());
             uiState.setRunning(true);
