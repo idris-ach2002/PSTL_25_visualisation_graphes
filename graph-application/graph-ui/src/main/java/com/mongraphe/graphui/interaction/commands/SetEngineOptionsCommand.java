@@ -33,8 +33,8 @@ public class SetEngineOptionsCommand implements GraphCommand<GraphEngine> {
             context.setSpatialCells(opts.spatialCells);
         if (opts.kmeansEnabled != null)
             context.setKmeansMode(opts.kmeansEnabled);
-        if (opts.epsilon != null)
-            context.setEpsilon(opts.epsilon);
+        if (opts.lambda != null)
+            context.setLambda(opts.lambda);
         if (opts.minimumDegree != null)
             context.setMinimumDegree(opts.minimumDegree);
         if (opts.minEdgeWeight != null)

@@ -532,8 +532,8 @@ public final class GraphEngine {
         nativeEngine.setRepulsionCoeff(coeff);
     }
 
-    public void setEpsilon(double eps) {
-        nativeEngine.setEpsilon(eps);
+    public void setLambda(double eps) {
+        nativeEngine.setLambda(eps);
     }
 
     public void setAttractionCoefficient(double c) {

@@ -87,6 +87,10 @@ extern int num_rows, num_columns;
 extern char delimiter[1];
 
 
+// Pour les communautés
+extern double lambda;
+
+
 #include "pretraitement/similarity.h"
 
 #define NUM_BINS 100  // Nombre de bins pour l'histogramme

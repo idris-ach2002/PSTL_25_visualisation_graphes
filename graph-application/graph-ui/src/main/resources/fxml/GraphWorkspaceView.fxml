@@ -45,6 +45,14 @@
         </tooltip>
     </Label>
     <ComboBox fx:id="communityCombo" prefWidth="220"/>
+    <VBox fx:id="lambdaBox" spacing="4">
+        <Label text="Lambda (Leiden CPM uniquement) :">
+            <tooltip>
+                <Tooltip text="Paramètre de résolution pour Leiden CPM. Valeur ≥ 0. Plus lambda est grand, plus les communautés sont petites et denses."/>
+            </tooltip>
+        </Label>
+        <TextField fx:id="lambdaField" promptText="0.1"/>
+    </VBox>
 
     <Label text="Mode de répulsion">
         <tooltip>
@@ -53,7 +61,7 @@
     </Label>
     <ComboBox fx:id="repulsionCombo" prefWidth="220"/>
 
-        <Label text="Dimensions *">
+    <Label text="Dimensions *">
         <tooltip>
             <Tooltip text="Taille de l'espace de simulation. Obligatoire."/>
         </tooltip>
@@ -82,13 +90,6 @@
                 <Tooltip text="Active le clustering dynamique (k-means) au lieu d'une grille fixe."/>
             </tooltip>
         </CheckBox>
-
-        <Label text="Epsilon :" GridPane.rowIndex="2" GridPane.columnIndex="0">
-            <tooltip>
-                <Tooltip text="Seuil de convergence du k-means."/>
-            </tooltip>
-        </Label>
-        <TextField fx:id="epsilonField" promptText="0.1" GridPane.rowIndex="2" GridPane.columnIndex="1"/>
     </GridPane>
 
     <Separator/>

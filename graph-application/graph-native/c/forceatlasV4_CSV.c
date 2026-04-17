@@ -552,10 +552,10 @@ Java_com_mongraphe_graphui_rendering_GraphNativeEngine_setSpatialCells(
 }
 
 JNIEXPORT void JNICALL
-Java_com_mongraphe_graphui_rendering_GraphNativeEngine_setEpsilon(JNIEnv *env,
+Java_com_mongraphe_graphui_rendering_GraphNativeEngine_setLambda(JNIEnv *env,
                                                                   jobject obj,
-                                                                  jdouble eps) {
-  epsilon = eps;
+                                                                  jdouble d) {
+  lambda = d;
 }
 
 JNIEXPORT void JNICALL

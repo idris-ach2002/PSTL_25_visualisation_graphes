@@ -114,9 +114,12 @@ public final class GraphWorkspaceController implements CommandBusLinkedI<GraphEn
     @FXML
     private CheckBox enableKmeans;
 
-    /** Paramètre epsilon utilisé par l'algorithme de clustering. */
+    /** Paramètre lambda utilisé par l'algorithme de clustering. */
     @FXML
-    private TextField epsilonField;
+    private TextField lambdaField;
+
+    @FXML
+    private VBox lambdaBox;
 
     /** Bus de communication avec le moteur de graphe. */
     private CommandBus<GraphEngine> bus;
@@ -179,7 +182,17 @@ public final class GraphWorkspaceController implements CommandBusLinkedI<GraphEn
         });
 
         enableKmeans.setSelected(false);
-        epsilonField.setText("0.1");
+
+        // Gérer la visibilité du champ lambda selon l'algorithme de communauté
+        communityCombo.getSelectionModel().selectedItemProperty().addListener((obs, oldVal, newVal) -> {
+            boolean isLeidenCpm = newVal == GraphData.NodeCommunity.LEIDEN_CPM;
+            lambdaBox.setVisible(isLeidenCpm);
+            lambdaBox.setManaged(isLeidenCpm);
+        });
+
+        // État initial
+        lambdaBox.setVisible(false);
+        lambdaBox.setManaged(false);
     }
 
     /**
@@ -379,7 +392,7 @@ public final class GraphWorkspaceController implements CommandBusLinkedI<GraphEn
 
             Integer spatialCells = parseSpatialCells();
             Boolean kmeans = enableKmeans.isSelected();
-            Double epsilon = parseEpsilon();
+            Double lambda = parseLambda();
 
             if (spatialCells != null) {
                 bus.dispatchSyncVoid(e -> e.setSpatialCells(spatialCells));
@@ -387,8 +400,8 @@ public final class GraphWorkspaceController implements CommandBusLinkedI<GraphEn
 
             bus.dispatchSyncVoid(e -> e.setKmeansMode(kmeans));
 
-            if (kmeans && epsilon != null) {
-                bus.dispatchSyncVoid(e -> e.setEpsilon(epsilon));
+            if (lambda != null) {
+                bus.dispatchSyncVoid(e -> e.setLambda(lambda));
             }
 
             mainController.startGraphCsv(
@@ -429,21 +442,71 @@ public final class GraphWorkspaceController implements CommandBusLinkedI<GraphEn
     }
 
     /**
-     * Analyse la valeur du paramètre epsilon.
+     * Analyse la valeur du paramètre lambda pour le clustering CPM (Leiden CPM).
+     * <p>
+     * Accepte les formats avec point ou virgule comme séparateur décimal.
+     * La valeur doit être positive ou nulle. En cas d'erreur, le champ
+     * est marqué visuellement et {@code null} est retourné.
+     * </p>
      *
-     * @return valeur numérique ou null
+     * @return la valeur numérique de lambda ou {@code null} si invalide ou vide
      */
-    private Double parseEpsilon() {
-
-        String text = epsilonField.getText().trim();
-
-        if (text.isEmpty())
+    private Double parseLambda() {
+        if (lambdaField == null) {
             return null;
+        }
 
+        String text = lambdaField.getText().trim();
+        if (text.isEmpty()) {
+            clearInvalid(lambdaField);
+            return null;
+        }
+
+        String normalized = text.replace(',', '.');
         try {
-            return Double.parseDouble(text);
+            double value = Double.parseDouble(normalized);
+            if (value < 0.0) {
+                markInvalid(lambdaField, "lambda doit être ≥ 0", text);
+                return null;
+            }
+            clearInvalid(lambdaField);
+            return value;
         } catch (NumberFormatException e) {
+            markInvalid(lambdaField, "nombre invalide", text);
             return null;
+        }
+    }
+
+    /**
+     * Marque un champ comme invalide (bordure rouge) et affiche un tooltip
+     * d'erreur.
+     *
+     * @param field   le champ concerné
+     * @param message le message d'erreur
+     * @param value   la valeur saisie (pour affichage)
+     */
+    private void markInvalid(TextField field, String message, String value) {
+        if (field == null)
+            return;
+        field.setStyle("-fx-border-color: #d33; -fx-border-width: 2;");
+        Tooltip tooltip = new Tooltip(message + " : '" + value + "'");
+        tooltip.setAutoHide(true);
+        tooltip.show(field,
+                field.localToScreen(0, 0).getX(),
+                field.localToScreen(0, 0).getY() - 30);
+        PauseTransition delay = new PauseTransition(Duration.seconds(2));
+        delay.setOnFinished(e -> field.setStyle(""));
+        delay.play();
+    }
+
+    /**
+     * Supprime le style d'erreur d'un champ.
+     *
+     * @param field le champ à nettoyer
+     */
+    private void clearInvalid(TextField field) {
+        if (field != null) {
+            field.setStyle("");
         }
     }
 

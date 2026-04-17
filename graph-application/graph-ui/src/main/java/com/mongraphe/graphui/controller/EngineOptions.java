@@ -10,9 +10,9 @@ public final class EngineOptions {
     public Integer repulsionMode; // 0,1,2
 
     // Partition spatiale
+    public Double lambda; // pr le clustering
     public Integer spatialCells;
     public Boolean kmeansEnabled;
-    public Double epsilon; // convergence k‑means
 
     // Filtres (visuels)
     public Integer minimumDegree;

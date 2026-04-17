@@ -275,7 +275,7 @@ public final class GraphNativeEngine {
 
     public synchronized native void setSpatialCells(int cells);
 
-    public synchronized native void setEpsilon(double eps);
+    public synchronized native void setLambda(double lambda);
 
     public synchronized native void setKmeansMode(boolean md);
 
