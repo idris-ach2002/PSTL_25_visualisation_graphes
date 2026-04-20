@@ -291,13 +291,30 @@ public final class GraphEngine {
     }
 
     /**
+     * Réinitialise complètement le graphe chargé côté Java et côté natif.
+     *
+     * <p>
+     * Cette méthode est appelée avant tout rechargement afin d'éviter qu'un ancien
+     * thread de simulation, un ancien buffer direct ou un ancien état natif
+     * continuent d'accéder à des structures C devenues invalides.
+     * </p>
+     */
+    private void resetLoadedGraph() {
+        stopSimulation();
+        graphLoaded = false;
+        nativeEngine.freeAllocatedMemory();
+        model.clear();
+        notifyDataChanged();
+    }
+
+    /**
      * Charge un graphe depuis un CSV en configurant les seuils et modes
      * algorithmiques.
      */
     public void loadCsv(GraphData.SimilitudeMode sim,
             GraphData.NodeCommunity communityMode,
             double edgeThreshold, double antiThreshold) {
-        graphLoaded = false;
+        resetLoadedGraph();
         int modeSim = getModeSimilitude(sim);
         int modeComm = getModeCommunity(communityMode);
         nativeEngine.initializeGraph(modeSim, modeComm, edgeThreshold, antiThreshold);
@@ -310,10 +327,11 @@ public final class GraphEngine {
     public void loadDot(String path, GraphData.NodeCommunity communityMode) {
         if (path == null || path.isBlank())
             throw new IllegalArgumentException("DOT path missing");
-        graphLoaded = false;
+        resetLoadedGraph();
         int modeComm = getModeCommunity(communityMode);
         nativeEngine.initializeDot(path, modeComm);
         rebuildModelFromNative();
+        notifyDataChanged();
         graphLoaded = true;
     }
 
@@ -603,8 +621,7 @@ public final class GraphEngine {
 
     /** Libère proprement les ressources natives et arrête les threads. */
     public void dispose() {
-        simulationRunning = false;
-        graphLoaded = false;
+        resetLoadedGraph();
         simulationExecutor.shutdown();
         try {
             if (!simulationExecutor.awaitTermination(1, TimeUnit.SECONDS)) {

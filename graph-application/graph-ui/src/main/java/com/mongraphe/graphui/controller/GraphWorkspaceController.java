@@ -323,6 +323,34 @@ public final class GraphWorkspaceController implements CommandBusLinkedI<GraphEn
     }
 
     /**
+     * Applique les paramètres communs aux projets CSV et DOT.
+     */
+    private boolean applySharedParameters() {
+
+        Integer spatialCells = parseSpatialCells();
+        Boolean kmeans = enableKmeans.isSelected();
+        Double lambda = parseLambda();
+
+        if (communityCombo.getValue() == GraphData.NodeCommunity.LEIDEN_CPM
+                && !lambdaField.getText().trim().isEmpty()
+                && lambda == null) {
+            return false;
+        }
+
+        if (spatialCells != null) {
+            bus.dispatchSyncVoid(e -> e.setSpatialCells(spatialCells));
+        }
+
+        bus.dispatchSyncVoid(e -> e.setKmeansMode(kmeans));
+
+        if (lambda != null) {
+            bus.dispatchSyncVoid(e -> e.setLambda(lambda));
+        }
+
+        return true;
+    }
+
+    /**
      * Lance la création et la simulation du graphe avec les
      * paramètres actuellement configurés.
      */
@@ -337,27 +365,24 @@ public final class GraphWorkspaceController implements CommandBusLinkedI<GraphEn
         File f = mainController.getFile();
         String path = f.getAbsolutePath();
 
-        bus.dispatchSyncVoid(e -> e.startProgram(path));
-
-        Platform.runLater(() -> {
-
-            if (spatialCellsField.getText().isEmpty()) {
-
-                Integer nodeCount = bus.dispatchSync(engine -> engine.model().vertexCount());
-
-                if (nodeCount != null && nodeCount > 0) {
-
-                    int cells = (int) Math.sqrt(nodeCount);
-                    spatialCellsField.setText(String.valueOf(cells));
-                }
-            }
-        });
-
         if (isCsvProject) {
+            bus.dispatchSyncVoid(e -> e.startProgram(path));
+
+            Platform.runLater(() -> {
+
+                if (spatialCellsField.getText().isEmpty()) {
+
+                    Integer nodeCount = bus.dispatchSync(engine -> engine.model().vertexCount());
+
+                    if (nodeCount != null && nodeCount > 0) {
+                        int cells = (int) Math.sqrt(nodeCount);
+                        spatialCellsField.setText(String.valueOf(cells));
+                    }
+                }
+            });
 
             if (similarityCombo.getValue() == null) {
-                showTooltip(similarityCombo,
-                        "Sélectionnez une mesure de similarité");
+                showTooltip(similarityCombo, "Sélectionnez une mesure de similarité");
                 return;
             }
 
@@ -380,28 +405,16 @@ public final class GraphWorkspaceController implements CommandBusLinkedI<GraphEn
             } else {
 
                 try {
-
                     edgeThreshold = Double.parseDouble(edgeThresholdField.getText().trim());
                     antiThreshold = Double.parseDouble(antiThresholdField.getText().trim());
-
                 } catch (NumberFormatException e) {
                     showTooltip(edgeThresholdField, "Seuil invalide");
                     return;
                 }
             }
 
-            Integer spatialCells = parseSpatialCells();
-            Boolean kmeans = enableKmeans.isSelected();
-            Double lambda = parseLambda();
-
-            if (spatialCells != null) {
-                bus.dispatchSyncVoid(e -> e.setSpatialCells(spatialCells));
-            }
-
-            bus.dispatchSyncVoid(e -> e.setKmeansMode(kmeans));
-
-            if (lambda != null) {
-                bus.dispatchSyncVoid(e -> e.setLambda(lambda));
+            if (!applySharedParameters()) {
+                return;
             }
 
             mainController.startGraphCsv(
@@ -414,6 +427,9 @@ public final class GraphWorkspaceController implements CommandBusLinkedI<GraphEn
                     antiThreshold);
 
         } else {
+            if (!applySharedParameters()) {
+                return;
+            }
 
             mainController.startGraphDot(
                     communityCombo.getValue(),

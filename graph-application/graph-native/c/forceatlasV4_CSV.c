@@ -28,6 +28,22 @@ int max_iterations = 5000;
 
 short pause_updates = 0;
 
+static void reset_native_graph_state(void) {
+  pause_updates = 1;
+  free_clusters();
+  freeNodeNames();
+  free_csr_adjacency();
+  FreePool(&pool);
+
+  num_nodes = 0;
+  live_nodes = 0;
+  num_edges = 0;
+  num_antiedges = 0;
+  num_communities = 0;
+  n_clusters = 0;
+  modified_graph = 0;
+}
+
 /**
  *
  *
@@ -340,6 +356,8 @@ Java_com_mongraphe_graphui_rendering_GraphNativeEngine_initializeGraph(
     JNIEnv *env, jobject obj, jint modeSimilitude, jint modeCommunity,
     jdouble thresh, jdouble anti_thresh) {
 
+  reset_native_graph_state();
+
   num_nodes = num_rows;
   live_nodes = num_nodes;
 
@@ -409,6 +427,8 @@ JNIEXPORT jobject JNICALL
 Java_com_mongraphe_graphui_rendering_GraphNativeEngine_initializeDot(
     JNIEnv *env, jobject obj, jstring filepath, jint modeCommunity) {
 
+  reset_native_graph_state();
+
   const char *str = (*env)->GetStringUTFChars(env, filepath, NULL);
   parse_dot_file(str);
   (*env)->ReleaseStringUTFChars(env, filepath, str);
@@ -470,17 +490,7 @@ Java_com_mongraphe_graphui_rendering_GraphNativeEngine_initializeDot(
 JNIEXPORT void JNICALL
 Java_com_mongraphe_graphui_rendering_GraphNativeEngine_nativeFreeAllocatedMemory(
     JNIEnv *env, jobject obj) {
-
-  free_clusters();
-
-  freeNodeNames();
-  free_csr_adjacency();
-  FreePool(&pool);
-
-  num_nodes = 0;
-  live_nodes = 0;
-  num_edges = 0;
-  num_antiedges = 0;
+  reset_native_graph_state();
 }
 
 JNIEXPORT void JNICALL
@@ -551,8 +561,8 @@ Java_com_mongraphe_graphui_rendering_GraphNativeEngine_setSpatialCells(
 
 JNIEXPORT void JNICALL
 Java_com_mongraphe_graphui_rendering_GraphNativeEngine_setLambda(JNIEnv *env,
-                                                                  jobject obj,
-                                                                  jdouble d) {
+                                                                 jobject obj,
+                                                                 jdouble d) {
   lambda = d;
 }
 

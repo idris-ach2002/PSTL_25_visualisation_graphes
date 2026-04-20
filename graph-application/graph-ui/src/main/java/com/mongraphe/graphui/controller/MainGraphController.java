@@ -84,6 +84,9 @@ public final class MainGraphController implements GraphEngine.GraphEngineListene
     /** Système de transport des commandes pour manipuler le moteur de rendu. */
     private CommandBus<GraphEngine> bus;
 
+    /** Exécuteur dédié au moteur, à arrêter explicitement lors de la fermeture. */
+    private EngineExecutor engineExecutor;
+
     /**
      * Service gérant les modes d'interaction souris/clavier (Move, Select, etc.).
      */
@@ -138,7 +141,8 @@ public final class MainGraphController implements GraphEngine.GraphEngineListene
         GraphNativeEngine nativeEngine = new GraphNativeEngine();
         this.engine = new GraphEngine(nativeEngine);
         GraphRenderer mainRenderer = new GraphRenderer(engine, engine.camera(), GraphRenderOptions.straight());
-        bus = new CommandBus<>(engine, new EngineExecutor());
+        engineExecutor = new EngineExecutor();
+        bus = new CommandBus<>(engine, engineExecutor);
         interaction = new InteractionService(bus, uiState);
         panel = new GraphPanel(mainRenderer, interaction);
 
@@ -485,6 +489,27 @@ public final class MainGraphController implements GraphEngine.GraphEngineListene
     }
 
     /**
+     * Arrête proprement tous les sous-systèmes liés à l'espace de travail courant.
+     *
+     * <p>
+     * Cette méthode peut être appelée plusieurs fois sans effet secondaire.
+     * Elle évite de laisser en mémoire un ancien moteur, un ancien canvas JOGL
+     * ou un ancien thread d'exécution lors d'un retour à l'accueil ou d'un
+     * changement de scène.
+     * </p>
+     */
+    public void shutdown() {
+        if (panel != null)
+            panel.stop();
+        if (previewGraphPanel != null)
+            previewGraphPanel.stop();
+        if (engine != null)
+            engine.dispose();
+        if (engineExecutor != null)
+            engineExecutor.shutdown();
+    }
+
+    /**
      * Libère les ressources JOGL et natif lors de la fermeture de l'application.
      */
     private void setupCloseWindowListener(GraphNativeEngine nat) {
@@ -493,12 +518,7 @@ public final class MainGraphController implements GraphEngine.GraphEngineListene
                 scene.windowProperty().addListener((obsW, oldWindow, window) -> {
                     if (window != null) {
                         Stage stage = (Stage) window;
-                        stage.setOnCloseRequest(e -> {
-                            panel.stop();
-                            if (previewGraphPanel != null)
-                                previewGraphPanel.stop();
-                            engine.dispose();
-                        });
+                        stage.setOnCloseRequest(e -> shutdown());
                     }
                 });
             }
