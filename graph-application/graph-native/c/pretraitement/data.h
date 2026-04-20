@@ -9,7 +9,6 @@
 short str_is_number(char* line);
 
 void load_csv_data(const char *filename);
-void free_csv_data(void);
 void lireColonneCSV(int *, int*);
 void compute_ratio_S(int *);
 void init_S(int num_nodes);
