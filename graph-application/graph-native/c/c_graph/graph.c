@@ -99,19 +99,9 @@ void translate_positions(double dx, double dy) {
   }
 }
 
-struct repulsion_args {
-  int start, end;
-  double (*forces)[2];
-  pthread_mutex_t *forces_lock;
-  Barrier barrier;
-};
+void repulsion_edges(double (*forces)[2]) {
 
-void repulsionTask_Edge(void *args) {
-
-  struct repulsion_args *arguments = (struct repulsion_args *)args;
-
-  for (int edge_index = arguments->start; edge_index < arguments->end;
-       edge_index++) {
+  for (int edge_index = 0; edge_index < num_edges; edge_index++) {
     int node1 = edges[edge_index].node1;
     int node2 = edges[edge_index].node2;
 
@@ -123,25 +113,18 @@ void repulsionTask_Edge(void *args) {
       double att_force = attraction_coeff; //*dist_squared;
 
       if (dist_squared > thresholdA) {
-        pthread_mutex_lock(arguments->forces_lock);
-        arguments->forces[node1][0] += dir.x * att_force;
-        arguments->forces[node1][1] += dir.y * att_force;
-        arguments->forces[node2][0] -= dir.x * att_force;
-        arguments->forces[node2][1] -= dir.y * att_force;
-        pthread_mutex_unlock(arguments->forces_lock);
+        forces[node1][0] += dir.x * att_force;
+        forces[node1][1] += dir.y * att_force;
+        forces[node2][0] -= dir.x * att_force;
+        forces[node2][1] -= dir.y * att_force;
       }
     }
   }
-
-  decrement_barrier(arguments->barrier, 1);
 }
 
-void repulsionTask_AntiEdge(void *args) {
+void repulsion_anti_edges(double (*forces)[2]) {
 
-  struct repulsion_args *arguments = (struct repulsion_args *)args;
-
-  for (int edge_index = arguments->start; edge_index < arguments->end;
-       edge_index++) {
+  for (int edge_index = 0; edge_index < num_antiedges; edge_index++) {
     int node1 = antiedges[edge_index].node1;
     int node2 = antiedges[edge_index].node2;
 
@@ -152,72 +135,20 @@ void repulsionTask_AntiEdge(void *args) {
       double dist = sqrt(dir.x * dir.x + dir.y * dir.y);
       if (dist > seuilrep) {
         double rep_force = coeff_antiarete / (dist * dist);
-
-        pthread_mutex_lock(arguments->forces_lock);
-        arguments->forces[node1][0] -= (dir.x / dist) * rep_force;
-        arguments->forces[node1][1] -= (dir.y / dist) * rep_force;
-        arguments->forces[node2][0] += (dir.x / dist) * rep_force;
-        arguments->forces[node2][1] += (dir.y / dist) * rep_force;
-        pthread_mutex_unlock(arguments->forces_lock);
+        forces[node1][0] -= (dir.x / dist) * rep_force;
+        forces[node1][1] -= (dir.y / dist) * rep_force;
+        forces[node2][0] += (dir.x / dist) * rep_force;
+        forces[node2][1] += (dir.y / dist) * rep_force;
       } else {
         double rep_force = coeff_antiarete / seuilrep;
 
-        pthread_mutex_lock(arguments->forces_lock);
-        arguments->forces[node1][0] -= dir.x * rep_force;
-        arguments->forces[node1][1] -= dir.y * rep_force;
-        arguments->forces[node2][0] += dir.x * rep_force;
-        arguments->forces[node2][1] += dir.y * rep_force;
-        pthread_mutex_unlock(arguments->forces_lock);
+        forces[node1][0] -= dir.x * rep_force;
+        forces[node1][1] -= dir.y * rep_force;
+        forces[node2][0] += dir.x * rep_force;
+        forces[node2][1] += dir.y * rep_force;
       }
     }
   }
-
-  decrement_barrier(arguments->barrier, 1);
-}
-
-void submit_repulsionTask(int start, int end, double (*forces)[2], Barrier b,
-                          pthread_mutex_t *lk, job j) {
-  struct repulsion_args *args =
-      (struct repulsion_args *)malloc(sizeof(struct repulsion_args));
-  args->start = start;
-  args->end = end;
-  args->forces = forces;
-  args->barrier = b;
-  args->forces_lock = lk;
-
-  struct Job task;
-  task.j = j;
-  task.args = args;
-  submit(&pool, task);
-}
-
-void parallel_repulsion(double (*forces)[2], job j) {
-  struct barrier b;
-  new_barrier(&b, pool.nb_threads);
-
-  pthread_mutex_t lk;
-  pthread_mutex_init(&lk, NULL);
-
-  int edge_chunck = num_edges / pool.nb_threads;
-
-  for (int i = 0; i < pool.nb_threads - 1; ++i) {
-    submit_repulsionTask(i * edge_chunck, (i + 1) * edge_chunck, forces, &b,
-                         &lk, j);
-  }
-
-  submit_repulsionTask((pool.nb_threads - 1) * edge_chunck, num_edges, forces,
-                       &b, &lk, j);
-
-  wait_barrier(&b);
-  pthread_mutex_destroy(&lk);
-}
-
-void parallel_repulsion_edges(double (*forces)[2]) {
-  parallel_repulsion(forces, repulsionTask_Edge);
-}
-
-void parallel_repulsion_anti_edges(double (*forces)[2]) {
-  parallel_repulsion(forces, repulsionTask_AntiEdge);
 }
 
 // probablement privé utilisé dans update_positions
