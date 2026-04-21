@@ -80,6 +80,10 @@ public final class EngineOptionsController
     @FXML
     private ComboBox<Integer> repulsionModeCombo;
 
+    /** Champ de saisie pour la fréquence d'exécution de la simulation (Hz). */
+    @FXML
+    private TextField simulationRateField;
+
     /**
      * Associe le bus de commandes au contrôleur.
      *
@@ -88,6 +92,11 @@ public final class EngineOptionsController
     @Override
     public void setBus(CommandBus<GraphEngine> bus) {
         this.bus = bus;
+        if (bus != null && simulationRateField != null) {
+            Integer hz = bus.dispatchSync(GraphEngine::getSimulationTicksPerSecond);
+            simulationRateField.setPromptText(String.valueOf(hz));
+            simulationRateField.setText(String.valueOf(hz));
+        }
     }
 
     /**
@@ -180,6 +189,8 @@ public final class EngineOptionsController
         options.antiRepulsion = parseNonNegativeDouble(antiRepulsionField, errors, "Répulsion anti-arêtes");
         options.amortissement = parsePositiveDouble(amortissementField, errors, "Amortissement");
         options.repulsionMode = repulsionModeCombo.getValue();
+        options.simulationTicksPerSecond = parseBoundedInteger(simulationRateField, errors,
+                "Fréquence de simulation", 1, 240);
         return options;
     }
 
@@ -229,6 +240,36 @@ public final class EngineOptionsController
      * @param label  nom du paramètre
      * @return valeur numérique ou {@code null}
      */
+
+    /**
+     * Analyse une valeur entière bornée entre deux limites incluses.
+     *
+     * @param field  champ contenant la valeur
+     * @param errors liste d'erreurs
+     * @param label  nom du paramètre
+     * @param min    borne minimale incluse
+     * @param max    borne maximale incluse
+     * @return valeur entière valide ou {@code null}
+     */
+    private Integer parseBoundedInteger(TextField field, List<String> errors, String label, int min, int max) {
+        String value = normalize(field);
+        if (value == null) {
+            return null;
+        }
+        try {
+            clearInvalid(field);
+            int parsed = Integer.parseInt(value);
+            if (parsed < min || parsed > max) {
+                markInvalid(field, errors, label, value + " (attendu entre " + min + " et " + max + ")");
+                return null;
+            }
+            return parsed;
+        } catch (NumberFormatException e) {
+            markInvalid(field, errors, label, value);
+            return null;
+        }
+    }
+
     private Double parseDoubleOrNull(TextField field, List<String> errors, String label) {
         String value = normalize(field);
         if (value == null) {

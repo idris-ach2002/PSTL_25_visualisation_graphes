@@ -8,6 +8,7 @@ public final class EngineOptions {
     public Double antiRepulsion; // anti‑arêtes
     public Double amortissement;
     public Integer repulsionMode; // 0,1,2
+    public Integer simulationTicksPerSecond; // fréquence d'exécution (Hz)
 
     // Partition spatiale
     public Double lambda; // pr le clustering

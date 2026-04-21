@@ -29,6 +29,8 @@ public class SetEngineOptionsCommand implements GraphCommand<GraphEngine> {
             context.setNewAmortissement(opts.amortissement);
         if (opts.repulsionMode != null)
             context.setRepulsionMode(GraphData.RepulsionMode.values()[opts.repulsionMode]);
+        if (opts.simulationTicksPerSecond != null)
+            context.setSimulationTicksPerSecond(opts.simulationTicksPerSecond);
         if (opts.spatialCells != null)
             context.setSpatialCells(opts.spatialCells);
         if (opts.kmeansEnabled != null)

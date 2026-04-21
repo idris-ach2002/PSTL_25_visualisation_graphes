@@ -50,6 +50,13 @@
       </tooltip>
     </Label>
     <ComboBox fx:id="repulsionModeCombo" GridPane.rowIndex="5" GridPane.columnIndex="1" prefWidth="160"/>
+
+    <Label text="Fréquence simulation :" GridPane.rowIndex="6">
+      <tooltip>
+        <Tooltip text="Nombre d'exécutions de la routine de simulation par seconde. Valeur autorisée : 1 à 240."/>
+      </tooltip>
+    </Label>
+    <TextField fx:id="simulationRateField" promptText="60" GridPane.rowIndex="6" GridPane.columnIndex="1"/>
   </GridPane>
 
   <HBox alignment="CENTER_RIGHT">

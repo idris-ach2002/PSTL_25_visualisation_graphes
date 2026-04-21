@@ -56,10 +56,10 @@ public final class GraphEngine {
         return t;
     });
     private final Object simulationLock = new Object();
+    private volatile ScheduledFuture<?> simulationTask;
     private volatile boolean simulationRunning = false;
     private volatile boolean graphLoaded = false;
-    private volatile boolean disposed = false;
-    private ScheduledFuture<?> simulationTask;
+    private volatile int simulationTicksPerSecond = 60;
 
     /** Interface pour suivre l'état d'exécution de la simulation. */
     public interface GraphEngineListener {
@@ -403,51 +403,36 @@ public final class GraphEngine {
     /** Démarre le thread de simulation de forces. */
     public void startSimulation() {
         camera.reset();
-        if (disposed || !graphLoaded)
-            return;
-
+        boolean started = false;
         synchronized (simulationLock) {
-            if (disposed || !graphLoaded || simulationRunning)
+            if (!graphLoaded || simulationRunning)
                 return;
-
-            if (simulationTask != null) {
-                simulationTask.cancel(false);
-                simulationTask = null;
-            }
-
             simulationRunning = true;
-            simulationTask = simulationExecutor.scheduleAtFixedRate(() -> {
-                try {
-                    simulateStep();
-                } catch (Throwable ignored) {
-                    // Évite qu'une exception ponctuelle tue silencieusement la boucle.
-                }
-            }, 0, 16, TimeUnit.MILLISECONDS);
+            rescheduleSimulationTaskLocked();
+            started = true;
         }
-
-        synchronized (listeners) {
-            for (GraphEngineListener listener : listeners)
-                listener.onSimulationStarted();
+        if (started) {
+            synchronized (listeners) {
+                for (GraphEngineListener listener : listeners)
+                    listener.onSimulationStarted();
+            }
         }
     }
 
     /** Arrête la simulation. */
     public void stopSimulation() {
-        ScheduledFuture<?> taskToCancel;
-        boolean wasRunning;
-
+        boolean stopped = false;
         synchronized (simulationLock) {
-            wasRunning = simulationRunning || simulationTask != null;
+            if (!simulationRunning && simulationTask == null)
+                return;
             simulationRunning = false;
-            taskToCancel = simulationTask;
-            simulationTask = null;
+            if (simulationTask != null) {
+                simulationTask.cancel(false);
+                simulationTask = null;
+            }
+            stopped = true;
         }
-
-        if (taskToCancel != null) {
-            taskToCancel.cancel(false);
-        }
-
-        if (wasRunning) {
+        if (stopped) {
             synchronized (listeners) {
                 for (GraphEngineListener listener : listeners)
                     listener.onSimulationStopped();
@@ -488,6 +473,11 @@ public final class GraphEngine {
 
     public boolean isSimulationRunning() {
         return simulationRunning;
+    }
+
+    /** Retourne la fréquence d'exécution de la routine de simulation. */
+    public int getSimulationTicksPerSecond() {
+        return simulationTicksPerSecond;
     }
 
     public GraphModel model() {
@@ -577,6 +567,33 @@ public final class GraphEngine {
         notifyDataChanged();
     }
 
+
+    /**
+     * Modifie la fréquence d'exécution de la routine de simulation.
+     *
+     * @param hz nombre d'itérations par seconde
+     */
+    public void setSimulationTicksPerSecond(int hz) {
+        if (hz < 1 || hz > 240)
+            throw new IllegalArgumentException("La fréquence de simulation doit être comprise entre 1 et 240 Hz.");
+        synchronized (simulationLock) {
+            simulationTicksPerSecond = hz;
+            if (simulationRunning && graphLoaded) {
+                rescheduleSimulationTaskLocked();
+            }
+        }
+    }
+
+    /** Reprogramme la tâche périodique de simulation avec la fréquence courante. */
+    private void rescheduleSimulationTaskLocked() {
+        if (simulationTask != null) {
+            simulationTask.cancel(false);
+            simulationTask = null;
+        }
+        long periodNanos = Math.max(1L, 1_000_000_000L / Math.max(1, simulationTicksPerSecond));
+        simulationTask = simulationExecutor.scheduleAtFixedRate(this::simulateStep, 0, periodNanos, TimeUnit.NANOSECONDS);
+    }
+
     public void setNewFriction(double f) {
         nativeEngine.setFriction(f);
     }
@@ -656,19 +673,7 @@ public final class GraphEngine {
 
     /** Libère proprement les ressources natives et arrête les threads. */
     public void dispose() {
-        if (disposed)
-            return;
-
-        disposed = true;
         resetLoadedGraph();
-
-        synchronized (listeners) {
-            listeners.clear();
-        }
-        synchronized (dataListeners) {
-            dataListeners.clear();
-        }
-
         simulationExecutor.shutdown();
         try {
             if (!simulationExecutor.awaitTermination(1, TimeUnit.SECONDS)) {
@@ -678,7 +683,6 @@ public final class GraphEngine {
             simulationExecutor.shutdownNow();
             Thread.currentThread().interrupt();
         }
-
         nativeEngine.freeAllocatedMemory();
         model.clear();
     }
