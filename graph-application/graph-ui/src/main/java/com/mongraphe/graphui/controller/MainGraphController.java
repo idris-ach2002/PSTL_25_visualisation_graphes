@@ -561,8 +561,6 @@ public final class MainGraphController implements GraphEngine.GraphEngineListene
                 engineExecutor = null;
             }
 
-            bus = null;
-            interaction = null;
         } finally {
             uiState.setRunning(false);
             uiState.setStatus("Fermeture");
