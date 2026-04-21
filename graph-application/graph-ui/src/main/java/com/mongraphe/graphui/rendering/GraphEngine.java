@@ -10,6 +10,7 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 
 import com.mongraphe.graphui.model.*;
@@ -54,8 +55,11 @@ public final class GraphEngine {
         t.setDaemon(true);
         return t;
     });
+    private final Object simulationLock = new Object();
     private volatile boolean simulationRunning = false;
     private volatile boolean graphLoaded = false;
+    private volatile boolean disposed = false;
+    private ScheduledFuture<?> simulationTask;
 
     /** Interface pour suivre l'état d'exécution de la simulation. */
     public interface GraphEngineListener {
@@ -399,12 +403,28 @@ public final class GraphEngine {
     /** Démarre le thread de simulation de forces. */
     public void startSimulation() {
         camera.reset();
-        if (!graphLoaded)
+        if (disposed || !graphLoaded)
             return;
-        if (simulationRunning)
-            return;
-        simulationRunning = true;
-        simulationExecutor.scheduleAtFixedRate(this::simulateStep, 0, 16, TimeUnit.MILLISECONDS);
+
+        synchronized (simulationLock) {
+            if (disposed || !graphLoaded || simulationRunning)
+                return;
+
+            if (simulationTask != null) {
+                simulationTask.cancel(false);
+                simulationTask = null;
+            }
+
+            simulationRunning = true;
+            simulationTask = simulationExecutor.scheduleAtFixedRate(() -> {
+                try {
+                    simulateStep();
+                } catch (Throwable ignored) {
+                    // Évite qu'une exception ponctuelle tue silencieusement la boucle.
+                }
+            }, 0, 16, TimeUnit.MILLISECONDS);
+        }
+
         synchronized (listeners) {
             for (GraphEngineListener listener : listeners)
                 listener.onSimulationStarted();
@@ -413,10 +433,25 @@ public final class GraphEngine {
 
     /** Arrête la simulation. */
     public void stopSimulation() {
-        simulationRunning = false;
-        synchronized (listeners) {
-            for (GraphEngineListener listener : listeners)
-                listener.onSimulationStopped();
+        ScheduledFuture<?> taskToCancel;
+        boolean wasRunning;
+
+        synchronized (simulationLock) {
+            wasRunning = simulationRunning || simulationTask != null;
+            simulationRunning = false;
+            taskToCancel = simulationTask;
+            simulationTask = null;
+        }
+
+        if (taskToCancel != null) {
+            taskToCancel.cancel(false);
+        }
+
+        if (wasRunning) {
+            synchronized (listeners) {
+                for (GraphEngineListener listener : listeners)
+                    listener.onSimulationStopped();
+            }
         }
     }
 
@@ -621,7 +656,19 @@ public final class GraphEngine {
 
     /** Libère proprement les ressources natives et arrête les threads. */
     public void dispose() {
+        if (disposed)
+            return;
+
+        disposed = true;
         resetLoadedGraph();
+
+        synchronized (listeners) {
+            listeners.clear();
+        }
+        synchronized (dataListeners) {
+            dataListeners.clear();
+        }
+
         simulationExecutor.shutdown();
         try {
             if (!simulationExecutor.awaitTermination(1, TimeUnit.SECONDS)) {
@@ -631,6 +678,7 @@ public final class GraphEngine {
             simulationExecutor.shutdownNow();
             Thread.currentThread().interrupt();
         }
+
         nativeEngine.freeAllocatedMemory();
         model.clear();
     }

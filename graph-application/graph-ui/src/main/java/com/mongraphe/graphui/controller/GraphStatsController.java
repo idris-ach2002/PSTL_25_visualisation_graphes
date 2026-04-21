@@ -49,6 +49,8 @@ import javafx.scene.layout.VBox;
  */
 public class GraphStatsController implements GraphEngine.GraphDataListener, CommandBusLinkedI<GraphEngine> {
 
+    private volatile boolean disposed = false;
+
     /**
      * Bus de commandes utilisé pour communiquer avec le moteur de graphe.
      */
@@ -110,7 +112,16 @@ public class GraphStatsController implements GraphEngine.GraphDataListener, Comm
      */
     @Override
     public void setBus(CommandBus<GraphEngine> bus) {
+        if (this.bus != null) {
+            try {
+                this.bus.dispatch(engine -> engine.removeDataListener(this));
+            } catch (Exception ignored) {
+            }
+        }
+
         this.bus = bus;
+        this.disposed = false;
+
         if (bus != null) {
             bus.dispatch(engine -> engine.addDataListener(this));
             refreshStats();
@@ -128,7 +139,13 @@ public class GraphStatsController implements GraphEngine.GraphDataListener, Comm
      */
     @Override
     public void onGraphDataChanged() {
-        Platform.runLater(this::refreshStats);
+        if (disposed)
+            return;
+        Platform.runLater(() -> {
+            if (!disposed) {
+                refreshStats();
+            }
+        });
     }
 
     /**
@@ -156,7 +173,7 @@ public class GraphStatsController implements GraphEngine.GraphDataListener, Comm
      * </p>
      */
     public void refreshStats() {
-        if (bus == null)
+        if (disposed || bus == null)
             return;
 
         try {
@@ -187,4 +204,14 @@ public class GraphStatsController implements GraphEngine.GraphDataListener, Comm
         }
     }
 
+    public void dispose() {
+        disposed = true;
+        if (bus != null) {
+            try {
+                bus.dispatch(engine -> engine.removeDataListener(this));
+            } catch (Exception ignored) {
+            }
+            bus = null;
+        }
+    }
 }

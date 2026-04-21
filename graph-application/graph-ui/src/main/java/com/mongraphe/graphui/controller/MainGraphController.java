@@ -129,6 +129,9 @@ public final class MainGraphController implements GraphEngine.GraphEngineListene
     /** Flag indiquant si l'interaction directe avec le graphe est active. */
     private boolean interactionEnabled = false;
 
+    private boolean shuttingDown = false;
+    private boolean closeSequenceArmed = false;
+
     /**
      * Méthode d'initialisation appelée automatiquement par JavaFX.
      * <p>
@@ -499,14 +502,71 @@ public final class MainGraphController implements GraphEngine.GraphEngineListene
      * </p>
      */
     public void shutdown() {
-        if (panel != null)
-            panel.stop();
-        if (previewGraphPanel != null)
-            previewGraphPanel.stop();
-        if (engine != null)
-            engine.dispose();
-        if (engineExecutor != null)
-            engineExecutor.shutdown();
+        if (!Platform.isFxApplicationThread()) {
+            Platform.runLater(this::shutdown);
+            return;
+        }
+
+        if (shuttingDown)
+            return;
+        shuttingDown = true;
+
+        try {
+            if (bus != null) {
+                try {
+                    bus.dispatchSyncVoid(GraphEngine::stopSimulation);
+                } catch (Exception ignored) {
+                }
+            } else if (engine != null) {
+                engine.stopSimulation();
+            }
+
+            if (engine != null) {
+                engine.removeListener(this);
+            }
+
+            if (graphStatsController != null) {
+                graphStatsController.dispose();
+            }
+
+            if (panel != null) {
+                panel.detachContent();
+            }
+            if (previewGraphPanel != null) {
+                previewGraphPanel.detachContent();
+            }
+
+            if (previewController != null) {
+                previewController.clearGraphPanel();
+            }
+            if (graphHostPane != null) {
+                graphHostPane.getChildren().clear();
+            }
+
+            if (panel != null) {
+                panel.dispose();
+                panel = null;
+            }
+            if (previewGraphPanel != null) {
+                previewGraphPanel.dispose();
+                previewGraphPanel = null;
+            }
+
+            if (engine != null) {
+                engine.dispose();
+                engine = null;
+            }
+            if (engineExecutor != null) {
+                engineExecutor.shutdown();
+                engineExecutor = null;
+            }
+
+            bus = null;
+            interaction = null;
+        } finally {
+            uiState.setRunning(false);
+            uiState.setStatus("Fermeture");
+        }
     }
 
     /**
@@ -518,7 +578,18 @@ public final class MainGraphController implements GraphEngine.GraphEngineListene
                 scene.windowProperty().addListener((obsW, oldWindow, window) -> {
                     if (window != null) {
                         Stage stage = (Stage) window;
-                        stage.setOnCloseRequest(e -> shutdown());
+                        stage.setOnCloseRequest(e -> {
+                            if (closeSequenceArmed) {
+                                return;
+                            }
+                            closeSequenceArmed = true;
+                            e.consume();
+                            stage.hide();
+                            Platform.runLater(() -> {
+                                shutdown();
+                                Platform.runLater(stage::close);
+                            });
+                        });
                     }
                 });
             }

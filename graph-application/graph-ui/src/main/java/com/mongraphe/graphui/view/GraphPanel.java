@@ -2,6 +2,8 @@ package com.mongraphe.graphui.view;
 
 import javax.swing.SwingUtilities;
 
+import javafx.application.Platform;
+
 import com.jogamp.opengl.GLCapabilities;
 import com.jogamp.opengl.GLProfile;
 import com.jogamp.opengl.awt.GLJPanel;
@@ -54,6 +56,11 @@ public final class GraphPanel {
     /** Renderer OpenGL responsable du dessin du graphe. */
     private final GraphRenderer renderer;
 
+    /** Gestionnaire d'entrée Swing conservé pour le retrait propre. */
+    private final SwingInputHandler inputHandler;
+
+    private volatile boolean disposed = false;
+
     /**
      * Construit un panneau de rendu graphique du graphe.
      *
@@ -69,11 +76,11 @@ public final class GraphPanel {
         glPanel = new GLJPanel(caps);
         glPanel.addGLEventListener(renderer);
 
-        SwingInputHandler input = new SwingInputHandler(interaction);
-        glPanel.addMouseListener(input);
-        glPanel.addMouseMotionListener(input);
-        glPanel.addMouseWheelListener(input);
-        glPanel.addKeyListener(input);
+        inputHandler = new SwingInputHandler(interaction);
+        glPanel.addMouseListener(inputHandler);
+        glPanel.addMouseMotionListener(inputHandler);
+        glPanel.addMouseWheelListener(inputHandler);
+        glPanel.addKeyListener(inputHandler);
 
         glPanel.setFocusable(true);
 
@@ -90,7 +97,11 @@ public final class GraphPanel {
      * Nécessaire pour respecter les contraintes Swing (thread UI unique).
      */
     private void createAndSetSwingContent() {
-        SwingUtilities.invokeLater(() -> swingNode.setContent(glPanel));
+        SwingUtilities.invokeLater(() -> {
+            if (!disposed) {
+                swingNode.setContent(glPanel);
+            }
+        });
     }
 
     /**
@@ -98,6 +109,43 @@ public final class GraphPanel {
      *
      * @return exporteur capable de capturer le rendu courant
      */
+    public void detachContent() {
+        Runnable detach = () -> {
+            try {
+                swingNode.setContent(null);
+            } catch (Exception ignored) {
+            }
+        };
+
+        if (Platform.isFxApplicationThread()) {
+            detach.run();
+        } else {
+            Platform.runLater(detach);
+        }
+    }
+
+    private void requestAnimatorStopAsync() {
+        if (!animator.isStarted())
+            return;
+
+        Thread stopThread = new Thread(() -> {
+            try {
+                if (animator.isAnimating()) {
+                    animator.pause();
+                }
+            } catch (Exception ignored) {
+            }
+
+            try {
+                animator.stop();
+            } catch (Exception ignored) {
+            }
+        }, "graphpanel-animator-stop");
+
+        stopThread.setDaemon(true);
+        stopThread.start();
+    }
+
     public GraphImageExporter createExporter() {
         return new OpenGLGraphImageExporter(glPanel, renderer);
     }
@@ -138,17 +186,18 @@ public final class GraphPanel {
      * Arrête la boucle de rendu.
      */
     public void stop() {
-        if (animator.isStarted()) {
-            animator.stop();
-        }
+        requestAnimatorStopAsync();
     }
 
     /**
      * Met en pause la boucle de rendu.
      */
     public void pause() {
-        if (animator.isStarted()) {
-            animator.pause();
+        try {
+            if (animator.isStarted()) {
+                animator.pause();
+            }
+        } catch (Exception ignored) {
         }
     }
 
@@ -167,17 +216,33 @@ public final class GraphPanel {
      * lors de la fermeture UI.
      */
     public void dispose() {
-        try {
-            if (animator.isStarted()) {
-                animator.stop();
-            }
-        } catch (Exception ignored) {
-        }
+        if (disposed)
+            return;
+        disposed = true;
 
-        try {
-            glPanel.removeGLEventListener(renderer);
-        } catch (Exception ignored) {
-        }
+        requestAnimatorStopAsync();
+
+        SwingUtilities.invokeLater(() -> {
+            try {
+                glPanel.removeMouseListener(inputHandler);
+                glPanel.removeMouseMotionListener(inputHandler);
+                glPanel.removeMouseWheelListener(inputHandler);
+                glPanel.removeKeyListener(inputHandler);
+            } catch (Exception ignored) {
+            }
+
+            try {
+                glPanel.removeGLEventListener(renderer);
+            } catch (Exception ignored) {
+            }
+
+            try {
+                glPanel.setFocusable(false);
+                glPanel.setEnabled(false);
+                glPanel.setVisible(false);
+            } catch (Exception ignored) {
+            }
+        });
     }
 
     /**

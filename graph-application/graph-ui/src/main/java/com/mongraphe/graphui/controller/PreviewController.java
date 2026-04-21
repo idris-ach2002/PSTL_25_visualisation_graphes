@@ -158,6 +158,12 @@ public class PreviewController implements CommandBusLinkedI<GraphEngine> {
         }
     }
 
+    public void clearGraphPanel() {
+        if (graphContainer != null) {
+            graphContainer.setCenter(null);
+        }
+    }
+
     /**
      * Action déclenchée depuis l'interface (par exemple, clic sur le bouton
      * "Appliquer").
