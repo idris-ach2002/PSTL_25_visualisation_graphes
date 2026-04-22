@@ -38,19 +38,24 @@ public class GraphExport {
         int[] tex = new int[1];
         int[] rbo = new int[1];
 
+        int sourceWidth = Math.max(1, viewport[2]);
+        int sourceHeight = Math.max(1, viewport[3]);
+        int[] renderArea = computeRenderArea(width, height, sourceWidth, sourceHeight);
+
         try {
             setupFramebuffer(gl, width, height, fbo, tex, rbo);
-            gl.glViewport(0, 0, width, height);
 
+            gl.glViewport(0, 0, width, height);
+            gl.glClearColor(1f, 1f, 1f, 0f);
             gl.glClear(GL4.GL_COLOR_BUFFER_BIT | GL4.GL_DEPTH_BUFFER_BIT);
+
+            gl.glViewport(renderArea[0], renderArea[1], renderArea[2], renderArea[3]);
             renderer.display(drawable);
 
-            // Forcer l'exécution de toutes les commandes OpenGL
             gl.glFinish();
 
             BufferedImage img = readPixels(gl, width, height);
 
-            // Vérifier le succès de l'écriture
             File outputFile = new File(path);
             boolean written = ImageIO.write(img, "png", outputFile);
             if (!written) {
@@ -64,6 +69,27 @@ public class GraphExport {
             gl.glBindFramebuffer(GL4.GL_FRAMEBUFFER, previousFbo[0]);
             gl.glViewport(viewport[0], viewport[1], viewport[2], viewport[3]);
         }
+    }
+
+    private int[] computeRenderArea(int targetWidth, int targetHeight, int sourceWidth, int sourceHeight) {
+        double sourceRatio = (double) sourceWidth / (double) sourceHeight;
+        double targetRatio = (double) targetWidth / (double) targetHeight;
+
+        int renderWidth;
+        int renderHeight;
+
+        if (targetRatio > sourceRatio) {
+            renderHeight = targetHeight;
+            renderWidth = Math.max(1, (int) Math.round(renderHeight * sourceRatio));
+        } else {
+            renderWidth = targetWidth;
+            renderHeight = Math.max(1, (int) Math.round(renderWidth / sourceRatio));
+        }
+
+        int offsetX = Math.max(0, (targetWidth - renderWidth) / 2);
+        int offsetY = Math.max(0, (targetHeight - renderHeight) / 2);
+
+        return new int[] { offsetX, offsetY, renderWidth, renderHeight };
     }
 
     private void setupFramebuffer(GL4 gl, int w, int h, int[] fbo, int[] tex, int[] rbo) {
