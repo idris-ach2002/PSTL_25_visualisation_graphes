@@ -1,0 +1,303 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>MonGraphe - Documentation utilisateur</title>
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <div class="page">
+      <header class="hero">
+        <div class="hero__inner">
+          <p class="eyebrow">Documentation utilisateur</p>
+          <h1>MonGraphe</h1>
+          <p class="hero__subtitle">
+            Guide d'utilisation de <strong>MonGraphe</strong>. Cette page
+            explique le chargement des fichiers, les paramètres, les
+            interactions dans la vue, la prévisualisation, les exports et les
+            principaux raccourcis clavier.
+          </p>
+        </div>
+      </header>
+
+      <div class="layout">
+        <aside class="sidebar card">
+          <h2>Sommaire</h2>
+          <ul>
+            <li><a href="#presentation">1. Présentation</a></li>
+            <li><a href="#ouvrir">2. Ouvrir un fichier</a></li>
+            <li><a href="#dot">3. Utiliser un fichier DOT</a></li>
+            <li><a href="#csv">4. Utiliser un fichier CSV</a></li>
+            <li><a href="#parametres">5. Paramètres principaux</a></li>
+            <li><a href="#interaction">6. Interactions dans la vue</a></li>
+            <li><a href="#raccourcis">7. Raccourcis clavier</a></li>
+            <li><a href="#preview">8. Prévisualisation et exports</a></li>
+            <li><a href="#conseils">9. Conseils</a></li>
+          </ul>
+        </aside>
+
+        <main class="content">
+          <section id="presentation" class="card section">
+            <h2>1. Présentation</h2>
+            <p>
+              MonGraphe permet de charger et visualiser des graphes à partir de
+              deux types de sources :
+            </p>
+            <ul>
+              <li>
+                <strong>DOT</strong> : le graphe existe déjà dans le fichier ;
+              </li>
+              <li>
+                <strong>CSV</strong> : le graphe est construit à partir des
+                données tabulaires.
+              </li>
+            </ul>
+
+            <p>
+              L'application calcule ensuite une disposition spatiale des nœuds
+              et propose plusieurs réglages de visualisation, de détection de
+              communautés et d'export.
+            </p>
+          </section>
+
+          <section id="ouvrir" class="card section">
+            <h2>2. Ouvrir un fichier</h2>
+            <p>
+              Depuis le menu principal, utilisez
+              <code>Fichier &gt; Ouvrir</code> puis choisissez un fichier
+              <code>.dot</code> ou <code>.csv</code>.
+            </p>
+
+            <div class="note">
+              Les fichiers DOT et CSV n'utilisent pas la même logique : DOT
+              charge directement un graphe existant, alors que CSV construit le
+              graphe à partir des lignes du tableau.
+            </div>
+          </section>
+
+          <section id="dot" class="card section">
+            <h2>3. Utiliser un fichier DOT</h2>
+            <p>
+              Avec un fichier DOT, les nœuds et les arêtes sont déjà définis.
+              L'application lit la structure du fichier, initialise le graphe
+              puis calcule sa spatialisation.
+            </p>
+
+            <p>
+              Ce mode est le plus direct si vous disposez déjà d'un graphe
+              structuré.
+            </p>
+          </section>
+
+          <section id="csv" class="card section">
+            <h2>4. Utiliser un fichier CSV</h2>
+            <p>
+              Avec un fichier CSV, chaque ligne du tableau est d'abord
+              interprétée comme un nœud potentiel. L'application compare ensuite
+              les lignes entre elles avec une mesure de similarité.
+            </p>
+
+            <h3>Construction du graphe</h3>
+            <ul>
+              <li>
+                si deux lignes sont suffisamment proches, une
+                <strong>arête</strong> est créée ;
+              </li>
+              <li>
+                si elles sont très éloignées, une
+                <strong>anti-arête</strong> peut être créée ;
+              </li>
+              <li>sinon, aucune relation n'est ajoutée.</li>
+            </ul>
+
+            <h3>Seuils</h3>
+            <p>Deux seuils sont utilisés :</p>
+            <ul>
+              <li>
+                <strong>seuil d'arête</strong> : minimum à atteindre pour créer
+                une arête ;
+              </li>
+              <li>
+                <strong>seuil d'anti-arête</strong> : maximum pour créer une
+                anti-arête.
+              </li>
+            </ul>
+
+            <p>
+              Vous pouvez soit saisir vos propres seuils, soit utiliser les
+              valeurs recommandées calculées automatiquement.
+            </p>
+          </section>
+
+          <section id="parametres" class="card section">
+            <h2>5. Paramètres principaux</h2>
+
+            <h3>Dimensions</h3>
+            <p>
+              Les dimensions définissent l'espace de visualisation du graphe.
+              Des valeurs plus grandes donnent plus de place à la
+              spatialisation.
+            </p>
+
+            <h3>Communautés</h3>
+            <p>
+              Vous pouvez lancer une détection de communautés pour regrouper les
+              nœuds selon leur structure de connexion.
+            </p>
+
+            <h3>K-means</h3>
+            <p>
+              Dans certains cas, un partitionnement supplémentaire peut être
+              utilisé pour organiser plus grossièrement les regroupements.
+            </p>
+
+            <h3>Lambda</h3>
+            <p>
+              Le paramètre <code>lambda</code> intervient dans certains modes de
+              calcul de communautés. Il influence la manière dont les groupes
+              sont séparés.
+            </p>
+
+            <h3>Tooltips</h3>
+            <p>
+              La plupart des paramètres importants affichent une aide au survol
+              afin de rappeler leur rôle directement dans l'interface.
+            </p>
+          </section>
+
+          <section id="interaction" class="card section">
+            <h2>6. Interactions dans la vue</h2>
+            <ul>
+              <li><strong>Molette</strong> : zoom</li>
+              <li>
+                <strong>Clic droit + déplacement</strong> : déplacement de la
+                caméra
+              </li>
+              <li><strong>SPACE</strong> : pause / reprise</li>
+              <li>
+                <strong>SUPPR</strong> ou <strong>Retour arrière</strong> :
+                suppression du sommet sélectionné
+              </li>
+              <li>
+                Les outils <strong>Run</strong>, <strong>Select</strong>,
+                <strong>Move</strong> et <strong>Delete</strong> modifient le
+                comportement des interactions souris / clavier.
+              </li>
+            </ul>
+
+            <p>
+              Les outils de sélection, déplacement et suppression dépendent de
+              l'état de l'espace de travail courant.
+            </p>
+          </section>
+
+          <section id="raccourcis" class="card section">
+            <h2>7. Raccourcis clavier</h2>
+            <p>
+              Les raccourcis suivants ont été ajoutés pour rendre l'utilisation
+              de l'application plus directe.
+            </p>
+            <ul>
+              <li>
+                <span class="kbd">Ctrl</span> + <span class="kbd">O</span> :
+                ouvrir un fichier
+              </li>
+              <li>
+                <span class="kbd">Ctrl</span> + <span class="kbd">W</span> :
+                fermer l'espace de travail
+              </li>
+              <li>
+                <span class="kbd">Ctrl</span> + <span class="kbd">Q</span> :
+                quitter l'application
+              </li>
+              <li>
+                <span class="kbd">Ctrl</span> + <span class="kbd">Z</span> :
+                annuler
+              </li>
+              <li>
+                <span class="kbd">Ctrl</span> + <span class="kbd">Y</span> :
+                rétablir
+              </li>
+              <li>
+                <span class="kbd">Ctrl</span> + <span class="kbd">Shift</span> +
+                <span class="kbd">Z</span> : rétablir
+              </li>
+              <li>
+                <span class="kbd">Ctrl</span> + <span class="kbd">+</span> :
+                zoom avant
+              </li>
+              <li>
+                <span class="kbd">Ctrl</span> + <span class="kbd">-</span> :
+                zoom arrière
+              </li>
+              <li>
+                <span class="kbd">Ctrl</span> + <span class="kbd">0</span> :
+                réinitialiser la vue
+              </li>
+              <li><span class="kbd">F1</span> : ouvrir cette documentation</li>
+              <li><span class="kbd">F11</span> : basculer en plein écran</li>
+            </ul>
+
+            <div class="tip">
+              Les raccourcis de zoom, d'annulation et de rétablissement sont
+              aussi pris en charge lorsque le focus est sur le panneau OpenGL.
+            </div>
+          </section>
+
+          <section id="preview" class="card section">
+            <h2>8. Prévisualisation et exports</h2>
+
+            <h3>Prévisualisation</h3>
+            <p>
+              Le panneau de prévisualisation permet de modifier certains
+              paramètres visuels, par exemple l'épaisseur des arêtes ou leur
+              affichage sous forme de courbes.
+            </p>
+
+            <h3>Export PNG</h3>
+            <p>
+              L'export PNG produit une image raster, c'est-à-dire une image
+              finale composée de pixels. Ce format est adapté pour une insertion
+              rapide dans un document ou une présentation.
+            </p>
+
+            <h3>Export SVG</h3>
+            <p>
+              L'export SVG produit une image vectorielle. Les objets du graphe
+              sont décrits géométriquement, ce qui permet un redimensionnement
+              sans perte de qualité.
+            </p>
+          </section>
+
+          <section id="conseils" class="card section">
+            <h2>9. Conseils</h2>
+            <ul>
+              <li>
+                Commencez avec des seuils recommandés lorsque vous chargez un
+                CSV.
+              </li>
+              <li>
+                Si le graphe est trop dense, réduisez le nombre d'arêtes
+                conservées.
+              </li>
+              <li>
+                Si la vue paraît trop serrée, augmentez les dimensions de
+                l'espace de travail.
+              </li>
+              <li>
+                Utilisez le panneau de prévisualisation avant export pour
+                ajuster le rendu final.
+              </li>
+            </ul>
+
+            <p class="footer-note">
+              Cette documentation reste modifiable simplement dans
+              <code>src/main/resources/docs/</code>.
+            </p>
+          </section>
+        </main>
+      </div>
+    </div>
+  </body>
+</html>

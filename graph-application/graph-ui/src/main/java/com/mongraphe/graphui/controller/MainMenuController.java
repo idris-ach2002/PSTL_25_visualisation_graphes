@@ -1,16 +1,13 @@
 package com.mongraphe.graphui.controller;
 
 import java.io.File;
-import java.io.FileNotFoundException;
 import java.io.IOException;
-import java.net.URI;
-import java.net.URL;
 
 import com.mongraphe.graphui.app.CommandBus;
 import com.mongraphe.graphui.interfaces.CommandBusLinkedI;
 import com.mongraphe.graphui.rendering.GraphEngine;
+import com.mongraphe.graphui.view.UserDocumentationService;
 
-import javafx.application.Platform;
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
 import javafx.geometry.Rectangle2D;
@@ -19,6 +16,10 @@ import javafx.scene.Scene;
 import javafx.scene.control.Alert;
 import javafx.scene.control.CheckMenuItem;
 import javafx.scene.control.MenuBar;
+import javafx.scene.control.MenuItem;
+import javafx.scene.input.KeyCode;
+import javafx.scene.input.KeyCodeCombination;
+import javafx.scene.input.KeyCombination;
 import javafx.stage.FileChooser;
 import javafx.stage.Screen;
 import javafx.stage.Stage;
@@ -39,50 +40,89 @@ import javafx.stage.Stage;
  * <li>Gérer les actions de gestion de fichiers (Nouveau, Ouvrir, Fermer).</li>
  * <li>Piloter les fonctions d'annulation/rétablissement (Undo/Redo) via le bus
  * de commandes.</li>
- * <li>Contrôler l'affichage et le rendu (Plein écran, Statistiques, Reset
- * caméra).</li>
+ * <li>Contrôler l'affichage et le rendu (Plein écran, Reset caméra).</li>
  * <li>Exporter le graphe sous différents formats (PNG, SVG).</li>
- * <li>Générer et afficher dynamiquement la documentation à partir de fichiers
- * Markdown.</li>
+ * <li>Ouvrir la documentation utilisateur embarquée.</li>
  * </ul>
- *
- * <h2>Interaction avec le CommandBus</h2>
- * <p>
- * En implémentant {@code CommandBusLinkedI<GraphEngine>}, ce contrôleur peut
- * envoyer
- * des commandes synchrones ou asynchrones au moteur de rendu JOGL, comme le
- * repositionnement de la caméra.
- * </p>
  */
 public final class MainMenuController implements CommandBusLinkedI<GraphEngine> {
 
     /** Bus de communication pour envoyer des commandes au moteur de graphe. */
     private CommandBus<GraphEngine> bus;
 
-    /**
-     * Référence vers le contrôleur principal pour manipuler la scène et les
-     * données.
-     */
+    /** Référence vers le contrôleur principal. */
     private MainGraphController mainController;
 
     /** Conteneur principal de la barre de menus. */
     @FXML
     private MenuBar menuController;
 
+    @FXML
+    private MenuItem newProjectMenuItem;
+    @FXML
+    private MenuItem openMenuItem;
+    @FXML
+    private MenuItem exportPngMenuItem;
+    @FXML
+    private MenuItem exportSvgMenuItem;
+    @FXML
+    private MenuItem closeWorkspaceMenuItem;
+    @FXML
+    private MenuItem quitMenuItem;
+    @FXML
+    private MenuItem undoMenuItem;
+    @FXML
+    private MenuItem redoMenuItem;
+    @FXML
+    private MenuItem fullScreenMenuItem;
+    @FXML
+    private MenuItem resetViewMenuItem;
+    @FXML
+    private MenuItem quickHelpMenuItem;
+    @FXML
+    private MenuItem documentationMenuItem;
+
     /**
      * Option de menu permettant d'activer ou désactiver l'affichage des
-     * statistiques de rendu.
+     * statistiques.
      */
     @FXML
     private CheckMenuItem showStatsMenuItem;
 
+    @FXML
+    private void initialize() {
+        installAccelerators();
+    }
+
+    private void installAccelerators() {
+        if (openMenuItem != null) {
+            openMenuItem.setAccelerator(new KeyCodeCombination(KeyCode.O, KeyCombination.SHORTCUT_DOWN));
+        }
+        if (closeWorkspaceMenuItem != null) {
+            closeWorkspaceMenuItem.setAccelerator(new KeyCodeCombination(KeyCode.W, KeyCombination.SHORTCUT_DOWN));
+        }
+        if (quitMenuItem != null) {
+            quitMenuItem.setAccelerator(new KeyCodeCombination(KeyCode.Q, KeyCombination.SHORTCUT_DOWN));
+        }
+        if (undoMenuItem != null) {
+            undoMenuItem.setAccelerator(new KeyCodeCombination(KeyCode.Z, KeyCombination.SHORTCUT_DOWN));
+        }
+        if (redoMenuItem != null) {
+            redoMenuItem.setAccelerator(new KeyCodeCombination(KeyCode.Y, KeyCombination.SHORTCUT_DOWN));
+        }
+        if (fullScreenMenuItem != null) {
+            fullScreenMenuItem.setAccelerator(new KeyCodeCombination(KeyCode.F11));
+        }
+        if (resetViewMenuItem != null) {
+            resetViewMenuItem.setAccelerator(new KeyCodeCombination(KeyCode.DIGIT0, KeyCombination.SHORTCUT_DOWN));
+        }
+        if (documentationMenuItem != null) {
+            documentationMenuItem.setAccelerator(new KeyCodeCombination(KeyCode.F1));
+        }
+    }
+
     /**
      * Redirige l'utilisateur vers l'écran d'accueil de l'application.
-     * *
-     * <p>
-     * Cette méthode charge le fichier {@code HomeScreen.fxml} et réinitialise
-     * la scène sur la fenêtre principale.
-     * </p>
      */
     private void returnToHome() {
         try {
@@ -106,13 +146,6 @@ public final class MainMenuController implements CommandBusLinkedI<GraphEngine> 
         }
     }
 
-    /**
-     * Affiche une boîte de dialogue d'alerte.
-     *
-     * @param type    Type d'alerte (Information, Erreur, etc.).
-     * @param title   Titre de la fenêtre.
-     * @param content Corps du message.
-     */
     private void alert(Alert.AlertType type, String title, String content) {
         Alert alert = new Alert(type);
         alert.setTitle(title);
@@ -121,45 +154,27 @@ public final class MainMenuController implements CommandBusLinkedI<GraphEngine> 
         alert.showAndWait();
     }
 
-    /**
-     * Définit le contrôleur principal associé à cette barre de menus.
-     *
-     * @param mainController Le contrôleur de la vue principale.
-     */
     public void setMainController(MainGraphController mainController) {
         this.mainController = mainController;
     }
 
-    /**
-     * Quitte l'application proprement.
-     */
     @FXML
     private void handleQuit() {
         System.exit(0);
     }
 
-    /**
-     * Action déclenchée pour créer un nouveau projet.
-     * Actuellement, redirige vers l'écran d'accueil.
-     */
     @FXML
     private void handleNewProject() {
         if (mainController != null)
             returnToHome();
     }
 
-    /**
-     * Ferme l'espace de travail actuel et revient à l'accueil.
-     */
     @FXML
     private void handleCloseWorkspace() {
         if (mainController != null)
             returnToHome();
     }
 
-    /**
-     * Affiche les informations de version et les technologies utilisées.
-     */
     @FXML
     private void handleAbout() {
         alert(Alert.AlertType.INFORMATION,
@@ -167,10 +182,6 @@ public final class MainMenuController implements CommandBusLinkedI<GraphEngine> 
                 "MonGraphe\nVisualisation de graphes (JavaFX + JOGL + JNI)\nBuild refactor + fonctionnalités restaurées.");
     }
 
-    /**
-     * Ouvre un explorateur de fichiers pour charger un graphe.
-     * Supporte les formats .mongraphe, .csv et .dot.
-     */
     @FXML
     private void handleOpen() {
         if (mainController != null) {
@@ -187,9 +198,6 @@ public final class MainMenuController implements CommandBusLinkedI<GraphEngine> 
         }
     }
 
-    /**
-     * Enregistre les modifications du projet actuel (non implémenté).
-     */
     @FXML
     private void handleSaveProject() {
         if (mainController != null) {
@@ -197,158 +205,79 @@ public final class MainMenuController implements CommandBusLinkedI<GraphEngine> 
         }
     }
 
-    /**
-     * Annule la dernière action effectuée via le CommandBus.
-     */
     @FXML
     private void handleUndo() {
         bus.undo();
     }
 
-    /**
-     * Rétablit la dernière action annulée via le CommandBus.
-     */
     @FXML
     private void handleRedo() {
         bus.redo();
     }
 
-    /**
-     * Bascule l'application en mode plein écran.
-     */
     @FXML
     private void handleFullScreen() {
         if (mainController != null)
             mainController.getStage().setFullScreen(true);
     }
 
-    /**
-     * Affiche ou masque les statistiques de performance (FPS, etc.) sur le canvas.
-     */
     @FXML
     private void handleToggleStats() {
         if (mainController != null)
             mainController.setStatsVisible(showStatsMenuItem == null || showStatsMenuItem.isSelected());
     }
 
-    /**
-     * Réinitialise la position et le zoom de la caméra pour centrer le graphe.
-     */
     @FXML
     private void handleLayoutReset() {
         if (mainController != null)
             bus.dispatchSyncVoid(engine -> engine.camera().reset());
     }
 
-    /**
-     * Affiche une boîte de dialogue résumant les raccourcis clavier et souris.
-     */
     @FXML
     private void handleOptions() {
         alert(Alert.AlertType.INFORMATION,
                 "Aide rapide",
                 "Outils disponibles : Run / Select / Move / Delete\n"
                         + "SPACE : pause / reprise\n"
-                        + "SUPPR : supprime le sommet sélectionné\n"
+                        + "SUPPR / RETOUR ARRIÈRE : supprime le sommet sélectionné\n"
                         + "Molette : zoom\n"
                         + "Clic droit + drag : déplacement de la caméra\n"
-                        + "Undo / Redo : via le menu Édition");
+                        + "Ctrl+Z : annuler\n"
+                        + "Ctrl+Y ou Ctrl+Shift+Z : rétablir\n"
+                        + "Ctrl++ : zoom avant\n"
+                        + "Ctrl+- : zoom arrière\n"
+                        + "Ctrl+0 : réinitialiser la vue\n"
+                        + "Ctrl+O : ouvrir un fichier\n"
+                        + "Ctrl+W : fermer l'espace de travail\n"
+                        + "F1 : documentation\n"
+                        + "F11 : plein écran");
     }
 
-    /**
-     * Tente d'ouvrir une URI dans le navigateur par défaut du système (Linux).
-     * * @param uri L'adresse à ouvrir.
-     * 
-     * @throws IOException Si aucun navigateur n'est trouvé.
-     */
-    private void openInBrowser(URI uri) throws IOException {
-        String url = uri.toString();
-        try {
-            new ProcessBuilder("firefox", url).start();
-            return;
-        } catch (IOException ignored) {
-        }
-
-        try {
-            new ProcessBuilder("google-chrome", url).start();
-            return;
-        } catch (IOException ignored) {
-        }
-
-        new ProcessBuilder("xdg-open", url).start();
-    }
-
-    /**
-     * Génère la documentation HTML à partir du README.md via Pandoc et l'ouvre.
-     * *
-     * <p>
-     * Cette opération est effectuée dans un thread séparé pour ne pas bloquer
-     * l'interface utilisateur pendant la conversion.
-     * </p>
-     */
     @FXML
     private void handleDocumentation() {
-        new Thread(() -> {
-            try {
-                URL mdUrl = getClass().getResource("/markdown/README.md");
-                File mdFile = new File(mdUrl.toURI());
-
-                if (!mdFile.exists()) {
-                    throw new FileNotFoundException("README.md introuvable");
-                }
-
-                File htmlFile = new File(getClass().getResource("/html").getFile(), "README.html");
-
-                // Conversion Markdown → HTML via Pandoc
-                ProcessBuilder pb = new ProcessBuilder(
-                        "pandoc",
-                        mdFile.getAbsolutePath(),
-                        "-o",
-                        htmlFile.getAbsolutePath(),
-                        "--standalone",
-                        "--css=github-markdown.css",
-                        "--metadata=pagetitle=Documentation");
-
-                pb.redirectErrorStream(true);
-                Process process = pb.start();
-                process.waitFor();
-
-                openInBrowser(htmlFile.toURI());
-                return;
-
-            } catch (Exception e) {
-                e.printStackTrace();
-            }
-
-            Platform.runLater(() -> alert(
+        try {
+            UserDocumentationService.openDocumentationWindow();
+        } catch (Exception e) {
+            e.printStackTrace();
+            alert(
                     Alert.AlertType.ERROR,
                     "Documentation",
-                    "Impossible de générer ou d'ouvrir la documentation."));
-        }).start();
+                    "Impossible d'ouvrir la documentation utilisateur.");
+        }
     }
 
-    /**
-     * Déclenche l'exportation du rendu actuel au format image PNG.
-     */
     @FXML
     private void handleExportPng() {
         if (mainController != null)
             mainController.exportPng();
     }
 
-    /**
-     * Déclenche l'exportation du graphe au format vectoriel SVG.
-     */
     @FXML
     private void handleExportSvg() {
         if (mainController != null)
             mainController.exportSvg();
     }
 
-    /**
-     * Injecte le bus de commandes pour interagir avec le moteur.
-     * * @param bus Le CommandBus gérant le moteur de type GraphEngine.
-     */
     @Override
     public void setBus(CommandBus<GraphEngine> bus) {
         this.bus = bus;

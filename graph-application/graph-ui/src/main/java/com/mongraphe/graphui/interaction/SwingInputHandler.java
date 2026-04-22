@@ -45,7 +45,46 @@ public final class SwingInputHandler implements MouseListener, MouseMotionListen
 
     @Override
     public void keyPressed(KeyEvent e) {
+        if (handleCommonShortcuts(e)) {
+            return;
+        }
         interaction.onKeyPressed(e.getKeyCode(), e.isControlDown());
+    }
+
+    private boolean handleCommonShortcuts(KeyEvent e) {
+        if (!e.isControlDown()) {
+            return false;
+        }
+
+        switch (e.getKeyCode()) {
+            case KeyEvent.VK_Z -> {
+                if (e.isShiftDown()) {
+                    interaction.redo();
+                } else {
+                    interaction.undo();
+                }
+                return true;
+            }
+            case KeyEvent.VK_Y -> {
+                interaction.redo();
+                return true;
+            }
+            case KeyEvent.VK_EQUALS, KeyEvent.VK_ADD, KeyEvent.VK_PLUS  -> {
+                interaction.zoomIn();
+                return true;
+            }
+            case KeyEvent.VK_MINUS, KeyEvent.VK_SUBTRACT -> {
+                interaction.zoomOut();
+                return true;
+            }
+            case KeyEvent.VK_0, KeyEvent.VK_NUMPAD0 -> {
+                interaction.resetView();
+                return true;
+            }
+            default -> {
+                return false;
+            }
+        }
     }
 
     @Override public void mouseMoved(MouseEvent e) {}
