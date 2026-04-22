@@ -198,13 +198,6 @@ void build_csr_adjacency(void) {
   free(degree);
 }
 
-void initialize_adjacency_list(void) {}
-void add_edge_to_adjacency_list(int node, int neighbor, double weight) {
-  (void)node;
-  (void)neighbor;
-  (void)weight;
-}
-void apply_louvain_to_component(int component) { (void)component; }
 
 // ------------------------------------------------------------
 // Connected components on the global CSR
