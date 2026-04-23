@@ -160,11 +160,15 @@ static int build_csr_from_edge_array(int n, int m, const Edge *edge_array,
     if (u == v) {
       int p = pos[u]++;
       neighbors[p] = u;
-      weights[p] = w;
+      // Le self-loop contribue 2w au degré et à 2m,
+      // donc il doit aussi contribuer 2w dans les sommes locales utilisées
+      // par le calcul du gain de modularité.
+      weights[p] = 2.0 * w;
     } else {
       int pu = pos[u]++;
       neighbors[pu] = v;
       weights[pu] = w;
+
       int pv = pos[v]++;
       neighbors[pv] = u;
       weights[pv] = w;
@@ -197,7 +201,6 @@ void build_csr_adjacency(void) {
   csr_total_edges = total;
   free(degree);
 }
-
 
 // ------------------------------------------------------------
 // Connected components on the global CSR
@@ -355,9 +358,14 @@ static int local_move_pass(int n, const int *offsets, const int *neighbors,
 
       for (int idx = offsets[node]; idx < offsets[node + 1]; idx++) {
         int neigh = neighbors[idx];
+
+        if (neigh == node)
+          continue;
+
         int c = partition[neigh];
         if (c < 0 || c >= n)
           continue;
+
         if (mark[c] != current_mark_local) {
           mark[c] = current_mark_local;
           cand_weight[c] = 0.0;
@@ -926,14 +934,134 @@ double calculate_gain_modularity_cpm(int node, int new_community,
 }
 
 int louvain_method() {
-  int detected = run_multilevel_detection(
-      num_nodes, num_edges, edges, OBJECTIVE_MODULARITY, false, communities);
+  int *degree_count = calloc((size_t)num_nodes, sizeof(int));
+  int *old_to_new = malloc((size_t)num_nodes * sizeof(int));
+  int *new_to_old = malloc((size_t)num_nodes * sizeof(int));
+
+  if (degree_count == NULL || old_to_new == NULL || new_to_old == NULL) {
+    free(degree_count);
+    free(old_to_new);
+    free(new_to_old);
+    num_communities = 0;
+    return 0;
+  }
+
+  for (int i = 0; i < num_nodes; i++) {
+    communities[i] = -1;
+    old_to_new[i] = -1;
+  }
+
+  for (int e = 0; e < num_edges; e++) {
+    int u = edges[e].node1;
+    int v = edges[e].node2;
+    double w = edges[e].weight;
+
+    if (u < 0 || u >= num_nodes || v < 0 || v >= num_nodes || w <= 0.0)
+      continue;
+
+    if (u == v) {
+      degree_count[u] += 2;
+    } else {
+      degree_count[u]++;
+      degree_count[v]++;
+    }
+  }
+
+  int compact_n = 0;
+  for (int i = 0; i < num_nodes; i++) {
+    if (vertices[i].deleted == 0 && degree_count[i] > 0) {
+      old_to_new[i] = compact_n;
+      new_to_old[compact_n] = i;
+      compact_n++;
+    }
+  }
+
+  printf("Louvain input: num_nodes=%d, num_edges=%d, compact_n=%d\n", num_nodes,
+         num_edges, compact_n);
+
+  if (compact_n == 0) {
+    for (int i = 0; i < num_nodes; i++) {
+      communities[i] = i;
+    }
+    num_communities = num_nodes;
+    fill_node_community_map_from_result();
+    free(degree_count);
+    free(old_to_new);
+    free(new_to_old);
+    printf("Number of communities detected (Louvain): %d\n", num_communities);
+    return num_communities;
+  }
+
+  Edge *compact_edges = malloc((size_t)num_edges * sizeof(Edge));
+  if (compact_edges == NULL) {
+    free(degree_count);
+    free(old_to_new);
+    free(new_to_old);
+    num_communities = 0;
+    return 0;
+  }
+
+  int compact_m = 0;
+  for (int e = 0; e < num_edges; e++) {
+    int u = edges[e].node1;
+    int v = edges[e].node2;
+    double w = edges[e].weight;
+
+    if (u < 0 || u >= num_nodes || v < 0 || v >= num_nodes || w <= 0.0)
+      continue;
+    if (vertices[u].deleted || vertices[v].deleted)
+      continue;
+    if (old_to_new[u] == -1 || old_to_new[v] == -1)
+      continue;
+
+    compact_edges[compact_m].node1 = old_to_new[u];
+    compact_edges[compact_m].node2 = old_to_new[v];
+    compact_edges[compact_m].weight = w;
+    compact_m++;
+  }
+
+  int *compact_labels = malloc((size_t)compact_n * sizeof(int));
+  if (compact_labels == NULL) {
+    free(compact_edges);
+    free(degree_count);
+    free(old_to_new);
+    free(new_to_old);
+    num_communities = 0;
+    return 0;
+  }
+
+  int detected =
+      run_multilevel_detection(compact_n, compact_m, compact_edges,
+                               OBJECTIVE_MODULARITY, false, compact_labels);
+
   if (detected < 0)
     detected = 0;
-  num_communities = detected;
+
+  for (int i = 0; i < compact_n; i++) {
+    communities[new_to_old[i]] = compact_labels[i];
+  }
+
+  // Sommets hors sous-graphe utile -> singletons
+  int next_label = detected;
+  for (int i = 0; i < num_nodes; i++) {
+    if (communities[i] == -1) {
+      communities[i] = next_label++;
+    }
+  }
+
+  num_communities = renumber_labels_inplace(communities, num_nodes);
   fill_node_community_map_from_result();
-  printf("Number of communities detected (Louvain): %d\n", detected);
-  return detected;
+
+  printf("compact_m=%d\n", compact_m);
+  printf("Number of communities detected (Louvain): %d\n", num_communities);
+
+  free(compact_labels);
+  free(compact_edges);
+  free(degree_count);
+  free(old_to_new);
+  free(new_to_old);
+
+  return num_communities;
 }
 
 int leiden_method() {
