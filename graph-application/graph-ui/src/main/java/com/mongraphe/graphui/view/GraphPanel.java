@@ -84,7 +84,7 @@ public final class GraphPanel {
 
         glPanel.setFocusable(true);
 
-        animator = new FPSAnimator(glPanel, 120, true);
+        animator = new FPSAnimator(glPanel, 60, true);
 
         swingNode = new SwingNode();
         createAndSetSwingContent();
