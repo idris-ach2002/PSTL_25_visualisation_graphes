@@ -3,35 +3,35 @@
 <?import javafx.scene.control.*?>
 
 <MenuBar xmlns="http://javafx.com/javafx/8"
-         xmlns:fx="http://javafx.com/fxml/1"
-         fx:controller="com.mongraphe.graphui.controller.MainMenuController">
+    xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.mongraphe.graphui.controller.MainMenuController">
 
     <Menu text="Fichier">
-        <MenuItem text="Nouveau projet" onAction="#handleNewProject"/>
-        <MenuItem text="Ouvrir..." onAction="#handleOpen"/>
+        <MenuItem fx:id="newProjectMenuItem" text="Nouveau projet" onAction="#handleNewProject"/>
+        <MenuItem fx:id="openMenuItem" text="Ouvrir..." onAction="#handleOpen"/>
         <MenuItem text="Enregistrer le projet..." onAction="#handleSaveProject"/>
-        <MenuItem text="Exporter en PNG..." onAction="#handleExportPng"/>
-        <MenuItem text="Fermer l'espace de travail" onAction="#handleCloseWorkspace"/>
-        <MenuItem text="Quitter" onAction="#handleQuit"/>
+        <MenuItem fx:id="exportPngMenuItem" text="Exporter en PNG..." onAction="#handleExportPng"/>
+        <MenuItem fx:id="exportSvgMenuItem" text="Exporter en SVG..." onAction="#handleExportSvg"/>
+        <MenuItem fx:id="closeWorkspaceMenuItem" text="Fermer l'espace de travail" onAction="#handleCloseWorkspace"/>
+        <MenuItem fx:id="quitMenuItem" text="Quitter" onAction="#handleQuit"/>
     </Menu>
 
     <Menu text="Édition">
-        <MenuItem text="Annuler" onAction="#handleUndo"/>
-        <MenuItem text="Rétablir" onAction="#handleRedo"/>
+        <MenuItem fx:id="undoMenuItem" text="Annuler" onAction="#handleUndo"/>
+        <MenuItem fx:id="redoMenuItem" text="Rétablir" onAction="#handleRedo"/>
     </Menu>
 
     <Menu text="Affichage">
-        <MenuItem text="Plein écran" onAction="#handleFullScreen"/>
+        <MenuItem fx:id="fullScreenMenuItem" text="Plein écran" onAction="#handleFullScreen"/>
         <CheckMenuItem fx:id="showStatsMenuItem" text="Afficher les statistiques" selected="true" onAction="#handleToggleStats"/>
     </Menu>
 
     <Menu text="Outils">
-        <MenuItem text="Réinitialiser la vue" onAction="#handleLayoutReset"/>
-        <MenuItem text="Aide rapide" onAction="#handleOptions"/>
+        <MenuItem fx:id="resetViewMenuItem" text="Réinitialiser la vue" onAction="#handleLayoutReset"/>
+        <MenuItem fx:id="quickHelpMenuItem" text="Aide rapide" onAction="#handleOptions"/>
     </Menu>
 
     <Menu text="Aide">
-        <MenuItem text="Documentation" onAction="#handleDocumentation"/>
+        <MenuItem fx:id="documentationMenuItem" text="Documentation" onAction="#handleDocumentation"/>
         <MenuItem text="À propos" onAction="#handleAbout"/>
     </Menu>
 

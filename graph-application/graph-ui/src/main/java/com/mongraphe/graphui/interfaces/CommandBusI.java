@@ -3,6 +3,8 @@ package com.mongraphe.graphui.interfaces;
 import java.util.function.Consumer;
 import java.util.function.Function;
 
+import com.mongraphe.graphui.interfaces.app.UndoableGraphCommand;
+
 /**
  * Bus de commandes permettant d'exécuter des opérations sur un contexte donné
  * via un mécanisme d'exécution contrôlé (souvent un

@@ -1,175 +1,117 @@
 # PSTL_25_visualisation_graphes
 
+Application de visualisation de graphes avec interface JavaFX, rendu OpenGL et calculs natifs en C.
 
-Application de **visualisation de graphes** utilisant :
+## À quoi sert le projet
 
-- **Java / JavaFX** : interface graphique  
-- **JOGL (OpenGL)** : rendu graphique accéléré  
-- **C / JNI** : calculs lourds (clustering, layout)
+L'application permet de :
+- charger un graphe depuis un fichier CSV ou DOT ;
+- visualiser le graphe de manière interactive ;
+- appliquer des layouts et des algorithmes de communautés ;
+- exporter des rendus graphiques.
 
-Le projet est découpé en deux modules :
-
-- `graph-native` : code C / JNI compilé en bibliothèque partagée  
-- `graph-ui`     : application Java (JavaFX + JOGL)
+Le projet est composé de deux parties :
+- `graph-ui` : interface graphique Java ;
+- `graph-native` : moteur natif en C chargé via JNI.
 
 ## Prérequis
 
-- Java JDK 21
-- Maven 3.9+
-- GCC >= 9
-- Make
+À installer sur la machine :
+- **Java JDK 21**
+- **GCC**
+- **Make**
+- une connexion Internet au premier lancement Maven pour télécharger les dépendances Java
 
-## Installation de Java JDK 21
+## Lancement rapide
 
-### Installation de Java JDK 21
+Depuis la racine du projet :
 
-- **Linux** :
-```bash
-sudo apt update
-sudo apt install openjdk-21-jdk
-```
-
-- **macOS** : télécharger le .dmg Oracle ou utiliser Homebrew
-```bash
-brew install openjdk@21
-```
-
-## Lancement à partir du script bash
-
-Il vous suffit de lancer car maven est déjà inclus dans le projet
 ```bash
 cd graph-application
 bash run-app.sh
 ```
 
-## Compilation
-1. Compiler le code natif (C / JNI) :
+Ce script :
+1. compile la bibliothèque native C ;
+2. lance l'application JavaFX avec Maven.
+
+## Premier test
+
+Pour vérifier que tout fonctionne :
+
+1. lancer l'application
+2. selectionner un fichier csv proposer
+3. lancer le rendu du graphe
+
+## Lancement manuel
+
+Si vous préférez lancer le projet étape par étape :
+
+### 1. Compiler la partie native
 
 ```bash
-cd graph-native
+cd graph-application/graph-native
 make clean
 make
 ```
 
-2. Compiler le code Java :
+### 2. Lancer l'interface Java
 
 ```bash
 cd ../graph-ui
-mvn clean compile
+../tools/apache-maven-3.9.6/bin/mvn javafx:run
 ```
 
-## Exécution
-Pour lancer l’application placer vous dans le dossier `graph-ui` et exécuter :
+## Structure utile du projet
+
+```text
+graph-application/
+├── graph-native/     # code C / JNI
+├── graph-ui/         # interface JavaFX
+│   └── samples/      # exemples de graphes
+├── tools/            # Maven fourni avec le projet
+└── run-app.sh        # script de lancement
+```
+
+## Fichiers d'exemple
+
+Des fichiers de test sont déjà fournis dans `graph-ui/samples/`.
+
+Exemples :
+- `iris.csv`
+- `one.dot`
+- `predicancerNUadd9239.csv`
+
+## Problèmes fréquents
+
+### `java not found in PATH`
+Java 21 n'est pas installé ou n'est pas accessible depuis le terminal.
+
+### Erreur liée à `JAVA_HOME`
+Définir la variable d'environnement `JAVA_HOME` si nécessaire.
+
+Exemple Linux :
 
 ```bash
-mvn javafx:run
+export JAVA_HOME=/chemin/vers/jdk-21
+export PATH="$JAVA_HOME/bin:$PATH"
 ```
 
-Une fois le programme lancé, pour visualiser la fenêtre avec le graphe, il faut:
-- Appuyer sur Ouvrir un fichier de graphe
-- Sélectionner le fichier iris.csv
-- Appuyer sur next
-- Sélectionner une mesure de similarité (corrélation, ...), puis appuyer sur next
-- Appuyer à nouveau sur next une fois que la nouvelle scène est apparue
-- Choisir un algorithme de communauté ou appuyer directement sur next
-- Appuyer sur démarrer
+### `UnsatisfiedLinkError`
+La bibliothèque native n'a pas été compilée correctement. Relancer :
 
-## Structure du projet
-
-# ATTENTION: LE PROJET EST EN COURS DE MODIFICATION, LA STRUCTURE VA GRANDEMENT CHANGER !
-
-```
-graph-application/
-├── graph-native/          # Code natif (C / JNI)
-│   ├── c/
-│   │   ├── c_graph/
-│   │   ├── concurrent/
-│   │   ├── debug/
-│   │   ├── pretraitement/
-│   │   └── forceatlasV4_CSV.c
-│   ├── out/
-│   │   └── libnative.so ou libnative.dll ou libnative.dylib
-│   └── Makefile
-│
-├── graph-ui/              # Application Java
-│   ├── src/
-│   │   └── main/
-│   │       ├── java/
-│   │       └── resources/
-│   ├── samples/           # Fichiers CSV de test
-│   ├── pom.xml
-│   └── target/
-│
-├── tools/                 # Outils fournis (Maven local si besoin)
-└── README.md
+```bash
+cd graph-application/graph-native
+make clean
+make
 ```
 
-## Dépendances
+## Conseils
 
-- **Java / Maven** : gérées uniquement via Maven
-- **JavaFX 21** : modules `javafx-controls` et `javafx-fxml`
-- **JOGL 2.4.0** + **GlueGen 2.4.0**
-
-> Les artefacts JOGL ne sont pas disponibles sur Maven Central.  
-> Dépôt utilisé : [https://jogamp.org/deployment/maven](https://jogamp.org/deployment/maven)
-
-- **Code natif (JNI)** : compilé en bibliothèque partagée  
-  - Linux : `libnative.so`  
-  - Windows : `libnative.dll`  
-  - macOS : `libnative.dylib`
-
-Chargement dans Java via :
-
-```java
-System.loadLibrary("native");
-```
-
-Et la JVM doit connaître le chemin :
-
-```
--Djava.library.path=../graph-native/out
-```
-
-## JavaFX + JOGL
-
-JOGL utilise des API internes de JavaFX. Avec Java 21, il faut ouvrir explicitement certains modules dans le pom.xml :
-
-```
---add-opens javafx.graphics/com.sun.javafx.tk=ALL-UNNAMED
---add-opens javafx.graphics/com.sun.javafx.tk.quantum=ALL-UNNAMED
---add-opens javafx.graphics/com.sun.glass.ui=ALL-UNNAMED
---add-opens javafx.graphics/javafx.stage=ALL-UNNAMED
-```
-
-Sans ces options, l’erreur suivante apparaît :
-
-```
-Error getting Window handle
-```
-
-## Fichiers d’entrée (CSV)
-
-- `graph-ui/samples/iris.csv`
-
-- `graph-ui/samples/predicancerNUadd9239.csv`
-
-Ces fichiers peuvent être sélectionnés depuis l’interface graphique.
-
-## Problèmes connus
-
-### 1. `UnsatisfiedLinkError`  
-Problème de chargement de la bibliothèque native (JNI) :
-
-- Vérifier que `libnative.so` (Linux) / `libnative.dll` (Windows) / `libnative.dylib` (macOS) existe  
-- Vérifier que `java.library.path` pointe vers le dossier contenant la bibliothèque
-
-### 2. Erreurs JOGL / JavaFX
-
-- Vérifier que Java >= 21  
-- **Toujours utiliser `mvn javafx:run`**  
-- **Ne pas lancer l’application directement avec `java`**
+- utiliser de préférence **le script `run-app.sh`** ;
+- lancer le projet depuis un terminal ;
+- tester d'abord avec un fichier du dossier `samples` avant d'utiliser vos propres données.
 
 ## Auteurs
-A COMPLÉTER
 
----
+Ce fork a été réalisé dans le cadre du PSTL par Idris Achabou et Bilal Chetouani. Le code est un fork de https://github.com/damrib/PSTL_25_visualisation_graphes 

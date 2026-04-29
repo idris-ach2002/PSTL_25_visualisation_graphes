@@ -1,754 +1,1288 @@
 #include "communities.h"
 #include "../global.h"
 
-double lambda=0.1;
-AdjacencyList adjacency_list[MAX_NODES];
+#include <assert.h>
+#include <limits.h>
+#include <math.h>
+#include <stdbool.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
+#ifndef COMMUNITY_EPS
+#define COMMUNITY_EPS 1e-12
+#endif
+
+double lambda = 0.1;
+int *csr_offsets = NULL;
+int *csr_neighbors = NULL;
+double *csr_weights = NULL;
+int csr_total_edges = 0;
 Community node_community_map[MAX_NODES];
-int num_communities=0;
-int component_sizes[MAX_NODES]; // Tableau pour stocker la taille de chaque composante
+int num_communities = 0;
+int component_sizes[MAX_NODES];
 int num_components = 0;
 
-// Fonction principale qui applique la méthode de Louvain à toutes les composantes connexes
-int louvain_methodC() {
+typedef enum { OBJECTIVE_MODULARITY = 0, OBJECTIVE_CPM = 1 } ObjectiveMode;
 
-    
-    initialize_adjacency_list();
- // Ajouter des arêtes (par exemple, à partir de la structure `edges[]`)
- for (int i = 0; i < num_edges; i++) {
-     int node1 = edges[i].node1;
-     int node2 = edges[i].node2;
-     double weight = edges[i].weight;
+typedef struct {
+  int a;
+  int b;
+  double w;
+} PairEdge;
 
-     add_edge_to_adjacency_list(node1, node2, weight);
- }
- // Étape 1 : Trouver les composantes connexes
- find_connected_components();
-
- // Étape 2 : Appliquer la méthode de Louvain à chaque composante
- for (int component = 0; component < num_components; component++) {
-     apply_louvain_to_component(component);
- }
-
- // Compter le nombre total de communautés dans le graphe
- int total_communities = count_unique_communities(communities, num_nodes);
- printf("Total number of communities detected: %d\n", total_communities);
- return total_communities;
+static int compare_pair_edge(const void *a, const void *b) {
+  const PairEdge *ea = (const PairEdge *)a;
+  const PairEdge *eb = (const PairEdge *)b;
+  if (ea->a != eb->a)
+    return (ea->a < eb->a) ? -1 : 1;
+  if (ea->b != eb->b)
+    return (ea->b < eb->b) ? -1 : 1;
+  return 0;
 }
 
-// Function to compute the average vector for each community and display the results
-void compute_average_vectors() {
-    // Check if the number of clusters is valid
-    if (num_communities <= 0) {
-        printf("Error: num_communities is not correctly initialized.\n");
-        return;
-    }
-
-    // Array to store the size of each community
-    int *community_sizes = (int *)calloc(num_nodes, sizeof(int));  
-    if (community_sizes == NULL) {
-        printf("Error: Memory allocation failed for community_sizes.\n");
-        return;
-    }
-
-    // Array to store the sum of vectors in each community
-    double **community_sums = (double **)malloc(num_nodes * sizeof(double *));  
-    if (community_sums == NULL) {
-        printf("Error: Memory allocation failed for community_sums.\n");
-        free(community_sizes);
-        return;
-    }
-
-    // Initialize arrays for summing the vectors
-    for (int i = 0; i < num_nodes; i++) {
-        community_sums[i] = (double *)calloc(num_columns, sizeof(double));
-        if (community_sums[i] == NULL) {
-            printf("Error: Memory allocation failed for community_sums[%d].\n", i);
-            // Free previously allocated memory in case of error
-            for (int j = 0; j < i; j++) {
-                free(community_sums[j]);
-            }
-            free(community_sums);
-            free(community_sizes);
-            return;
-        }
-    }
-
-    // Traverse through each node and add the data to the corresponding community
-    for (int i = 0; i < num_rows; i++) {
-        int community = communities[i];
-
-        // Check that the community index is within the valid range
-        if (community < 0 || community >= num_nodes) {
-            printf("Error: Invalid community index %d for node %d.\n", community, i);
-            continue;
-        }
-
-        community_sizes[community]++;
-        for (int j = 0; j < num_columns; j++) {
-            community_sums[community][j] += data[i][j];
-        }
-    }
-
-    // Compute and display the average vector for each community
-    printf("Community Averages (From Largest to Smallest) containing more than 0.5 pourcent of the nodes :\n");
-
-    for (int comm = 0; comm < num_nodes; comm++) {
-        if (community_sizes[comm] > num_nodes/200) {
-            // Compute the average vector for this community
-            for (int j = 0; j < num_columns; j++) {
-                community_sums[comm][j] /= community_sizes[comm];  // Calculate the average
-            }
-            
-            // Normalize the average vector
-            //normalize_vector(community_sums[comm], num_columns);
-
-            // Display the normalized average vector
-            printf("Community %d: Size = %d, Normalized Average Vector = [", comm, community_sizes[comm]);
-            for (int j = 0; j < num_columns; j++) {
-                printf("%.10f", community_sums[comm][j]);
-                if (j < num_columns - 1) {
-                    printf(", ");
-                }
-            }
-            printf("]\n");
-        }
-    }
-
-    // Free allocated memory
-    for (int i = 0; i < num_nodes; i++) {
-        free(community_sums[i]);
-    }
-    free(community_sums);
-    free(community_sizes);
+static void free_ptr(void **ptr) {
+  if (ptr != NULL && *ptr != NULL) {
+    free(*ptr);
+    *ptr = NULL;
+  }
 }
 
-// Algorithme de Leiden CPM
-int leiden_method_CPM() {
-    double total_graph_weight = 0.0;
+void free_csr_adjacency(void) {
+  free_ptr((void **)&csr_offsets);
+  free_ptr((void **)&csr_neighbors);
+  free_ptr((void **)&csr_weights);
+  csr_total_edges = 0;
+}
 
-    // Initialisation des listes d'adjacence et des communautés
+static int build_csr_from_edge_array(int n, int m, const Edge *edge_array,
+                                     int **offsets_out, int **neighbors_out,
+                                     double **weights_out, double **degree_out,
+                                     double *m2_out) {
+  if (offsets_out == NULL || neighbors_out == NULL || weights_out == NULL ||
+      degree_out == NULL || m2_out == NULL) {
+    return -1;
+  }
+
+  *offsets_out = NULL;
+  *neighbors_out = NULL;
+  *weights_out = NULL;
+  *degree_out = NULL;
+  *m2_out = 0.0;
+
+  if (n < 0 || m < 0)
+    return -1;
+
+  int *adj_count = calloc((size_t)(n > 0 ? n : 1), sizeof(int));
+  double *degree = calloc((size_t)(n > 0 ? n : 1), sizeof(double));
+  if (adj_count == NULL || degree == NULL) {
+    free(adj_count);
+    free(degree);
+    return -1;
+  }
+
+  double m2 = 0.0;
+  for (int i = 0; i < m; i++) {
+    int u = edge_array[i].node1;
+    int v = edge_array[i].node2;
+    double w = edge_array[i].weight;
+
+    if (u < 0 || u >= n || v < 0 || v >= n)
+      continue;
+    if (w <= 0.0)
+      continue;
+
+    if (u == v) {
+      adj_count[u] += 1;
+      degree[u] += 2.0 * w;
+      m2 += 2.0 * w;
+    } else {
+      adj_count[u] += 1;
+      adj_count[v] += 1;
+      degree[u] += w;
+      degree[v] += w;
+      m2 += 2.0 * w;
+    }
+  }
+
+  int *offsets = malloc((size_t)(n + 1) * sizeof(int));
+  if (offsets == NULL) {
+    free(adj_count);
+    free(degree);
+    return -1;
+  }
+
+  offsets[0] = 0;
+  for (int i = 0; i < n; i++) {
+    offsets[i + 1] = offsets[i] + adj_count[i];
+  }
+
+  int total_adj = offsets[n];
+  int *neighbors = NULL;
+  double *weights = NULL;
+
+  if (total_adj > 0) {
+    neighbors = malloc((size_t)total_adj * sizeof(int));
+    weights = malloc((size_t)total_adj * sizeof(double));
+    if (neighbors == NULL || weights == NULL) {
+      free(offsets);
+      free(neighbors);
+      free(weights);
+      free(adj_count);
+      free(degree);
+      return -1;
+    }
+  }
+
+  int *pos = malloc((size_t)(n > 0 ? n : 1) * sizeof(int));
+  if (pos == NULL) {
+    free(offsets);
+    free(neighbors);
+    free(weights);
+    free(adj_count);
+    free(degree);
+    return -1;
+  }
+  if (n > 0) {
+    memcpy(pos, offsets, (size_t)n * sizeof(int));
+  }
+
+  for (int i = 0; i < m; i++) {
+    int u = edge_array[i].node1;
+    int v = edge_array[i].node2;
+    double w = edge_array[i].weight;
+
+    if (u < 0 || u >= n || v < 0 || v >= n)
+      continue;
+    if (w <= 0.0)
+      continue;
+
+    if (u == v) {
+      int p = pos[u]++;
+      neighbors[p] = u;
+      // Le self-loop contribue 2w au degré et à 2m,
+      // donc il doit aussi contribuer 2w dans les sommes locales utilisées
+      // par le calcul du gain de modularité.
+      weights[p] = 2.0 * w;
+    } else {
+      int pu = pos[u]++;
+      neighbors[pu] = v;
+      weights[pu] = w;
+
+      int pv = pos[v]++;
+      neighbors[pv] = u;
+      weights[pv] = w;
+    }
+  }
+
+  free(adj_count);
+  free(pos);
+
+  *offsets_out = offsets;
+  *neighbors_out = neighbors;
+  *weights_out = weights;
+  *degree_out = degree;
+  *m2_out = m2;
+  return total_adj;
+}
+
+void build_csr_adjacency(void) {
+  free_csr_adjacency();
+
+  double *degree = NULL;
+  int total = build_csr_from_edge_array(
+      num_nodes, num_edges, edges, &csr_offsets, &csr_neighbors, &csr_weights,
+      &degree, &((double){0.0}));
+  if (total < 0) {
+    fprintf(stderr, "Failed to build CSR adjacency.\n");
+    free_csr_adjacency();
+    return;
+  }
+  csr_total_edges = total;
+  free(degree);
+}
+
+// ------------------------------------------------------------
+// Connected components on the global CSR
+// ------------------------------------------------------------
+void mark_component(int node, int component, int *stack) {
+  if (stack == NULL || csr_offsets == NULL || csr_neighbors == NULL)
+    return;
+
+  int top = 0;
+  stack[top++] = node;
+  node_community_map[node].component = component;
+
+  while (top > 0) {
+    int cur = stack[--top];
+    component_sizes[component]++;
+
+    for (int idx = csr_offsets[cur]; idx < csr_offsets[cur + 1]; idx++) {
+      int neigh = csr_neighbors[idx];
+      if (node_community_map[neigh].component == -1) {
+        node_community_map[neigh].component = component;
+        stack[top++] = neigh;
+      }
+    }
+  }
+}
+
+void find_connected_components() {
+  if (csr_offsets == NULL)
+    build_csr_adjacency();
+
+  for (int i = 0; i < num_nodes; i++) {
+    node_community_map[i].component = -1;
+  }
+  for (int i = 0; i < MAX_NODES; i++) {
+    component_sizes[i] = 0;
+  }
+  num_components = 0;
+
+  if (num_nodes <= 0 || csr_offsets == NULL) {
+    return;
+  }
+
+  int *stack = malloc((size_t)num_nodes * sizeof(int));
+  if (stack == NULL) {
+    fprintf(stderr, "Failed to allocate component stack.\n");
+    return;
+  }
+
+  for (int i = 0; i < num_nodes; i++) {
+    if (node_community_map[i].component == -1) {
+      mark_component(i, num_components, stack);
+      num_components++;
+    }
+  }
+
+  free(stack);
+  printf("Number of connected components: %d\n", num_components);
+}
+
+// ------------------------------------------------------------
+// Utility helpers
+// ------------------------------------------------------------
+static void shuffle_indices(int *array, int n) {
+  for (int i = n - 1; i > 0; i--) {
+    int j = rand() % (i + 1);
+    int tmp = array[i];
+    array[i] = array[j];
+    array[j] = tmp;
+  }
+}
+
+static int renumber_labels_inplace(int *labels, int n) {
+  int *map = malloc((size_t)(n > 0 ? n : 1) * sizeof(int));
+  if (map == NULL) {
+    return -1;
+  }
+  for (int i = 0; i < n; i++)
+    map[i] = -1;
+
+  int next = 0;
+  for (int i = 0; i < n; i++) {
+    int c = labels[i];
+    if (c < 0 || c >= n)
+      continue;
+    if (map[c] == -1)
+      map[c] = next++;
+  }
+  for (int i = 0; i < n; i++) {
+    labels[i] = map[labels[i]];
+  }
+
+  free(map);
+  return next;
+}
+
+static int local_move_pass(int n, const int *offsets, const int *neighbors,
+                           const double *weights, const double *degree,
+                           double m2, const int *node_size,
+                           ObjectiveMode objective, int *partition,
+                           bool random_order) {
+  if (n <= 0)
+    return 0;
+
+  double *comm_tot = calloc((size_t)n, sizeof(double));
+  int *comm_size = calloc((size_t)n, sizeof(int));
+  int *mark = calloc((size_t)n, sizeof(int));
+  double *cand_weight = calloc((size_t)n, sizeof(double));
+  int *touched = malloc((size_t)n * sizeof(int));
+  int *order = malloc((size_t)n * sizeof(int));
+
+  if (comm_tot == NULL || comm_size == NULL || mark == NULL ||
+      cand_weight == NULL || touched == NULL || order == NULL) {
+    free(comm_tot);
+    free(comm_size);
+    free(mark);
+    free(cand_weight);
+    free(touched);
+    free(order);
+    return 0;
+  }
+
+  for (int i = 0; i < n; i++) {
+    int c = partition[i];
+    if (c >= 0 && c < n) {
+      comm_tot[c] += degree[i];
+      comm_size[c] += node_size != NULL ? node_size[i] : 1;
+    }
+    order[i] = i;
+  }
+
+  int total_moves = 0;
+  int current_mark_local = 1;
+
+  for (int pass = 0; pass < 100; pass++) {
+    if (random_order) {
+      shuffle_indices(order, n);
+    }
+
+    int moved_this_pass = 0;
+    for (int pos = 0; pos < n; pos++) {
+      int node = order[pos];
+      int old_comm = partition[node];
+      double ki = degree[node];
+      int size_i = node_size != NULL ? node_size[node] : 1;
+
+      if (old_comm < 0 || old_comm >= n)
+        continue;
+
+      int nt = 0;
+      if (current_mark_local == INT_MAX) {
+        memset(mark, 0, (size_t)n * sizeof(int));
+        current_mark_local = 1;
+      }
+      current_mark_local++;
+
+      for (int idx = offsets[node]; idx < offsets[node + 1]; idx++) {
+        int neigh = neighbors[idx];
+
+        if (neigh == node)
+          continue;
+
+        int c = partition[neigh];
+        if (c < 0 || c >= n)
+          continue;
+
+        if (mark[c] != current_mark_local) {
+          mark[c] = current_mark_local;
+          cand_weight[c] = 0.0;
+          touched[nt++] = c;
+        }
+        cand_weight[c] += weights[idx];
+      }
+
+      double ki_in_old =
+          (mark[old_comm] == current_mark_local) ? cand_weight[old_comm] : 0.0;
+
+      comm_tot[old_comm] -= ki;
+      comm_size[old_comm] -= size_i;
+      partition[node] = -1;
+
+      double best_gain;
+      if (objective == OBJECTIVE_MODULARITY) {
+        best_gain =
+            ki_in_old - (m2 > 0.0 ? (ki * comm_tot[old_comm]) / m2 : 0.0);
+      } else {
+        best_gain =
+            ki_in_old - lambda * (double)size_i * (double)comm_size[old_comm];
+      }
+      int best_comm = old_comm;
+
+      for (int t = 0; t < nt; t++) {
+        int c = touched[t];
+        if (c == old_comm)
+          continue;
+
+        double gain;
+        if (objective == OBJECTIVE_MODULARITY) {
+          gain = cand_weight[c] - (m2 > 0.0 ? (ki * comm_tot[c]) / m2 : 0.0);
+        } else {
+          gain =
+              cand_weight[c] - lambda * (double)size_i * (double)comm_size[c];
+        }
+
+        if (gain > best_gain + COMMUNITY_EPS ||
+            (fabs(gain - best_gain) <= COMMUNITY_EPS && c < best_comm)) {
+          best_gain = gain;
+          best_comm = c;
+        }
+      }
+
+      partition[node] = best_comm;
+      comm_tot[best_comm] += ki;
+      comm_size[best_comm] += size_i;
+
+      if (best_comm != old_comm) {
+        moved_this_pass++;
+      }
+    }
+
+    total_moves += moved_this_pass;
+    if (moved_this_pass == 0)
+      break;
+  }
+
+  free(comm_tot);
+  free(comm_size);
+  free(mark);
+  free(cand_weight);
+  free(touched);
+  free(order);
+  return total_moves;
+}
+
+static int refine_partition_within_coarse(
+    int n, const int *offsets, const int *neighbors, const double *weights,
+    const double *degree, double m2, const int *node_size,
+    const int *coarse_partition, ObjectiveMode objective,
+    int *refined_partition_out) {
+  if (n <= 0)
+    return 0;
+
+  for (int i = 0; i < n; i++) {
+    refined_partition_out[i] = i;
+  }
+
+  double *comm_tot = calloc((size_t)n, sizeof(double));
+  int *comm_size = calloc((size_t)n, sizeof(int));
+  int *mark = calloc((size_t)n, sizeof(int));
+  double *cand_weight = calloc((size_t)n, sizeof(double));
+  int *touched = malloc((size_t)n * sizeof(int));
+  int *order = malloc((size_t)n * sizeof(int));
+
+  if (comm_tot == NULL || comm_size == NULL || mark == NULL ||
+      cand_weight == NULL || touched == NULL || order == NULL) {
+    free(comm_tot);
+    free(comm_size);
+    free(mark);
+    free(cand_weight);
+    free(touched);
+    free(order);
+    memcpy(refined_partition_out, coarse_partition, (size_t)n * sizeof(int));
+    return renumber_labels_inplace(refined_partition_out, n);
+  }
+
+  for (int i = 0; i < n; i++) {
+    comm_tot[i] = degree[i];
+    comm_size[i] = node_size != NULL ? node_size[i] : 1;
+    order[i] = i;
+  }
+
+  int current_mark_local = 1;
+
+  for (int pass = 0; pass < 100; pass++) {
+    shuffle_indices(order, n);
+    int moved_this_pass = 0;
+
+    for (int pos = 0; pos < n; pos++) {
+      int node = order[pos];
+      int old_comm = refined_partition_out[node];
+      double ki = degree[node];
+      int size_i = node_size != NULL ? node_size[node] : 1;
+      int coarse_comm = coarse_partition[node];
+
+      int nt = 0;
+      if (current_mark_local == INT_MAX) {
+        memset(mark, 0, (size_t)n * sizeof(int));
+        current_mark_local = 1;
+      }
+      current_mark_local++;
+
+      for (int idx = offsets[node]; idx < offsets[node + 1]; idx++) {
+        int neigh = neighbors[idx];
+        if (coarse_partition[neigh] != coarse_comm)
+          continue;
+        int c = refined_partition_out[neigh];
+        if (c < 0 || c >= n)
+          continue;
+        if (mark[c] != current_mark_local) {
+          mark[c] = current_mark_local;
+          cand_weight[c] = 0.0;
+          touched[nt++] = c;
+        }
+        cand_weight[c] += weights[idx];
+      }
+
+      double ki_in_old =
+          (mark[old_comm] == current_mark_local) ? cand_weight[old_comm] : 0.0;
+
+      comm_tot[old_comm] -= ki;
+      comm_size[old_comm] -= size_i;
+      refined_partition_out[node] = -1;
+
+      double best_gain;
+      if (objective == OBJECTIVE_MODULARITY) {
+        best_gain =
+            ki_in_old - (m2 > 0.0 ? (ki * comm_tot[old_comm]) / m2 : 0.0);
+      } else {
+        best_gain =
+            ki_in_old - lambda * (double)size_i * (double)comm_size[old_comm];
+      }
+      int best_comm = old_comm;
+
+      for (int t = 0; t < nt; t++) {
+        int c = touched[t];
+        if (c == old_comm)
+          continue;
+        double gain;
+        if (objective == OBJECTIVE_MODULARITY) {
+          gain = cand_weight[c] - (m2 > 0.0 ? (ki * comm_tot[c]) / m2 : 0.0);
+        } else {
+          gain =
+              cand_weight[c] - lambda * (double)size_i * (double)comm_size[c];
+        }
+        if (gain > best_gain + COMMUNITY_EPS ||
+            (fabs(gain - best_gain) <= COMMUNITY_EPS && c < best_comm)) {
+          best_gain = gain;
+          best_comm = c;
+        }
+      }
+
+      refined_partition_out[node] = best_comm;
+      comm_tot[best_comm] += ki;
+      comm_size[best_comm] += size_i;
+
+      if (best_comm != old_comm) {
+        moved_this_pass++;
+      }
+    }
+
+    if (moved_this_pass == 0)
+      break;
+  }
+
+  free(comm_tot);
+  free(comm_size);
+  free(mark);
+  free(cand_weight);
+  free(touched);
+  free(order);
+  return renumber_labels_inplace(refined_partition_out, n);
+}
+
+static int build_induced_graph_from_partition(int n, int m,
+                                              const Edge *edge_array,
+                                              const int *partition,
+                                              const int *node_size, int new_n,
+                                              Edge **new_edges_out,
+                                              int **new_node_size_out) {
+  if (new_edges_out == NULL || new_node_size_out == NULL)
+    return -1;
+
+  *new_edges_out = NULL;
+  *new_node_size_out = NULL;
+
+  if (new_n <= 0)
+    return 0;
+
+  int *new_node_size = calloc((size_t)new_n, sizeof(int));
+  if (new_node_size == NULL)
+    return -1;
+
+  for (int i = 0; i < n; i++) {
+    int c = partition[i];
+    if (c >= 0 && c < new_n) {
+      new_node_size[c] += node_size != NULL ? node_size[i] : 1;
+    }
+  }
+
+  if (m <= 0) {
+    *new_node_size_out = new_node_size;
+    *new_edges_out = NULL;
+    return 0;
+  }
+
+  PairEdge *tmp = malloc((size_t)m * sizeof(PairEdge));
+  if (tmp == NULL) {
+    free(new_node_size);
+    return -1;
+  }
+
+  int cnt = 0;
+  for (int i = 0; i < m; i++) {
+    int u = edge_array[i].node1;
+    int v = edge_array[i].node2;
+    double w = edge_array[i].weight;
+    if (u < 0 || u >= n || v < 0 || v >= n || w <= 0.0)
+      continue;
+
+    int a = partition[u];
+    int b = partition[v];
+    if (a < 0 || a >= new_n || b < 0 || b >= new_n)
+      continue;
+    if (a > b) {
+      int t = a;
+      a = b;
+      b = t;
+    }
+    tmp[cnt].a = a;
+    tmp[cnt].b = b;
+    tmp[cnt].w = w;
+    cnt++;
+  }
+
+  if (cnt == 0) {
+    free(tmp);
+    *new_node_size_out = new_node_size;
+    *new_edges_out = NULL;
+    return 0;
+  }
+
+  qsort(tmp, (size_t)cnt, sizeof(PairEdge), compare_pair_edge);
+
+  Edge *new_edges = malloc((size_t)cnt * sizeof(Edge));
+  if (new_edges == NULL) {
+    free(tmp);
+    free(new_node_size);
+    return -1;
+  }
+
+  int out_m = 0;
+  for (int i = 0; i < cnt;) {
+    int a = tmp[i].a;
+    int b = tmp[i].b;
+    double sum_w = 0.0;
+    int j = i;
+    while (j < cnt && tmp[j].a == a && tmp[j].b == b) {
+      sum_w += tmp[j].w;
+      j++;
+    }
+    new_edges[out_m].node1 = a;
+    new_edges[out_m].node2 = b;
+    new_edges[out_m].weight = sum_w;
+    out_m++;
+    i = j;
+  }
+
+  free(tmp);
+  *new_edges_out = new_edges;
+  *new_node_size_out = new_node_size;
+  return out_m;
+}
+
+static int run_multilevel_detection(int n0, int m0, const Edge *edges0,
+                                    ObjectiveMode objective,
+                                    bool use_refinement, int *labels_out) {
+  if (labels_out == NULL)
+    return -1;
+
+  if (n0 <= 0) {
+    return 0;
+  }
+
+  int *orig_to_cur = malloc((size_t)n0 * sizeof(int));
+  int *node_size_cur = malloc((size_t)n0 * sizeof(int));
+  Edge *edges_cur = NULL;
+
+  if (orig_to_cur == NULL || node_size_cur == NULL) {
+    free(orig_to_cur);
+    free(node_size_cur);
+    return -1;
+  }
+
+  for (int i = 0; i < n0; i++) {
+    orig_to_cur[i] = i;
+    node_size_cur[i] = 1;
+  }
+
+  if (m0 > 0) {
+    edges_cur = malloc((size_t)m0 * sizeof(Edge));
+    if (edges_cur == NULL) {
+      free(orig_to_cur);
+      free(node_size_cur);
+      return -1;
+    }
+    memcpy(edges_cur, edges0, (size_t)m0 * sizeof(Edge));
+  }
+
+  int n_cur = n0;
+  int m_cur = m0;
+
+  while (true) {
+    int *offsets = NULL;
+    int *neighbors = NULL;
+    double *weights = NULL;
+    double *degree = NULL;
+    double m2 = 0.0;
+
+    int total_adj = build_csr_from_edge_array(
+        n_cur, m_cur, edges_cur, &offsets, &neighbors, &weights, &degree, &m2);
+    if (total_adj < 0) {
+      free(orig_to_cur);
+      free(node_size_cur);
+      free(edges_cur);
+      return -1;
+    }
+
+    int *coarse = malloc((size_t)n_cur * sizeof(int));
+    if (coarse == NULL) {
+      free(offsets);
+      free(neighbors);
+      free(weights);
+      free(degree);
+      free(orig_to_cur);
+      free(node_size_cur);
+      free(edges_cur);
+      return -1;
+    }
+    for (int i = 0; i < n_cur; i++) {
+      coarse[i] = i;
+    }
+
+    local_move_pass(n_cur, offsets, neighbors, weights, degree, m2,
+                    node_size_cur, objective, coarse, true);
+    int coarse_count = renumber_labels_inplace(coarse, n_cur);
+
+    if (coarse_count < 0) {
+      free(coarse);
+      free(offsets);
+      free(neighbors);
+      free(weights);
+      free(degree);
+      free(orig_to_cur);
+      free(node_size_cur);
+      free(edges_cur);
+      return -1;
+    }
+
+    if (coarse_count == n_cur) {
+      free(coarse);
+      free(offsets);
+      free(neighbors);
+      free(weights);
+      free(degree);
+      break;
+    }
+
+    int *partition_to_use = coarse;
+    int new_n = coarse_count;
+    int *refined = NULL;
+
+    if (use_refinement) {
+      refined = malloc((size_t)n_cur * sizeof(int));
+      if (refined != NULL) {
+        int refined_count = refine_partition_within_coarse(
+            n_cur, offsets, neighbors, weights, degree, m2, node_size_cur,
+            coarse, objective, refined);
+
+        if (refined_count > 0 && refined_count < n_cur) {
+          partition_to_use = refined;
+          new_n = refined_count;
+          free(coarse);
+          coarse = NULL;
+        } else {
+          free(refined);
+          refined = NULL;
+        }
+      }
+    }
+
+    for (int i = 0; i < n0; i++) {
+      int cur_node = orig_to_cur[i];
+      orig_to_cur[i] = partition_to_use[cur_node];
+    }
+
+    Edge *new_edges = NULL;
+    int *new_node_size = NULL;
+    int new_m = build_induced_graph_from_partition(
+        n_cur, m_cur, edges_cur, partition_to_use, node_size_cur, new_n,
+        &new_edges, &new_node_size);
+
+    free(coarse);
+    free(refined);
+    free(offsets);
+    free(neighbors);
+    free(weights);
+    free(degree);
+    free(edges_cur);
+    free(node_size_cur);
+
+    if (new_m < 0 || new_node_size == NULL) {
+      free(new_edges);
+      free(new_node_size);
+      free(orig_to_cur);
+      return -1;
+    }
+
+    edges_cur = new_edges;
+    node_size_cur = new_node_size;
+    n_cur = new_n;
+    m_cur = new_m;
+
+    if (n_cur <= 1)
+      break;
+  }
+
+  memcpy(labels_out, orig_to_cur, (size_t)n0 * sizeof(int));
+  int final_count = renumber_labels_inplace(labels_out, n0);
+
+  free(orig_to_cur);
+  free(node_size_cur);
+  free(edges_cur);
+  return final_count;
+}
+
+static void fill_node_community_map_from_result(void) {
+  double *community_weight =
+      calloc((size_t)(num_nodes > 0 ? num_nodes : 1), sizeof(double));
+  if (community_weight != NULL) {
     for (int i = 0; i < num_edges; i++) {
-        int node1 = edges[i].node1;
-        int node2 = edges[i].node2;
-        double weight = edges[i].weight;
-
-        add_edge_to_adjacency_list(node1, node2, weight);
-        add_edge_to_adjacency_list(node2, node1, weight);
-
-        node_community_map[node1].community = node1;
-        node_community_map[node1].total_weight += weight;
-        node_community_map[node2].community = node2;
-        node_community_map[node2].total_weight += weight;
-
-        total_graph_weight += 2 * weight;
+      int u = edges[i].node1;
+      int v = edges[i].node2;
+      double w = edges[i].weight;
+      if (u < 0 || u >= num_nodes || v < 0 || v >= num_nodes || w <= 0.0)
+        continue;
+      int cu = communities[u];
+      int cv = communities[v];
+      if (cu == cv && cu >= 0 && cu < num_nodes) {
+        if (u == v)
+          community_weight[cu] += 2.0 * w;
+        else
+          community_weight[cu] += 2.0 * w;
+      }
     }
+  }
 
-    int improvement = 1;
-    while (improvement) {
-        improvement = 0;
+  for (int i = 0; i < num_nodes; i++) {
+    node_community_map[i].community = communities[i];
+    node_community_map[i].total_weight =
+        community_weight != NULL ? community_weight[communities[i]] : 0.0;
+  }
 
-        for (int node = 0; node < num_nodes; node++) {
-            int current_community = node_community_map[node].community;
-            double max_delta_modularity = 0.0;
-            int best_community = current_community;
-
-            // Calcul du gain de modularité pour le déplacement du nœud avec Leiden
-            Neighbor* neighbor = adjacency_list[node].head;
-            while (neighbor != NULL) {
-                int neighbor_community = node_community_map[neighbor->node].community;
-                if (neighbor_community == current_community) {
-                    neighbor = neighbor->next;
-                    continue;
-                }
-
-                double delta_modularity = calculate_gain_modularity_cpm(node, neighbor_community, lambda);
-                if (delta_modularity > max_delta_modularity) {
-                    max_delta_modularity = delta_modularity;
-                    best_community = neighbor_community;
-                }
-                neighbor = neighbor->next;
-            }
-
-            // Mise à jour de la communauté si une meilleure est trouvée
-            if (best_community != current_community) {
-                node_community_map[node].community = best_community;
-                improvement = 1;
-            }
-        }
-    }
-
-    // Mise à jour des communautés détectées
-    for (int i = 0; i < num_nodes; i++) {
-        communities[i] = node_community_map[i].community;
-    }
-
-    // Afficher le nombre de communautés uniques à la fin de l'algorithme de Leiden
-    int num_communities = count_unique_communities(communities, num_nodes);
-    printf("Number of communities detected: %d\n", num_communities);
-    return num_communities;
+  free(community_weight);
 }
 
-// Fonction principale qui applique la méthode de Louvain à une composante
-void apply_louvain_to_component(int component) {
-    double total_graph_weight = 0.0;
+// ------------------------------------------------------------
+// Public algorithms
+// ------------------------------------------------------------
+double calculate_gain_modularity(int node, int new_community,
+                                 double total_graph_weight) {
+  if (csr_offsets == NULL || csr_neighbors == NULL || csr_weights == NULL ||
+      total_graph_weight <= 0.0 || node < 0 || node >= num_nodes ||
+      new_community < 0 || new_community >= num_nodes) {
+    return 0.0;
+  }
 
-    // Initialisation des listes d'adjacence et des communautés pour la composante donnée
-    for (int i = 0; i < num_edges; i++) {
-        int node1 = edges[i].node1;
-        int node2 = edges[i].node2;
-        double weight = edges[i].weight;
+  int old_community = node_community_map[node].community;
+  double ki = 0.0;
+  double ki_old = 0.0;
+  double ki_new = 0.0;
+  double tot_old = 0.0;
+  double tot_new = 0.0;
 
-        if (node_community_map[node1].component != component || node_community_map[node2].component != component) {
-            continue;  // Ignorer les arêtes qui ne font pas partie de la composante actuelle
-        }
-
-        add_edge_to_adjacency_list(node1, node2, weight);
-        add_edge_to_adjacency_list(node2, node1, weight);
-
-        node_community_map[node1].community = node1;
-        node_community_map[node1].total_weight += weight;
-        node_community_map[node2].community = node2;
-        node_community_map[node2].total_weight += weight;
-
-        total_graph_weight += 2 * weight;
+  for (int i = 0; i < num_nodes; i++) {
+    double deg_i = 0.0;
+    for (int idx = csr_offsets[i]; idx < csr_offsets[i + 1]; idx++) {
+      deg_i += csr_weights[idx];
     }
+    if (node_community_map[i].community == old_community)
+      tot_old += deg_i;
+    if (node_community_map[i].community == new_community)
+      tot_new += deg_i;
+  }
 
-    int improvement = 1;
-    while (improvement) {
-        improvement = 0;
+  for (int idx = csr_offsets[node]; idx < csr_offsets[node + 1]; idx++) {
+    int neigh = csr_neighbors[idx];
+    double w = csr_weights[idx];
+    ki += w;
+    if (node_community_map[neigh].community == old_community)
+      ki_old += w;
+    if (node_community_map[neigh].community == new_community)
+      ki_new += w;
+  }
 
-        for (int node = 0; node < num_nodes; node++) {
-            if (node_community_map[node].component != component) {
-                continue;  // Ignorer les nœuds qui ne font pas partie de la composante actuelle
-            }
-
-            int current_community = node_community_map[node].community;
-            double max_delta_modularity = 0.0;
-            int best_community = current_community;
-
-            // Calcul du gain de modularité pour le déplacement du nœud
-            Neighbor* neighbor = adjacency_list[node].head;
-            while (neighbor != NULL) {
-                int neighbor_community = node_community_map[neighbor->node].community;
-                if (neighbor_community == current_community) {
-                    neighbor = neighbor->next;
-                    continue;
-                }
-
-                double delta_modularity = calculate_gain_modularity(node, neighbor_community, total_graph_weight);
-                if (delta_modularity > max_delta_modularity) {
-                    max_delta_modularity = delta_modularity;
-                    best_community = neighbor_community;
-                }
-                neighbor = neighbor->next;
-            }
-
-            // Mise à jour de la communauté si une meilleure est trouvée
-            if (best_community != current_community) {
-                node_community_map[node].community = best_community;
-                improvement = 1;
-            }
-        }
-    }
-
-    // Mise à jour des communautés détectées pour cette composante
-    for (int i = 0; i < num_nodes; i++) {
-        if (node_community_map[i].component == component) {
-            communities[i] = node_community_map[i].community;
-        }
-    }
-
-    // Afficher le nombre de communautés uniques pour cette composante
-    //int num_communities = count_unique_communities(communities, num_nodes);
-    //printf("Number of communities detected in component %d: %d\n", component, num_communities);
+  tot_old -= ki;
+  return (ki_new - (ki * tot_new) / total_graph_weight) -
+         (ki_old - (ki * tot_old) / total_graph_weight);
 }
 
-void initialize_adjacency_list() {
-    for (int i = 0; i < MAX_NODES; i++) {
-        adjacency_list[i].head = NULL;  // Initialiser chaque tête de liste à NULL
-    }
-}
+double calculate_gain_modularity_cpm(int node, int new_community,
+                                     double resolution_parameter) {
+  if (csr_offsets == NULL || csr_neighbors == NULL || csr_weights == NULL ||
+      node < 0 || node >= num_nodes || new_community < 0 ||
+      new_community >= num_nodes) {
+    return 0.0;
+  }
 
-// Initialisez les couleurs pour chaque communauté (ici, on suppose un maximum de MAX_NODES communautés)
-void initialize_community_colors() {
+  int old_community = node_community_map[node].community;
+  double ki_old = 0.0;
+  double ki_new = 0.0;
+  int size_old = 0;
+  int size_new = 0;
 
-    for (int i = 0; i < num_nodes; i++) {
-        float min_color_value = 0.2;  // seuil minimal pour éviter les couleurs sombres
-        cluster_colors[i][0] = min_color_value + (float)rand() / RAND_MAX * (1.0 - min_color_value); // Couleur R
-        cluster_colors[i][1] = min_color_value + (float)rand() / RAND_MAX * (1.0 - min_color_value); // Couleur G
-        cluster_colors[i][2] = min_color_value + (float)rand() / RAND_MAX * (1.0 - min_color_value); // Couleur B
-    }
+  for (int i = 0; i < num_nodes; i++) {
+    if (node_community_map[i].community == old_community)
+      size_old++;
+    if (node_community_map[i].community == new_community)
+      size_new++;
+  }
+
+  for (int idx = csr_offsets[node]; idx < csr_offsets[node + 1]; idx++) {
+    int neigh = csr_neighbors[idx];
+    double w = csr_weights[idx];
+    if (node_community_map[neigh].community == old_community)
+      ki_old += w;
+    if (node_community_map[neigh].community == new_community)
+      ki_new += w;
+  }
+
+  return (ki_new - ki_old) +
+         resolution_parameter * (double)(size_old - 1 - size_new);
 }
 
 int louvain_method() {
-    double total_graph_weight = 0.0;
-       initialize_adjacency_list();
-    // Initialisation des listes d'adjacence et des communautés
-    for (int i = 0; i < num_edges; i++) {
-        int node1 = edges[i].node1;
-        int node2 = edges[i].node2;
-        double weight = edges[i].weight;
+  int *degree_count = calloc((size_t)num_nodes, sizeof(int));
+  int *old_to_new = malloc((size_t)num_nodes * sizeof(int));
+  int *new_to_old = malloc((size_t)num_nodes * sizeof(int));
 
-        add_edge_to_adjacency_list(node1, node2, weight);
-        add_edge_to_adjacency_list(node2, node1, weight);
+  if (degree_count == NULL || old_to_new == NULL || new_to_old == NULL) {
+    free(degree_count);
+    free(old_to_new);
+    free(new_to_old);
+    num_communities = 0;
+    return 0;
+  }
 
-        node_community_map[node1].community = node1;
-        node_community_map[node1].total_weight += weight;
-        node_community_map[node2].community = node2;
-        node_community_map[node2].total_weight += weight;
+  for (int i = 0; i < num_nodes; i++) {
+    communities[i] = -1;
+    old_to_new[i] = -1;
+  }
 
-        total_graph_weight += 2 * weight;
+  for (int e = 0; e < num_edges; e++) {
+    int u = edges[e].node1;
+    int v = edges[e].node2;
+    double w = edges[e].weight;
+
+    if (u < 0 || u >= num_nodes || v < 0 || v >= num_nodes || w <= 0.0)
+      continue;
+
+    if (u == v) {
+      degree_count[u] += 2;
+    } else {
+      degree_count[u]++;
+      degree_count[v]++;
     }
+  }
 
-       // Après avoir construit la liste d'adjacence, détecter les composantes connexes
-    find_connected_components();    
-
-    int improvement = 1;
-    while (improvement) {
-        improvement = 0;
-
-        for (int node = 0; node < num_nodes; node++) {
-            int current_community = node_community_map[node].community;
-            double max_delta_modularity = 0.0;
-            int best_community = current_community;
-
-            // Calcul du gain de modularité pour le déplacement du nœud
-            Neighbor* neighbor = adjacency_list[node].head;
-            while (neighbor != NULL) {
-                int neighbor_community = node_community_map[neighbor->node].community;
-                if (neighbor_community == current_community) {
-                    neighbor = neighbor->next;
-                    continue;
-                }
-
-                double delta_modularity = calculate_gain_modularity(node, neighbor_community, total_graph_weight);
-                if (delta_modularity > max_delta_modularity) {
-                    max_delta_modularity = delta_modularity;
-                    best_community = neighbor_community;
-                }
-                neighbor = neighbor->next;
-            }
-
-            // Mise à jour de la communauté si une meilleure est trouvée
-            if (best_community != current_community) {
-                node_community_map[node].community = best_community;
-                improvement = 1;
-            }
-        }
+  int compact_n = 0;
+  for (int i = 0; i < num_nodes; i++) {
+    if (vertices[i].deleted == 0 && degree_count[i] > 0) {
+      old_to_new[i] = compact_n;
+      new_to_old[compact_n] = i;
+      compact_n++;
     }
+  }
 
-    // Mise à jour des communautés détectées
+  printf("Louvain input: num_nodes=%d, num_edges=%d, compact_n=%d\n", num_nodes,
+         num_edges, compact_n);
+
+  if (compact_n == 0) {
     for (int i = 0; i < num_nodes; i++) {
-        communities[i] = node_community_map[i].community;
+      communities[i] = i;
     }
-
-    // Display the number of unique communities at the end of the Louvain method
-    int num_communities = count_unique_communities(communities, num_nodes);
-    printf("Number of communities detected: %d\n", num_communities);
+    num_communities = num_nodes;
+    fill_node_community_map_from_result();
+    free(degree_count);
+    free(old_to_new);
+    free(new_to_old);
+    printf("Number of communities detected (Louvain): %d\n", num_communities);
     return num_communities;
+  }
+
+  Edge *compact_edges = malloc((size_t)num_edges * sizeof(Edge));
+  if (compact_edges == NULL) {
+    free(degree_count);
+    free(old_to_new);
+    free(new_to_old);
+    num_communities = 0;
+    return 0;
+  }
+
+  int compact_m = 0;
+  for (int e = 0; e < num_edges; e++) {
+    int u = edges[e].node1;
+    int v = edges[e].node2;
+    double w = edges[e].weight;
+
+    if (u < 0 || u >= num_nodes || v < 0 || v >= num_nodes || w <= 0.0)
+      continue;
+    if (vertices[u].deleted || vertices[v].deleted)
+      continue;
+    if (old_to_new[u] == -1 || old_to_new[v] == -1)
+      continue;
+
+    compact_edges[compact_m].node1 = old_to_new[u];
+    compact_edges[compact_m].node2 = old_to_new[v];
+    compact_edges[compact_m].weight = w;
+    compact_m++;
+  }
+
+  int *compact_labels = malloc((size_t)compact_n * sizeof(int));
+  if (compact_labels == NULL) {
+    free(compact_edges);
+    free(degree_count);
+    free(old_to_new);
+    free(new_to_old);
+    num_communities = 0;
+    return 0;
+  }
+
+  int detected =
+      run_multilevel_detection(compact_n, compact_m, compact_edges,
+                               OBJECTIVE_MODULARITY, false, compact_labels);
+
+  if (detected < 0)
+    detected = 0;
+
+  for (int i = 0; i < compact_n; i++) {
+    communities[new_to_old[i]] = compact_labels[i];
+  }
+
+  // Sommets hors sous-graphe utile -> singletons
+  int next_label = detected;
+  for (int i = 0; i < num_nodes; i++) {
+    if (communities[i] == -1) {
+      communities[i] = next_label++;
+    }
+  }
+
+  num_communities = renumber_labels_inplace(communities, num_nodes);
+  fill_node_community_map_from_result();
+
+  printf("compact_m=%d\n", compact_m);
+  printf("Number of communities detected (Louvain): %d\n", num_communities);
+
+  free(compact_labels);
+  free(compact_edges);
+  free(degree_count);
+  free(old_to_new);
+  free(new_to_old);
+
+  return num_communities;
 }
 
-// Fonction pour détecter les composantes connexes du graphe
-void find_connected_components() {
-    // Initialiser toutes les composantes à -1 (non visitées)
-    for (int i = 0; i < num_nodes; i++) {
-        node_community_map[i].component = -1;
-    }
-    // Initialiser les tailles des composantes à 0
-    for (int i = 0; i < MAX_NODES; i++) {
-        component_sizes[i] = 0;
-    }
-
-    num_components = 0;  // Initialisation du nombre de composantes
-
-    // Parcourir tous les nœuds du graphe
-    for (int i = 0; i < num_nodes; i++) {
-        if (node_community_map[i].component == -1) {
-            // Si le nœud n'a pas été visité, on lance DFS pour marquer tous les nœuds de la composante
-            mark_component(i, num_components);
-            num_components++;  // Incrémenter le nombre de composantes après en avoir trouvé une
-        }
-    }
-
-    // Afficher le nombre de composantes connexes et leur taille
-    printf("Number of connected components: %d\n", num_components);
-    //for (int component = 0; component < num_components; component++) {
-    //    printf("Component %d has %d nodes.\n", component, component_sizes[component]);
-    //}
+int leiden_method() {
+  int detected = run_multilevel_detection(
+      num_nodes, num_edges, edges, OBJECTIVE_MODULARITY, true, communities);
+  if (detected < 0)
+    detected = 0;
+  num_communities = detected;
+  fill_node_community_map_from_result();
+  printf("Number of communities detected (Leiden): %d\n", detected);
+  return detected;
 }
 
-// Fonction pour ajouter un voisin dans la liste d'adjacence
-void add_edge_to_adjacency_list(int node, int neighbor, double weight) {
-    Neighbor* new_neighbor = (Neighbor*)malloc(sizeof(Neighbor));
-    new_neighbor->node = neighbor;
-    new_neighbor->weight = weight;
-    new_neighbor->next = adjacency_list[node].head;
-    adjacency_list[node].head = new_neighbor;
+int leiden_method_CPM() {
+  int detected = run_multilevel_detection(num_nodes, num_edges, edges,
+                                          OBJECTIVE_CPM, true, communities);
+  if (detected < 0)
+    detected = 0;
+  num_communities = detected;
+  fill_node_community_map_from_result();
+  printf("Number of communities detected (Leiden CPM, lambda=%.4f): %d\n",
+         lambda, detected);
+  return detected;
 }
 
-// Fonction pour marquer une composante (DFS ou BFS)
-// Fonction DFS pour marquer les nœuds d'une composante
-/*void mark_component(int node, int component) {
-    // Marquer le nœud comme appartenant à la composante courante
-    node_community_map[node].component = component;
-    component_sizes[component]++;  // Incrémenter la taille de la composante
+int louvain_methodC() {
+  if (csr_offsets == NULL)
+    build_csr_adjacency();
 
-    // Parcourir tous les voisins du nœud
-    Neighbor* neighbor = adjacency_list[node].head;
-    while (neighbor != NULL) {
-        int neighbor_node = neighbor->node;
-        // Si le voisin n'a pas encore été visité (composante == -1), on le marque
-        if (node_community_map[neighbor_node].component == -1) {
-            mark_component(neighbor_node, component);  // Appel récursif pour le voisin
-        }
-        neighbor = neighbor->next;
-    }
-}*/
+  find_connected_components();
 
-void push(int** next_nodes, int* size, int* capacity, int node) {
-    if ( *size >= *capacity - 2 ) {
-        *capacity *= 2;
-        int* new_next;
-        new_next = realloc(*next_nodes, sizeof(int) * *capacity);
-        *next_nodes = new_next;
+  if (num_components <= 0) {
+    num_communities = 0;
+    return 0;
+  }
+
+  int *comp_sizes = calloc((size_t)num_components, sizeof(int));
+  if (comp_sizes == NULL)
+    return 0;
+
+  for (int i = 0; i < num_nodes; i++) {
+    int c = node_community_map[i].component;
+    if (c >= 0 && c < num_components)
+      comp_sizes[c]++;
+  }
+
+  int **comp_nodes = malloc((size_t)num_components * sizeof(int *));
+  int *comp_pos = calloc((size_t)num_components, sizeof(int));
+  if (comp_nodes == NULL || comp_pos == NULL) {
+    free(comp_sizes);
+    free(comp_nodes);
+    free(comp_pos);
+    return 0;
+  }
+
+  for (int c = 0; c < num_components; c++) {
+    comp_nodes[c] = malloc((size_t)comp_sizes[c] * sizeof(int));
+    if (comp_nodes[c] == NULL) {
+      for (int k = 0; k < c; k++)
+        free(comp_nodes[k]);
+      free(comp_nodes);
+      free(comp_pos);
+      free(comp_sizes);
+      return 0;
     }
-    (*next_nodes)[(*size)++] = node;
+  }
+
+  for (int i = 0; i < num_nodes; i++) {
+    int c = node_community_map[i].component;
+    comp_nodes[c][comp_pos[c]++] = i;
+  }
+  free(comp_pos);
+
+  int *global_labels = malloc((size_t)num_nodes * sizeof(int));
+  if (global_labels == NULL) {
+    for (int c = 0; c < num_components; c++)
+      free(comp_nodes[c]);
+    free(comp_nodes);
+    free(comp_sizes);
+    return 0;
+  }
+
+  int next_comm_id = 0;
+  for (int comp = 0; comp < num_components; comp++) {
+    int n_comp = comp_sizes[comp];
+    int *nodes = comp_nodes[comp];
+
+    if (n_comp <= 1) {
+      global_labels[nodes[0]] = next_comm_id++;
+      continue;
+    }
+
+    int *local_index = malloc((size_t)num_nodes * sizeof(int));
+    if (local_index == NULL) {
+      continue;
+    }
+    for (int i = 0; i < num_nodes; i++)
+      local_index[i] = -1;
+    for (int i = 0; i < n_comp; i++)
+      local_index[nodes[i]] = i;
+
+    int edge_count = 0;
+    for (int e = 0; e < num_edges; e++) {
+      int u = edges[e].node1;
+      int v = edges[e].node2;
+      if (u < 0 || u >= num_nodes || v < 0 || v >= num_nodes)
+        continue;
+      if (node_community_map[u].component == comp &&
+          node_community_map[v].component == comp) {
+        edge_count++;
+      }
+    }
+
+    Edge *local_edges = NULL;
+    if (edge_count > 0) {
+      local_edges = malloc((size_t)edge_count * sizeof(Edge));
+    }
+    if (edge_count > 0 && local_edges == NULL) {
+      free(local_index);
+      continue;
+    }
+
+    int out_e = 0;
+    for (int e = 0; e < num_edges; e++) {
+      int u = edges[e].node1;
+      int v = edges[e].node2;
+      if (u < 0 || u >= num_nodes || v < 0 || v >= num_nodes)
+        continue;
+      if (node_community_map[u].component == comp &&
+          node_community_map[v].component == comp) {
+        local_edges[out_e].node1 = local_index[u];
+        local_edges[out_e].node2 = local_index[v];
+        local_edges[out_e].weight = edges[e].weight;
+        out_e++;
+      }
+    }
+    edge_count = out_e;
+
+    int *local_labels = malloc((size_t)n_comp * sizeof(int));
+    if (local_labels == NULL) {
+      free(local_edges);
+      free(local_index);
+      continue;
+    }
+
+    int detected =
+        run_multilevel_detection(n_comp, edge_count, local_edges,
+                                 OBJECTIVE_MODULARITY, false, local_labels);
+    if (detected < 0)
+      detected = n_comp;
+
+    for (int i = 0; i < n_comp; i++) {
+      global_labels[nodes[i]] = next_comm_id + local_labels[i];
+    }
+    next_comm_id += detected;
+
+    free(local_labels);
+    free(local_edges);
+    free(local_index);
+  }
+
+  memcpy(communities, global_labels, (size_t)num_nodes * sizeof(int));
+  num_communities = renumber_labels_inplace(communities, num_nodes);
+  fill_node_community_map_from_result();
+
+  for (int c = 0; c < num_components; c++)
+    free(comp_nodes[c]);
+  free(comp_nodes);
+  free(comp_sizes);
+  free(global_labels);
+
+  printf("Total number of communities detected (per component): %d\n",
+         num_communities);
+  return num_communities;
 }
 
-int pop(int** next_nodes, int* size, int* capacity) {
-    if ( *size < *capacity / 4 - 1) {
-        int* new_next;
-        *capacity /= 2;
-
-        new_next = realloc(*next_nodes, sizeof(int) * *capacity);
-        *next_nodes = new_next;
-    }
-
-    return (*next_nodes)[--*size];
+void initialize_community_colors() {
+  for (int i = 0; i < num_nodes; i++) {
+    float min = 0.2f;
+    cluster_colors[i][0] = min + (float)rand() / RAND_MAX * (1.0f - min);
+    cluster_colors[i][1] = min + (float)rand() / RAND_MAX * (1.0f - min);
+    cluster_colors[i][2] = min + (float)rand() / RAND_MAX * (1.0f - min);
+  }
 }
 
-void mark_component(int node, int component) {
+void compute_ratio_S(int *S_local) {
+  if (num_communities <= 0 || S_local == NULL) {
+    printf("Error: num_communities not initialized.\n");
+    return;
+  }
 
-    int length_next = 4;
-    int *next_nodes = calloc(length_next, sizeof(int));
-    int size = 0;
-
-    push(&next_nodes, &size, &length_next, node);
-    node_community_map[node].component = component;
-
-    while (size > 0) {
-
-        int next_node = pop(&next_nodes, &size, &length_next);
-        component_sizes[component]++;
-
-        Neighbor* neighbor = adjacency_list[next_node].head;
-
-        while (neighbor != NULL) {
-
-            int next_neighbor = neighbor->node;
-
-            if (node_community_map[next_neighbor].component == -1) {
-                node_community_map[next_neighbor].component = component; 
-                push(&next_nodes, &size, &length_next, next_neighbor);
-
-            }
-
-            neighbor = neighbor->next;
-        }
-    }
-
-    free(next_nodes);
-}
-
-// Fonction pour compter et retourner le nombre de communautés uniques
-int count_unique_communities(int *communities, int num_nodes) {
-    int *unique_communities = (int *)malloc(num_nodes * sizeof(int));
-    int unique_count = 0;
-
-    for (int i = 0; i < num_nodes; i++) {
-        int community = communities[i];
-        int is_new = 1;
-        
-        // Vérifier si la communauté a déjà été comptée
-        for (int j = 0; j < unique_count; j++) {
-            if (unique_communities[j] == community) {
-                is_new = 0;
-                break;
-            }
-        }
-
-        // Si la communauté est nouvelle, l'ajouter à la liste des communautés uniques
-        if (is_new) {
-            unique_communities[unique_count] = community;
-            unique_count++;
-        }
-    }
-
-    free(unique_communities);  // Libérer la mémoire après l'utilisation
-    return unique_count;
-}
-
-// Function to compute the ratio of S[i] = 1 in each community and display the results
-void compute_ratio_S(int *S) {
-    // Check if the number of clusters is valid
-    if (num_communities <= 0) {
-        printf("Error: num_communities is not correctly initialized.\n");
-        return;
-    }
-
-    // Array to store the size of each community
-    int *community_sizes = (int *)calloc(num_nodes, sizeof(int));
-    if (community_sizes == NULL) {
-        printf("Error: Memory allocation failed for community_sizes.\n");
-        return;
-    }
-
-    // Array to count occurrences of S[i] = 1 in each community
-    int *community_s1_counts = (int *)calloc(num_nodes, sizeof(int));
-    if (community_s1_counts == NULL) {
-        printf("Error: Memory allocation failed for community_s1_counts.\n");
-        free(community_sizes);
-        return;
-    }
-        //printf("TEST S{3}=%d, %d communities \n",S[3],num_rows);
-       //fflush(stdout);
-    // Traverse through each node and update community sizes and S[i] = 1 counts
-    for (int i = 0; i < num_rows; i++) {
-        int community = communities[i];
-        //printf("TEST S{3}=%d, %d communities %d \n",S[3],i,communities[i]);
-       //fflush(stdout);
-        // Check that the community index is within the valid range
-        if (community < 0 || community >= num_nodes) {
-            printf("Error: Invalid community index %d for node %d.\n", community, i);
-            continue;
-        }
-
-        community_sizes[community]++;
-        if (S[i] == 1) {
-            community_s1_counts[community]++;
-        }
-    }
-
-    // Display the ratio of S[i] = 1 for each community with more than 1% of nodes
-    printf("Community Ratios (From Largest to Smallest) containing more than 0.5 percent of the nodes:\n");
-
-    for (int comm = 0; comm < num_nodes; comm++) {
-        if (community_sizes[comm] > num_nodes / 200) {
-            double ratio_s1 = (double)community_s1_counts[comm] / community_sizes[comm];
-
-            printf("Community %d: Size = %d, Ratio of 1 = %.10f\n", 
-                   comm, community_sizes[comm], ratio_s1);
-                   fflush(stdout);
-        }
-    }
-
-    // Free allocated memory
+  int *community_sizes = calloc((size_t)num_nodes, sizeof(int));
+  int *community_s1_counts = calloc((size_t)num_nodes, sizeof(int));
+  if (community_sizes == NULL || community_s1_counts == NULL) {
     free(community_sizes);
     free(community_s1_counts);
-}
+    return;
+  }
 
-
-// Fonction pour calculer le gain de modularité pour le déplacement d'un nœud
-double calculate_gain_modularity(int node, int new_community, double total_graph_weight) {
-    double current_modularity = 0.0;
-    double new_modularity = 0.0;
-    
-    int current_community = node_community_map[node].community;
-
-    // Calcul de la contribution des arêtes internes et externes pour la communauté actuelle
-    Neighbor* neighbor = adjacency_list[node].head;
-    while (neighbor != NULL) {
-        int neighbor_community = node_community_map[neighbor->node].community;
-        if (neighbor_community == current_community) {
-            current_modularity += neighbor->weight;
-        } else if (neighbor_community == new_community) {
-            new_modularity += neighbor->weight;
-        }
-        neighbor = neighbor->next;
+  for (int i = 0; i < num_rows; i++) {
+    int comm = communities[i];
+    if (comm < 0 || comm >= num_nodes) {
+      printf("Error: Invalid community index %d for node %d.\n", comm, i);
+      continue;
     }
+    community_sizes[comm]++;
+    if (S_local[i] == 1)
+      community_s1_counts[comm]++;
+  }
 
-    // Calcul de la modularité avant et après le déplacement
-    double current_weight = node_community_map[node].total_weight;
-    double neighbor_weight = node_community_map[new_community].total_weight;
-    double delta_modularity = (new_modularity - current_modularity) - 
-                              (current_weight * neighbor_weight) / total_graph_weight;
-    
-    return delta_modularity;
-}
-
-
-// Fonction pour vérifier la connectivité interne d'une communauté
-int is_strongly_connected(int community_id) {
-    // Parcours en profondeur ou en largeur pour vérifier si tous les nœuds de la communauté sont connectés
-    int visited[MAX_NODES] = {0};
-    int stack[MAX_NODES], top = -1;
-    int start_node = -1;
-
-    // Trouver un nœud de départ dans la communauté
-    for (int i = 0; i < num_nodes; i++) {
-        if (node_community_map[i].community == community_id) {
-            start_node = i;
-            break;
-        }
+  printf("Community Ratios (>0.5%% of nodes):\n");
+  for (int comm = 0; comm < num_nodes; comm++) {
+    if (community_sizes[comm] > num_nodes / 200) {
+      double ratio =
+          (double)community_s1_counts[comm] / (double)community_sizes[comm];
+      printf("Community %d: Size = %d, Ratio of 1 = %.10f\n", comm,
+             community_sizes[comm], ratio);
+      fflush(stdout);
     }
+  }
 
-    if (start_node == -1) return 0; // Aucun nœud trouvé
-
-    // Initialiser la pile avec le nœud de départ
-    stack[++top] = start_node;
-    visited[start_node] = 1;
-
-    while (top != -1) {
-        int current_node = stack[top--];
-        Neighbor* neighbor = adjacency_list[current_node].head;
-        while (neighbor != NULL) {
-            if (node_community_map[neighbor->node].community == community_id && !visited[neighbor->node]) {
-                visited[neighbor->node] = 1;
-                stack[++top] = neighbor->node;
-            }
-            neighbor = neighbor->next;
-        }
-    }
-
-    // Vérifier si tous les nœuds de la communauté ont été visités
-    for (int i = 0; i < num_nodes; i++) {
-        if (node_community_map[i].community == community_id && !visited[i]) {
-            return 0; // La communauté n'est pas connectée
-        }
-    }
-
-    return 1; // La communauté est connectée
-}
-
-// Fonction pour calculer le gain de modularité pour un nœud et une nouvelle communauté avec connectivité garantie
-double calculate_gain_modularity_leiden(int node, int new_community, double total_graph_weight) {
-    double current_modularity = 0.0;
-    double new_modularity = 0.0;
-    
-    int current_community = node_community_map[node].community;
-
-    // Calcul de la contribution des arêtes internes et externes pour la communauté actuelle
-    Neighbor* neighbor = adjacency_list[node].head;
-    while (neighbor != NULL) {
-        int neighbor_community = node_community_map[neighbor->node].community;
-        if (neighbor_community == current_community) {
-            current_modularity += neighbor->weight;
-        } else if (neighbor_community == new_community) {
-            new_modularity += neighbor->weight;
-        }
-        neighbor = neighbor->next;
-    }
-
-    // Calcul de la modularité avant et après le déplacement
-    double current_weight = node_community_map[node].total_weight;
-    double neighbor_weight = node_community_map[new_community].total_weight;
-    double delta_modularity = (new_modularity - current_modularity) - 
-                              (current_weight * neighbor_weight) / total_graph_weight;
-    
-    // Vérifier si la nouvelle communauté reste connectée après l'ajout du nœud
-    if (!is_strongly_connected(new_community)) {
-        return -1; // Si la communauté n'est plus connectée, ne pas effectuer le déplacement
-    }
-
-    return delta_modularity;
-}
-
-
-//CPM
-double calculate_gain_modularity_cpm(int node, int new_community, double resolution_parameter) {
-    double current_internal_edges = 0.0;
-    double new_internal_edges = 0.0;
-    
-    int current_community = node_community_map[node].community;
-    int degree_node = 0;  // Le degré du nœud (somme des poids des arêtes)
-
-    // Calcul des contributions des arêtes internes à la communauté actuelle et à la nouvelle
-    Neighbor* neighbor = adjacency_list[node].head;
-    while (neighbor != NULL) {
-        int neighbor_community = node_community_map[neighbor->node].community;
-        if (neighbor_community == current_community) {
-            current_internal_edges += neighbor->weight;
-        } else if (neighbor_community == new_community) {
-            new_internal_edges += neighbor->weight;
-        }
-        degree_node += neighbor->weight;
-        neighbor = neighbor->next;
-    }
-
-    // Calcul des tailles des communautés avant et après le déplacement
-    double current_community_size = node_community_map[current_community].total_weight;
-    double new_community_size = node_community_map[new_community].total_weight;
-
-    // Calcul du gain de modularité en utilisant la formule CPM
-    double delta_modularity = new_internal_edges - current_internal_edges
-                              - resolution_parameter * (degree_node * (new_community_size - current_community_size));
-    
-    return delta_modularity;
-}
-
-
-// Algorithme de Leiden
-int leiden_method() {
-    double total_graph_weight = 0.0;
-
-    // Initialisation des listes d'adjacence et des communautés
-    for (int i = 0; i < num_edges; i++) {
-        int node1 = edges[i].node1;
-        int node2 = edges[i].node2;
-        double weight = edges[i].weight;
-
-        add_edge_to_adjacency_list(node1, node2, weight);
-        add_edge_to_adjacency_list(node2, node1, weight);
-
-        node_community_map[node1].community = node1;
-        node_community_map[node1].total_weight += weight;
-        node_community_map[node2].community = node2;
-        node_community_map[node2].total_weight += weight;
-
-        total_graph_weight += 2 * weight;
-    }
-
-    int improvement = 1;
-    while (improvement) {
-        improvement = 0;
-
-        for (int node = 0; node < num_nodes; node++) {
-            int current_community = node_community_map[node].community;
-            double max_delta_modularity = 0.0;
-            int best_community = current_community;
-
-            // Calcul du gain de modularité pour le déplacement du nœud avec Leiden
-            Neighbor* neighbor = adjacency_list[node].head;
-            while (neighbor != NULL) {
-                int neighbor_community = node_community_map[neighbor->node].community;
-                if (neighbor_community == current_community) {
-                    neighbor = neighbor->next;
-                    continue;
-                }
-
-                double delta_modularity = calculate_gain_modularity_leiden(node, neighbor_community, total_graph_weight);
-                if (delta_modularity > max_delta_modularity) {
-                    max_delta_modularity = delta_modularity;
-                    best_community = neighbor_community;
-                }
-                neighbor = neighbor->next;
-            }
-
-            // Mise à jour de la communauté si une meilleure est trouvée
-            if (best_community != current_community) {
-                node_community_map[node].community = best_community;
-                improvement = 1;
-            }
-        }
-    }
-
-    // Mise à jour des communautés détectées
-    for (int i = 0; i < num_nodes; i++) {
-        communities[i] = node_community_map[i].community;
-    }
-
-    // Afficher le nombre de communautés uniques à la fin de l'algorithme de Leiden
-    int num_communities = count_unique_communities(communities, num_nodes);
-    printf("Number of communities detected: %d\n", num_communities);
-    return num_communities;
+  free(community_sizes);
+  free(community_s1_counts);
 }

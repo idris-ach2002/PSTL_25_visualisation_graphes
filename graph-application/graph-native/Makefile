@@ -33,9 +33,6 @@ SRC_DIR := c
 OUT_DIR := out
 OUT_OS_DIR := $(OUT_DIR)/$(JNI_OS)
 
-TEST_SRC := c/tests/test_engine.c c/tests/test_utils.c
-TEST_BIN := $(OUT_DIR)/test_engine
-
 SRC := \
     $(wildcard $(SRC_DIR)/c_graph/*.c) \
     $(wildcard $(SRC_DIR)/concurrent/*.c) \
@@ -47,15 +44,11 @@ OBJ := $(patsubst $(SRC_DIR)/%.c,$(OUT_DIR)/%.o,$(SRC))
 LIB := $(OUT_DIR)/libnative.$(EXT)
 LIB_OS := $(OUT_OS_DIR)/libnative.$(EXT)
 
-CFLAGS := -Wall -Wextra -O2 -fPIC $(CSTD) $(COMPILER_FLAGS) $(JNI_INC)
+CFLAGS := -Wall -Wextra -O2 -fPIC -O3 -march=native $(CSTD) $(COMPILER_FLAGS) $(JNI_INC)
 LDFLAGS := -lm
 
-.PHONY: all test clean
+.PHONY: all clean
 all: $(LIB) $(LIB_OS)
-
-test: $(TEST_BIN)
-	@echo "Running tests"
-	$(TEST_BIN) c/tests/graphs/triangle.dot
 
 $(LIB): $(OBJ)
 	@echo "🔗 Linking $@"
@@ -70,10 +63,6 @@ $(OUT_DIR)/%.o: $(SRC_DIR)/%.c
 	@echo "⚙️  $<"
 	@mkdir -p $(dir $@)
 	$(CC) $(CFLAGS) -c $< -o $@
-
-$(TEST_BIN): $(OBJ) $(TEST_SRC)
-	@echo "🧪 Building test binary"
-	$(CC) $(CFLAGS) $^ $(LDFLAGS) -o $@
 
 clean:
 	rm -rf out

@@ -55,7 +55,6 @@ public class GraphVisibilityFilter {
                 hiddenEdges++;
         }
 
-        model.computeVisibilityStats();
     }
 
     public int getVisibleVertices() {

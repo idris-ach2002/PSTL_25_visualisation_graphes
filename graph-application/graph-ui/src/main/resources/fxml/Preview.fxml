@@ -1,0 +1,113 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?import javafx.scene.layout.*?>
+<?import javafx.scene.control.*?>
+
+<BorderPane xmlns="http://javafx.com/javafx/8"
+    xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.mongraphe.graphui.controller.PreviewController">
+
+    <center>
+        <BorderPane fx:id="graphContainer" style="-fx-background-color: #fff; -fx-border-color: #ccc; -fx-border-width: 1;"/>
+    </center>
+
+    <left>
+        <VBox spacing="12" style="-fx-padding: 10; -fx-background-color: #0b0f19;">
+
+            <!-- ==================== APPARENCE DES NŒUDS ==================== -->
+            <Label text="Apparence des nœuds" style="-fx-font-weight: bold; -fx-text-fill: #2a6496;"/>
+            <Label text="Ces réglages modifient l'affichage sans affecter la simulation." style="-fx-font-size: 11; -fx-text-fill: #666;" wrapText="true"/>
+
+            <GridPane hgap="10" vgap="8">
+                <Label text="Taille de base :" GridPane.rowIndex="0" GridPane.columnIndex="0">
+                    <tooltip>
+                        <Tooltip text="Diamètre minimal des nœuds (en pixels)."/>
+                    </tooltip>
+                </Label>
+                <TextField fx:id="initNodeSize" GridPane.rowIndex="0" GridPane.columnIndex="1" text="5" prefWidth="80"/>
+
+                <Label text="Facteur de degré :" GridPane.rowIndex="1" GridPane.columnIndex="0">
+                    <tooltip>
+                        <Tooltip text="Agrandit les nœuds proportionnellement à leur nombre d'arêtes. 0 = taille fixe."/>
+                    </tooltip>
+                </Label>
+                <TextField fx:id="degreeFactor" GridPane.rowIndex="1" GridPane.columnIndex="1" text="0.5" prefWidth="80"/>
+
+                <Label text="Degré minimum :" GridPane.rowIndex="2" GridPane.columnIndex="0">
+                    <tooltip>
+                        <Tooltip text="Masque les nœuds ayant moins que ce nombre d'arêtes."/>
+                    </tooltip>
+                </Label>
+                <TextField fx:id="minimumDegree" text="0" GridPane.rowIndex="2" GridPane.columnIndex="1" prefWidth="80"/>
+
+                <Label text="Poids min. des arêtes :" GridPane.rowIndex="3" GridPane.columnIndex="0">
+                    <tooltip>
+                        <Tooltip text="Masque les arêtes dont le poids est inférieur à cette valeur."/>
+                    </tooltip>
+                </Label>
+                <TextField fx:id="minEdgeWeight" text="0" GridPane.rowIndex="3" GridPane.columnIndex="1" prefWidth="80"/>
+            </GridPane>
+
+            <Separator/>
+
+            <!-- ==================== COULEURS ==================== -->
+            <Label text="Couleurs" style="-fx-font-weight: bold; -fx-text-fill: #2a6496;"/>
+
+            <GridPane hgap="10" vgap="8">
+                <Label text="Fond :" GridPane.rowIndex="0" GridPane.columnIndex="0">
+                    <tooltip>
+                        <Tooltip text="Couleur d'arrière-plan du canevas."/>
+                    </tooltip>
+                </Label>
+                <ColorPicker fx:id="canvasColorPicker" GridPane.rowIndex="0" GridPane.columnIndex="1"/>
+
+                <Label text="Mode de coloration :" GridPane.rowIndex="1" GridPane.columnIndex="0">
+                    <tooltip>
+                        <Tooltip text="COMMUNITY = une couleur par communauté | DEGREE = dégradé selon le degré | UNIFORM = couleur unique."/>
+                    </tooltip>
+                </Label>
+                <ComboBox fx:id="coloringModeCombo" prefWidth="160" GridPane.rowIndex="1" GridPane.columnIndex="1"/>
+
+                <Label text="Couleur uniforme :" GridPane.rowIndex="2" GridPane.columnIndex="0">
+                    <tooltip>
+                        <Tooltip text="Couleur appliquée à tous les nœuds lorsque le mode UNIFORM est sélectionné."/>
+                    </tooltip>
+                </Label>
+                <ColorPicker fx:id="uniformNodeColorPicker" GridPane.rowIndex="2" GridPane.columnIndex="1"/>
+            </GridPane>
+
+            <Separator/>
+
+            <!-- ==================== ARÊTES ==================== -->
+            <Label text="Arêtes" style="-fx-font-weight: bold; -fx-text-fill: #2a6496;"/>
+
+            <GridPane hgap="10" vgap="8">
+                <Label text="Épaisseur :" GridPane.rowIndex="0" GridPane.columnIndex="0">
+                    <tooltip>
+                        <Tooltip text="Épaisseur des lignes en pixels."/>
+                    </tooltip>
+                </Label>
+                <TextField fx:id="edgeLineWidthField" promptText="1.35" text="1.35" prefWidth="80" GridPane.rowIndex="0" GridPane.columnIndex="1"/>
+            </GridPane>
+
+            <HBox spacing="8" alignment="CENTER_LEFT">
+                <CheckBox fx:id="curvedEdgesToggle" text="Arêtes courbes" selected="true">
+                    <tooltip>
+                        <Tooltip text="Dessine les arêtes sous forme de courbes paraboliques."/>
+                    </tooltip>
+                </CheckBox>
+                <Label text="Angle (°) :">
+                    <tooltip>
+                        <Tooltip text="Angle de courbure (0 = droite, max 85)."/>
+                    </tooltip>
+                </Label>
+                <TextField fx:id="curveAngleField" promptText="22" text="22" prefWidth="70"/>
+            </HBox>
+
+            <Separator/>
+
+            <HBox spacing="8" alignment="CENTER_RIGHT">
+                <Button text="Appliquer" onAction="#applyOptions" styleClass="button"/>
+            </HBox>
+
+        </VBox>
+    </left>
+</BorderPane>

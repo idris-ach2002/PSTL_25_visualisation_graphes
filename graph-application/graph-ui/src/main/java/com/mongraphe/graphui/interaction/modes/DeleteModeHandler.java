@@ -35,9 +35,8 @@ public final class DeleteModeHandler implements InteractionModeHandler {
             return;
 
         Vertex selected = bus.dispatchSync(engine -> {
-            float wx = engine.camera().screenToWorldX(sx);
-            float wy = engine.camera().screenToWorldY(sy);
-            return engine.model().findVertexAt(wx, wy);
+            Vertex v = engine.model().findVertexAt(sx, sy, engine.camera());
+            return v;
         });
 
         if (selected == null) {
@@ -46,7 +45,7 @@ public final class DeleteModeHandler implements InteractionModeHandler {
         }
 
         bus.dispatchUndoable(new DeleteNodeCommand(selected.getId()));
-        bus.dispatch(engine -> engine.model().setSelectedVertexId(-1));
+        bus.dispatch(engine -> engine.setSelectedVertexId(-1));
         state.setStatus("Sommet supprimé: " + selected.getId());
     }
 
@@ -54,7 +53,6 @@ public final class DeleteModeHandler implements InteractionModeHandler {
     public void onMouseDragged(CommandBus<GraphEngine> bus, int sx, int sy, int button) {
         if (!panning || bus == null)
             return;
-
         int dx = sx - lastX;
         int dy = sy - lastY;
         lastX = sx;

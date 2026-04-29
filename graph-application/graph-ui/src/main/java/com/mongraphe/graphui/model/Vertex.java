@@ -3,72 +3,114 @@ package com.mongraphe.graphui.model;
 import java.util.ArrayList;
 
 /**
- * Représente un sommet du graphe
+ * Représentation d’un sommet (nœud) dans un graphe.
+ *
+ * <p>
+ * Un {@code Vertex} encapsule :
+ * <ul>
+ * <li>une position 2D (x, y) pour le rendu ou layout</li>
+ * <li>un diamètre dépendant du degré du nœud</li>
+ * <li>une appartenance à une communauté</li>
+ * <li>un état (visible / supprimé)</li>
+ * <li>une liste d’arêtes incidentes</li>
+ * </ul>
+ *
+ * <p>
+ * La classe est utilisée à la fois pour :
+ * <ul>
+ * <li>le rendu graphique (UI / OpenGL / JavaFX)</li>
+ * <li>les algorithmes de graphe (communautés, degré)</li>
+ * <li>la simulation dynamique du graphe</li>
+ * </ul>
  */
 public class Vertex {
 
-    public static int upscale = 8;
-    public static double initial_node_size = 1;
-    public static double degree_scale_factor = 0;
+    /**
+     * Taille initiale des nœuds (diamètre de base).
+     */
+    public static double initial_node_size = 10;
+
+    /**
+     * Facteur d’échelle du diamètre en fonction du degré.
+     *
+     * <p>
+     * Formule utilisée :
+     * {@code diameter = initial_node_size + sqrt(degree_scale_factor * degree)}
+     */
+    public static double degree_scale_factor = 0.5;
 
     private int id;
-    private double x, y, diameter;
+
+    /** Position X du nœud (volatile pour mise à jour concurrente possible). */
+    private volatile double x;
+
+    /** Position Y du nœud (volatile pour mise à jour concurrente possible). */
+    private volatile double y;
+
+    /** Diamètre utilisé pour le rendu graphique. */
+    private volatile double diameter;
+
+    /** Indique si le nœud est affiché dans l’interface. */
     private boolean isVisible = true;
+
+    /** Indique si le nœud a été supprimé logiquement. */
     private boolean isDeleted = false;
+
+    /** Liste des arêtes incidentes au nœud. */
     private final ArrayList<Edge> edges = new ArrayList<>();
+
+    /** Communauté à laquelle appartient le nœud. */
     private Community community;
 
     /**
-     * Crée un sommet à partir de ses coordonnées
-     * 
-     * @param x : abscisse du centre du sommet
-     * @param y : ordonnée du centre du sommet
+     * Construit un nœud à une position donnée.
+     *
+     * @param x position initiale en abscisse
+     * @param y position initiale en ordonnée
      */
     public Vertex(double x, double y) {
-        this.x = x * upscale;
-        this.y = y * upscale;
+        this.x = x;
+        this.y = y;
         this.diameter = initial_node_size;
     }
 
     /**
-     * @return identifiant du sommet
+     * Retourne l’identifiant unique du nœud.
+     *
+     * @return id du vertex
      */
     public int getId() {
         return id;
     }
 
-    public void setDiameter(double diameter) {
-        this.diameter = diameter;
-    }
-
     /**
-     * Modifie l'identifiant du sommet
-     * 
-     * @param id : identifiant du sommet
+     * Définit l’identifiant du nœud.
+     *
+     * @param id identifiant unique
      */
     public void setId(int id) {
         this.id = id;
     }
 
     /**
-     * @return la coordonnée x du centre du sommet dans le repère modifié (JavaFX)
+     * Retourne la position X du nœud.
      */
     public double getX() {
         return x;
     }
 
     /**
-     * @return la coordonnée y du centre du sommet dans le repère modifié (JavaFX)
+     * Retourne la position Y du nœud.
      */
     public double getY() {
         return y;
     }
 
     /**
-     * Modifie la position du sommet
-     * 
-     * @param x : nouvelle coordonnée x du centre du sommet
-     * @param y : nouvelle coordonnée y du centre du sommet
+     * Met à jour la position du nœud.
+     *
+     * @param x nouvelle position X
+     * @param y nouvelle position Y
      */
     public void updatePosition(double x, double y) {
         this.x = x;
@@ -76,25 +118,54 @@ public class Vertex {
     }
 
     /**
-     * Modifie la visibilité du sommet
+     * Retourne le diamètre actuel du nœud.
      */
-    public void setVisibility(boolean visibility) {
-        isVisible = visibility;
+    public double getDiameter() {
+        return diameter;
     }
 
     /**
-     * @return true si le sommet est visible, false sinon
+     * Met à jour le diamètre du nœud en fonction de son degré.
+     *
+     * <p>
+     * Formule :
+     * {@code diameter = initial_node_size + sqrt(degree_scale_factor * degree)}
+     *
+     * <p>
+     * Le facteur {@code degree_scale_factor} est contraint à être ≥ 0.
+     */
+    public void updateDiameter() {
+        if (degree_scale_factor < 0)
+            degree_scale_factor = 0;
+
+        diameter = initial_node_size + Math.sqrt(degree_scale_factor * getDegree());
+    }
+
+    /**
+     * Indique si le nœud est visible dans l’interface.
      */
     public boolean isVisible() {
         return isVisible;
     }
 
+    /**
+     * Définit la visibilité du nœud.
+     *
+     * @param visible état de visibilité
+     */
     public void setVisible(boolean visible) {
         this.isVisible = visible;
     }
 
     /**
-     * Marque le sommet comme supprimé
+     * Supprime logiquement le nœud.
+     *
+     * <p>
+     * Effets :
+     * <ul>
+     * <li>marque le nœud comme supprimé</li>
+     * <li>réduit son diamètre à 0</li>
+     * </ul>
      */
     public void delete() {
         isDeleted = true;
@@ -102,8 +173,15 @@ public class Vertex {
     }
 
     /**
-     * Restaure un sommet supprimé (undo/redo).
-     * Remet le sommet visible et recalcule son diamètre.
+     * Restaure un nœud supprimé.
+     *
+     * <p>
+     * Effets :
+     * <ul>
+     * <li>réactive le nœud</li>
+     * <li>le rend visible</li>
+     * <li>recalcule son diamètre</li>
+     * </ul>
      */
     public void restore() {
         isDeleted = false;
@@ -112,69 +190,63 @@ public class Vertex {
     }
 
     /**
-     * @return true si le sommet a été supprimé, false sinon
+     * Indique si le nœud est supprimé.
      */
     public boolean isDeleted() {
         return isDeleted;
     }
 
     /**
-     * @return communauté à laquelle appartient le sommet
+     * Retourne la communauté associée au nœud.
      */
     public Community getCommunity() {
         return community;
     }
 
-    public String getCommunityName() {
-        return community != null ? community.getName() : "";
-    }
-
     /**
-     * Modifie la communauté à laquelle appartient le sommet
-     * 
-     * @param c : communauté du sommet
+     * Définit la communauté du nœud.
+     *
+     * @param c communauté cible
      */
     public void setCommunity(Community c) {
         community = c;
     }
 
     /**
-     * @return le diamètre du sommet
+     * Retourne le nom de la communauté du nœud.
+     *
+     * @return nom de la communauté ou chaîne vide si null
      */
-    public double getDiameter() {
-        return diameter;
+    public String getCommunityName() {
+        return community != null ? community.getName() : "";
     }
 
     /**
-     * Actualise le diamètre du sommet en fonction de son degré
-     */
-    public void updateDiameter() {
-        if (degree_scale_factor < 0)
-            degree_scale_factor = 0;
-        diameter = initial_node_size + degree_scale_factor * getDegree();
-    }
-
-    /**
-     * Ajoute une arête à la liste des arêtes rattachées au sommet
-     * 
-     * @param edge : arête à ajouter
+     * Ajoute une arête incidente au nœud.
+     *
+     * @param edge arête à ajouter
      */
     public void addEdge(Edge edge) {
         edges.add(edge);
     }
 
     /**
-     * @return degré du sommet
+     * Retourne le degré du nœud.
+     *
+     * <p>
+     * Le degré correspond au nombre d’arêtes incidentes.
      */
     public int getDegree() {
         return edges.size();
     }
 
     /**
-     * @return représentation textuelle du sommet (pour le débogage)
+     * Représentation textuelle du nœud.
+     *
+     * @return chaîne formatée {@code id (x, y)}
      */
+    @Override
     public String toString() {
         return id + " (" + x + ", " + y + ")";
     }
-
 }

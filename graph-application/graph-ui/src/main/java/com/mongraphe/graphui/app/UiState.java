@@ -2,12 +2,14 @@ package com.mongraphe.graphui.app;
 
 import java.util.Objects;
 
+import com.mongraphe.graphui.interfaces.app.UiStateDocumentation;
+
 import javafx.beans.property.BooleanProperty;
 import javafx.beans.property.SimpleBooleanProperty;
 import javafx.beans.property.SimpleStringProperty;
 import javafx.beans.property.StringProperty;
 
-public final class UiState {
+public final class UiState implements UiStateDocumentation {
     private final StringProperty statusText = new SimpleStringProperty("Prêt");
     private final BooleanProperty simulationRunning = new SimpleBooleanProperty(false);
 

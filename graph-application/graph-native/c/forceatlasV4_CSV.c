@@ -10,8 +10,6 @@
 #include <termios.h>
 #endif
 
-#include <ctype.h>
-
 #include <stdatomic.h>
 
 #include "global.h"
@@ -30,6 +28,22 @@ int max_iterations = 5000;
 
 short pause_updates = 0;
 
+static void reset_native_graph_state(void) {
+  pause_updates = 1;
+  free_clusters();
+  freeNodeNames();
+  free_csr_adjacency();
+  FreePool(&pool);
+
+  num_nodes = 0;
+  live_nodes = 0;
+  num_edges = 0;
+  num_antiedges = 0;
+  num_communities = 0;
+  n_clusters = 0;
+  modified_graph = 0;
+}
+
 /**
  *
  *
@@ -43,7 +57,7 @@ short pause_updates = 0;
 
 JNIEXPORT jboolean JNICALL
 Java_com_mongraphe_graphui_rendering_GraphNativeEngine_updatePositions(
-    JNIEnv *env, jobject obj) {
+    JNIEnv *env, jobject obj, jobject buffer) {
   double FMaxX = Lx / (friction * 1000);
   double FMaxY = Ly / (friction * 1000);
 
@@ -77,16 +91,20 @@ Java_com_mongraphe_graphui_rendering_GraphNativeEngine_updatePositions(
     friction *= amortissement;
   }
 
-  if ((Max_movementOld < thresholdS && iteration > 50) ||
-      iteration >= max_iterations) {
-    // end state reached
-    pause_updates = 1;
-    return 0;
-  }
-
   for (int i = 0; i < num_nodes; ++i) {
     forces[i][0] = 0.;
     forces[i][1] = 0.;
+  }
+
+  if (buffer != NULL) {
+    void *addr = (*env)->GetDirectBufferAddress(env, buffer);
+    if (addr != NULL) {
+      float *pos = (float *)addr;
+      for (int i = 0; i < num_nodes; ++i) {
+        pos[2 * i] = (float)vertices[i].x;
+        pos[2 * i + 1] = (float)vertices[i].y;
+      }
+    }
   }
 
   return 1;
@@ -108,7 +126,7 @@ Java_com_mongraphe_graphui_rendering_GraphNativeEngine_getCommunities(
 }
 
 JNIEXPORT jobjectArray JNICALL
-Java_com_mongraphe_graphui_rendering_GraphNativeEngine_getClusterColors(
+Java_com_mongraphe_graphui_rendering_GraphNativeEngine_getCommunityColors(
     JNIEnv *env, jobject obj) {
   jclass float_array_class = (*env)->FindClass(env, "[F");
   if (float_array_class == NULL) {
@@ -248,69 +266,123 @@ JNIEXPORT jobject JNICALL
 Java_com_mongraphe_graphui_rendering_GraphNativeEngine_computeThreshold(
     JNIEnv *env, jobject obj, jint modeSimilitude, jint edge_factor) {
 
-  InitPool(&pool, 1000, 8);
-  similarity_matrix = (double **)malloc(num_rows * sizeof(double *));
-  for (int i = 0; i < num_rows; i++) {
-    similarity_matrix[i] = (double *)malloc(num_rows * sizeof(double));
-    for (int j = 0; j < num_rows; j++) {
-      similarity_matrix[i][j] = -1.0;
-    }
-  }
-
   num_nodes = num_rows;
   live_nodes = num_nodes;
-
-  double threshold, antiseuil;
   mode_similitude = modeSimilitude;
 
-  // un tableau dont de taille nombre de paire dans un ensemble avec num_rows
-  // element = 2 parmis num_rows
-  double *similarities =
-      (double *)malloc(num_rows * (num_rows - 1) / 2 * sizeof(double));
-  double means_similitude =
-      calculate_mean_similitude_parallel(modeSimilitude, similarities);
+  double threshold, anti_threshold, mean_similarity = 0.0;
+  int total_pairs = num_rows * (num_rows - 1) / 2;
+  int target_edges = edge_factor * num_nodes; // nombre d'arêtes souhaité
 
-  calculate_threshold(modeSimilitude, 10 * num_nodes, &threshold, &antiseuil,
-                      similarities);
+  // Taille de l'échantillon : 100 * target_edges mais pas plus de 500 000
+  int sample_size =
+      (target_edges * 100 < total_pairs) ? target_edges * 100 : total_pairs;
+  if (sample_size < 1)
+    sample_size = 1;
+  if (sample_size > 500000)
+    sample_size = 500000;
+
+  double *sample_similarities = malloc(sample_size * sizeof(double));
+  if (!sample_similarities) {
+    // Fallback : valeurs par défaut
+    threshold = anti_threshold = mean_similarity = 0.5;
+    jclass res_class =
+        (*env)->FindClass(env, "com/mongraphe/graphui/model/Metadata");
+    jmethodID constructor =
+        (*env)->GetMethodID(env, res_class, "<init>", "(IDDD)V");
+    return (*env)->NewObject(env, res_class, constructor, num_nodes, threshold,
+                             anti_threshold, mean_similarity);
+  }
+
+  double sum = 0.0;
+  for (int k = 0; k < sample_size; k++) {
+    int i = rand() % num_rows;
+    int j = rand() % num_rows;
+    while (i == j)
+      j = rand() % num_rows;
+    double sim;
+    switch (modeSimilitude) {
+    case 0:
+      sim = correlation_similarity(i, j);
+      break;
+    case 1:
+      sim = cosine_similarity(i, j);
+      break;
+    case 2:
+      sim = euclidean_distance(i, j);
+      break;
+    case 3:
+      sim = L1_norm(i, j);
+      break;
+    case 4:
+      sim = Linf_norm(i, j);
+      break;
+    case 5:
+      sim = KL_divergence(i, j);
+      break;
+    default:
+      sim = 0.0;
+    }
+    sample_similarities[k] = sim;
+    sum += sim;
+  }
+
+  qsort(sample_similarities, sample_size, sizeof(double), compare_double);
+
+  // Calcul de l'indice en fonction de la proportion d'arêtes souhaitée
+  double fraction = (double)target_edges / total_pairs;
+  int idx = (int)(fraction * sample_size);
+  if (idx < 0)
+    idx = 0;
+  if (idx >= sample_size)
+    idx = sample_size - 1;
+
+  threshold = sample_similarities[sample_size - 1 - idx];
+  anti_threshold = sample_similarities[idx];
+  mean_similarity = sum / sample_size;
+
+  free(sample_similarities);
 
   jclass res_class =
       (*env)->FindClass(env, "com/mongraphe/graphui/model/Metadata");
   jmethodID constructor =
       (*env)->GetMethodID(env, res_class, "<init>", "(IDDD)V");
-  jobject res = (*env)->NewObject(env, res_class, constructor, num_nodes,
-                                  threshold, antiseuil, means_similitude);
-
-  free(similarities);
-  similarities = NULL;
-
-  return res;
+  return (*env)->NewObject(env, res_class, constructor, num_nodes, threshold,
+                           anti_threshold, mean_similarity);
 }
 
 JNIEXPORT jobject JNICALL
 Java_com_mongraphe_graphui_rendering_GraphNativeEngine_initializeGraph(
-    JNIEnv *env, jobject obj, jint md, jdouble thresh, jdouble anti_thresh) {
+    JNIEnv *env, jobject obj, jint modeSimilitude, jint modeCommunity,
+    jdouble thresh, jdouble anti_thresh) {
 
-  calculate_similitude_and_edges(mode_similitude, thresh, anti_thresh);
+  reset_native_graph_state();
 
-  for (int i = 0; i < num_rows; i++) {
-    free(similarity_matrix[i]);
-  }
-  free(similarity_matrix);
-  similarity_matrix = NULL;
+  num_nodes = num_rows;
+  live_nodes = num_nodes;
 
+  num_edges = 0;
+  num_antiedges = 0;
+
+  InitPool(&pool, 1000, 8);
+
+  // Création des arêtes avec le mode de similarité
+  create_edges_from_thresholds(modeSimilitude, thresh, anti_thresh);
+  build_csr_adjacency();
+
+  // Détection des communautés avec le mode communauté
   modeA = 0;
-  if (md == 0) {
+  if (modeCommunity == 0) {
     num_communities = louvain_method();
-  } else if (md == 1) {
+  } else if (modeCommunity == 1) {
     num_communities = louvain_methodC();
-  } else if (md == 2) {
+  } else if (modeCommunity == 2) {
     num_communities = leiden_method();
-  } else if (md == 3) {
+  } else if (modeCommunity == 3) {
     num_communities = leiden_method_CPM();
-  } else if (md == 4) {
+  } else if (modeCommunity == 4) {
     init_S(num_nodes);
     num_communities = leiden_method_CPM();
-    // Demander le chemin du fichier à l'utilisateur
     lireColonneCSV(S, &nbValeurs);
     modeA = 1;
     compute_ratio_S(S);
@@ -336,6 +408,7 @@ Java_com_mongraphe_graphui_rendering_GraphNativeEngine_initializeGraph(
       (*env)->NewObject(env, res_class, constructor, num_nodes, thresh,
                         anti_thresh, num_edges, num_antiedges, n_clusters);
 
+  // Initialisation des paramètres par défaut
   thresholdS = (Lx / 4000) * (Ly / 4000);
   thresholdA = (Lx / 4000) * (Ly / 4000);
   epsilon = (Lx / 800) * (Ly / 800);
@@ -352,34 +425,33 @@ Java_com_mongraphe_graphui_rendering_GraphNativeEngine_initializeGraph(
 
 JNIEXPORT jobject JNICALL
 Java_com_mongraphe_graphui_rendering_GraphNativeEngine_initializeDot(
-    JNIEnv *env, jobject obj, jstring filepath, jint md) {
+    JNIEnv *env, jobject obj, jstring filepath, jint modeCommunity) {
 
-  jboolean b = JNI_FALSE;
-  const char *str = (*env)->GetStringUTFChars(env, filepath, &b);
+  reset_native_graph_state();
 
+  const char *str = (*env)->GetStringUTFChars(env, filepath, NULL);
   parse_dot_file(str);
+  (*env)->ReleaseStringUTFChars(env, filepath, str);
 
+  build_csr_adjacency();
   InitPool(&pool, 1000, 8);
 
   modeA = 0;
-  if (md == 0) {
+  if (modeCommunity == 0) {
     num_communities = louvain_method();
-  } else if (md == 1) {
+  } else if (modeCommunity == 1) {
     num_communities = louvain_methodC();
-  } else if (md == 2) {
+  } else if (modeCommunity == 2) {
     num_communities = leiden_method();
-  } else if (md == 3) {
+  } else if (modeCommunity == 3) {
     num_communities = leiden_method_CPM();
-  } else if (md == 4) {
+  } else if (modeCommunity == 4) {
     init_S(num_nodes);
     num_communities = leiden_method_CPM();
-    // Demander le chemin du fichier à l'utilisateur
     lireColonneCSV(S, &nbValeurs);
     modeA = 1;
     compute_ratio_S(S);
     free_S();
-  } else {
-    printf("Option invalide\n");
   }
 
   initialize_community_colors();
@@ -400,8 +472,6 @@ Java_com_mongraphe_graphui_rendering_GraphNativeEngine_initializeDot(
   jobject res =
       (*env)->NewObject(env, res_class, constructor, num_nodes, 0., 0., 0.);
 
-  (*env)->ReleaseStringUTFChars(env, filepath, str);
-
   live_nodes = num_nodes;
   thresholdS = (Lx / 4000) * (Ly / 4000);
   thresholdA = (Lx / 4000) * (Ly / 4000);
@@ -418,48 +488,9 @@ Java_com_mongraphe_graphui_rendering_GraphNativeEngine_initializeDot(
 }
 
 JNIEXPORT void JNICALL
-Java_com_mongraphe_graphui_rendering_GraphNativeEngine_freeAllocatedMemory(
+Java_com_mongraphe_graphui_rendering_GraphNativeEngine_nativeFreeAllocatedMemory(
     JNIEnv *env, jobject obj) {
-
-  // Libérer la mémoire allouée pour les voisins
-  for (int i = 0; i < num_nodes; i++) {
-    Neighbor *neighbor = adjacency_list[i].head;
-    while (neighbor != NULL) {
-      Neighbor *next = neighbor->next;
-      free(neighbor);
-      neighbor = next;
-    }
-    adjacency_list[i].head = NULL;
-  }
-  free_clusters();
-
-  if (similarity_matrix != NULL) {
-    for (int i = 0; i < num_rows; i++) {
-      free(similarity_matrix[i]);
-    }
-    free(similarity_matrix);
-  }
-  freeNodeNames();
-  FreePool(&pool);
-
-  num_nodes = 0;
-  live_nodes = 0;
-  num_edges = 0;
-  num_antiedges = 0;
-}
-
-JNIEXPORT void JNICALL
-Java_com_mongraphe_graphui_rendering_GraphNativeEngine_setSaut(JNIEnv *env,
-                                                               jobject obj,
-                                                               jint s) {
-  saut = s;
-  espacement = 1;
-}
-
-JNIEXPORT void JNICALL
-Java_com_mongraphe_graphui_rendering_GraphNativeEngine_setThresholdS(
-    JNIEnv *env, jobject obj, jdouble thresh) {
-  thresholdS = thresh;
+  reset_native_graph_state();
 }
 
 JNIEXPORT void JNICALL
@@ -488,22 +519,21 @@ Java_com_mongraphe_graphui_rendering_GraphNativeEngine_setAttractionCoeff(
 }
 
 JNIEXPORT void JNICALL
-Java_com_mongraphe_graphui_rendering_GraphNativeEngine_setThresholdA(
-    JNIEnv *env, jobject obj, jdouble thresh) {
-  thresholdA = thresh;
-}
-
-JNIEXPORT void JNICALL
-Java_com_mongraphe_graphui_rendering_GraphNativeEngine_setSeuilRep(
-    JNIEnv *env, jobject obj, jdouble seuil) {
-  seuilrep = seuil;
-}
-
-JNIEXPORT void JNICALL
 Java_com_mongraphe_graphui_rendering_GraphNativeEngine_setDimension(
     JNIEnv *env, jobject obj, jdouble width, jdouble height) {
   Lx = width;
   Ly = height;
+}
+
+JNIEXPORT jdoubleArray JNICALL
+Java_com_mongraphe_graphui_rendering_GraphNativeEngine_getDimensions(
+    JNIEnv *env, jobject obj) {
+  jdoubleArray result = (*env)->NewDoubleArray(env, 2);
+  if (result == NULL)
+    return NULL;
+  jdouble dims[2] = {Lx, Ly};
+  (*env)->SetDoubleArrayRegion(env, result, 0, 2, dims);
+  return result;
 }
 
 JNIEXPORT void JNICALL
@@ -520,23 +550,20 @@ Java_com_mongraphe_graphui_rendering_GraphNativeEngine_setNodePosition(
 }
 
 JNIEXPORT void JNICALL
-Java_com_mongraphe_graphui_rendering_GraphNativeEngine_unpauseGraph(
-    JNIEnv *env, jobject obj) {
-  if (pause_updates == 1) {
-    iteration = 0;
-    pause_updates = 0;
-  }
-}
-
-JNIEXPORT void JNICALL
-Java_com_mongraphe_graphui_rendering_GraphNativeEngine_SetNumberClusters(
+Java_com_mongraphe_graphui_rendering_GraphNativeEngine_setSpatialCells(
     JNIEnv *env, jobject obj, jint new_n_clusters) {
   free_clusters();
   n_clusters = new_n_clusters;
-
   init_clusters(n_clusters);
   initialize_centers();
   assign_cluster_colors();
+}
+
+JNIEXPORT void JNICALL
+Java_com_mongraphe_graphui_rendering_GraphNativeEngine_setLambda(JNIEnv *env,
+                                                                 jobject obj,
+                                                                 jdouble d) {
+  lambda = d;
 }
 
 JNIEXPORT void JNICALL
@@ -593,7 +620,7 @@ Java_com_mongraphe_graphui_rendering_GraphNativeEngine_setDegreeScaleFactor(
 }
 
 JNIEXPORT void JNICALL
-Java_com_mongraphe_graphui_rendering_GraphNativeEngine_setNoOverlap(
-    JNIEnv *env, jobject obj, jboolean b) {
-  no_overlap = b;
+Java_com_mongraphe_graphui_rendering_GraphNativeEngine_setRepulsionCoeff(
+    JNIEnv *env, jobject obj, jdouble coeff) {
+  repulsion_coeff = coeff;
 }

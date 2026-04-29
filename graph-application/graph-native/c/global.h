@@ -29,7 +29,7 @@ extern double attraction_coeff;
 extern double thresholdA;
 extern double seuilrep;
 extern double thresholdS;
-extern double amortissement;
+extern volatile double amortissement;
 
 #include "c_graph/cluster.h"
 
@@ -58,7 +58,6 @@ extern double degree_scale_factor;
 
 #include "c_graph/communities.h"
 
-extern AdjacencyList adjacency_list[MAX_NODES];
 extern Community node_community_map[MAX_NODES];
 extern int num_communities;
 extern int component_sizes[MAX_NODES]; // Tableau pour stocker la taille de chaque composante
@@ -88,13 +87,16 @@ extern int num_rows, num_columns;
 extern char delimiter[1];
 
 
+// Pour les communautés
+extern double lambda;
+
+
 #include "pretraitement/similarity.h"
 
 #define NUM_BINS 100  // Nombre de bins pour l'histogramme
 #define EPSILON 1e-12  // Pour éviter la division par 0
 
 extern int mode_similitude;
-extern double **similarity_matrix;
 extern int global_histogram[NUM_BINS];
 
 // ForceAtlas

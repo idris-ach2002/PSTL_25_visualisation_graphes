@@ -95,6 +95,21 @@ public final class InteractionService {
         return bus.canRedo();
     }
 
+    public void zoomIn() {
+        bus.dispatch(engine -> engine.camera().zoomIn());
+        state.setStatus("Zoom avant");
+    }
+
+    public void zoomOut() {
+        bus.dispatch(engine -> engine.camera().zoomOut());
+        state.setStatus("Zoom arrière");
+    }
+
+    public void resetView() {
+        bus.dispatchSyncVoid(engine -> engine.camera().reset());
+        state.setStatus("Vue réinitialisée");
+    }
+
     public void onMousePressed(int x, int y, int b) {
         current.onMousePressed(bus, x, y, b);
     }

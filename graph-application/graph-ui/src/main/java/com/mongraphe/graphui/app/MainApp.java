@@ -1,5 +1,7 @@
 package com.mongraphe.graphui.app;
 
+import com.mongraphe.graphui.interfaces.app.MainAppDocumentation;
+
 import javafx.application.Application;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Parent;
@@ -7,7 +9,7 @@ import javafx.scene.Scene;
 import javafx.scene.control.Alert;
 import javafx.stage.Stage;
 
-public class MainApp extends Application {
+public class MainApp extends Application implements MainAppDocumentation {
     @Override
     public void start(Stage primaryStage) {
         try {
