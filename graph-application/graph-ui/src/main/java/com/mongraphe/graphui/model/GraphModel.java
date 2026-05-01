@@ -256,17 +256,17 @@ public class GraphModel {
      * Reconstruit le modèle depuis les buffers primitifs remplis par le JNI.
      *
      * <p>
-     * C'est le chemin optimisé pour les gros graphes. Il évite la création JNI de
+     * Il évite la création JNI de
      * {@code Vertex[]} et {@code EdgeC[]} et ne fait qu'une reconstruction Java
      * linéaire.
      * </p>
      *
-     * @param nativeVertexCount    nombre de sommets côté C
-     * @param nativeEdgeCount      nombre d'arêtes côté C
-     * @param positionsBuffer      float[2 * V] : x, y
-     * @param edgeEndpointsBuffer  int[2 * E] : start, end
-     * @param edgeWeightsBuffer    float[E] : poids des arêtes
-     * @param communityIdsBuffer   int[V] : communauté de chaque sommet
+     * @param nativeVertexCount     nombre de sommets côté C
+     * @param nativeEdgeCount       nombre d'arêtes côté C
+     * @param positionsBuffer       float[2 * V] : x, y
+     * @param edgeEndpointsBuffer   int[2 * E] : start, end
+     * @param edgeWeightsBuffer     float[E] : poids des arêtes
+     * @param communityIdsBuffer    int[V] : communauté de chaque sommet
      * @param communityColorsBuffer float[3 * V] : couleur associée à chaque sommet
      * @return table d'accès direct nativeId -> Vertex
      */
@@ -297,7 +297,8 @@ public class GraphModel {
         }
 
         if (communityColorsBuffer.capacity() < nativeVertexCount * 3) {
-            throw new IllegalArgumentException("communityColorsBuffer trop petit pour " + nativeVertexCount + " sommets");
+            throw new IllegalArgumentException(
+                    "communityColorsBuffer trop petit pour " + nativeVertexCount + " sommets");
         }
 
         if (nativeEdgeCount > 0) {
@@ -305,7 +306,8 @@ public class GraphModel {
             Objects.requireNonNull(edgeWeightsBuffer, "edgeWeightsBuffer");
 
             if (edgeEndpointsBuffer.capacity() < nativeEdgeCount * 2) {
-                throw new IllegalArgumentException("edgeEndpointsBuffer trop petit pour " + nativeEdgeCount + " arêtes");
+                throw new IllegalArgumentException(
+                        "edgeEndpointsBuffer trop petit pour " + nativeEdgeCount + " arêtes");
             }
 
             if (edgeWeightsBuffer.capacity() < nativeEdgeCount) {
@@ -318,11 +320,7 @@ public class GraphModel {
 
             Vertex[] byNativeId = new Vertex[nativeVertexCount];
 
-            /*
-             * Les communautés sont mutualisées par identifiant.
-             * Le buffer de couleurs reste indexé par sommet, comme l'ancien
-             * getCommunityColors() qui renvoyait une ligne par sommet.
-             */
+            // Les communautés sont mutualisées par identifiant.
             Map<Integer, Community> communities = new HashMap<>();
 
             for (int i = 0; i < nativeVertexCount; i++) {

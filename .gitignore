@@ -65,6 +65,7 @@ graph-ui/out/
 *.exe
 *.out
 *.app
+*.d
 
 ##################################
 # IDE / Editors

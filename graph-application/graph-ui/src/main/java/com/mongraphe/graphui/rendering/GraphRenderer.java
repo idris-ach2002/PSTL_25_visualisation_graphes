@@ -121,11 +121,7 @@ public final class GraphRenderer implements GLEventListener {
         boolean optionsChanged = lastUploadedOptions != options;
 
         /*
-         * Étape 1 + 2 : préparation CPU et transfert GPU uniquement si nécessaire.
-         *
-         * Avant, ces opérations étaient faites à chaque frame. Sur un graphe avec
-         * 100 000 arêtes, cela provoquait un coût massif même quand le graphe ne
-         * changeait pas.
+         * Préparation CPU et transfert GPU uniquement si nécessaire.
          */
         if (!buffersUploaded || dataChanged || optionsChanged) {
             vertexBuffer.update(
@@ -148,7 +144,7 @@ public final class GraphRenderer implements GLEventListener {
             buffersUploaded = true;
         }
 
-        // Étape 3 : dessin effectif
+        // Dessin effectif
         drawEdges(gl, options);
         drawVertices(gl);
     }
