@@ -1,6 +1,7 @@
 #include <float.h>
 #include <math.h>
 #include <stdbool.h>
+#include <stdio.h>
 #include <string.h>
 #include <time.h>
 
@@ -42,6 +43,52 @@ static void reset_native_graph_state(void) {
   num_communities = 0;
   n_clusters = 0;
   modified_graph = 0;
+}
+
+/**
+ * Lance une exception Java IllegalArgumentException depuis le C.
+ */
+static void throw_illegal_argument(JNIEnv *env, const char *message) {
+  jclass cls = (*env)->FindClass(env, "java/lang/IllegalArgumentException");
+  if (cls != NULL) {
+    (*env)->ThrowNew(env, cls, message);
+    (*env)->DeleteLocalRef(env, cls);
+  }
+}
+
+/**
+ * Vérifie qu'un ByteBuffer Java est bien direct et assez grand.
+ *
+ * <p>
+ * Les méthodes rapides de chargement s'appuient sur des DirectByteBuffer pour
+ * éviter la création massive d'objets JNI. Cette fonction centralise les
+ * contrôles de capacité afin d'éviter un dépassement mémoire côté C.
+ * </p>
+ */
+static void *checked_direct_buffer(JNIEnv *env, jobject buffer,
+                                   jlong required_bytes,
+                                   const char *buffer_name) {
+  if (buffer == NULL) {
+    char message[256];
+    snprintf(message, sizeof(message), "%s est null", buffer_name);
+    throw_illegal_argument(env, message);
+    return NULL;
+  }
+
+  void *addr = (*env)->GetDirectBufferAddress(env, buffer);
+  jlong capacity = (*env)->GetDirectBufferCapacity(env, buffer);
+
+  if (addr == NULL || capacity < required_bytes) {
+    char message[512];
+    snprintf(message, sizeof(message),
+             "%s invalide ou trop petit : capacité=%lld octets, requis=%lld "
+             "octets",
+             buffer_name, (long long)capacity, (long long)required_bytes);
+    throw_illegal_argument(env, message);
+    return NULL;
+  }
+
+  return addr;
 }
 
 /**
@@ -97,19 +144,140 @@ Java_com_mongraphe_graphui_rendering_GraphNativeEngine_updatePositions(
   }
 
   if (buffer != NULL) {
-    void *addr = (*env)->GetDirectBufferAddress(env, buffer);
-    if (addr != NULL) {
-      float *pos = (float *)addr;
-      for (int i = 0; i < num_nodes; ++i) {
-        pos[2 * i] = (float)vertices[i].x;
-        pos[2 * i + 1] = (float)vertices[i].y;
-      }
+    jlong required = (jlong)num_nodes * 2L * (jlong)sizeof(float);
+    float *pos = (float *)checked_direct_buffer(env, buffer, required,
+                                                "positionsBuffer");
+    if (pos == NULL) {
+      return 0;
+    }
+
+    for (int i = 0; i < num_nodes; ++i) {
+      pos[2 * i] = (float)vertices[i].x;
+      pos[2 * i + 1] = (float)vertices[i].y;
     }
   }
 
   return 1;
 }
 
+/**
+ * Retourne le nombre courant de sommets côté natif.
+ */
+JNIEXPORT jint JNICALL
+Java_com_mongraphe_graphui_rendering_GraphNativeEngine_getNativeVertexCount(
+    JNIEnv *env, jobject obj) {
+  return (jint)num_nodes;
+}
+
+/**
+ * Retourne le nombre courant d'arêtes côté natif.
+ */
+JNIEXPORT jint JNICALL
+Java_com_mongraphe_graphui_rendering_GraphNativeEngine_getNativeEdgeCount(
+    JNIEnv *env, jobject obj) {
+  return (jint)num_edges;
+}
+
+/**
+ * Remplit un DirectByteBuffer float[2 * num_nodes] avec les positions.
+ */
+JNIEXPORT void JNICALL
+Java_com_mongraphe_graphui_rendering_GraphNativeEngine_fillPositionsBuffer(
+    JNIEnv *env, jobject obj, jobject buffer) {
+  jlong required = (jlong)num_nodes * 2L * (jlong)sizeof(float);
+  float *pos =
+      (float *)checked_direct_buffer(env, buffer, required, "positionsBuffer");
+  if (pos == NULL) {
+    return;
+  }
+
+  for (int i = 0; i < num_nodes; ++i) {
+    pos[2 * i] = (float)vertices[i].x;
+    pos[2 * i + 1] = (float)vertices[i].y;
+  }
+}
+
+/**
+ * Remplit un DirectByteBuffer int[2 * num_edges] avec les extrémités d'arêtes.
+ *
+ * Format :
+ * [start0, end0, start1, end1, ...]
+ */
+JNIEXPORT void JNICALL
+Java_com_mongraphe_graphui_rendering_GraphNativeEngine_fillEdgeEndpointsBuffer(
+    JNIEnv *env, jobject obj, jobject buffer) {
+  jlong required = (jlong)num_edges * 2L * (jlong)sizeof(jint);
+  jint *dst = (jint *)checked_direct_buffer(env, buffer, required,
+                                            "edgeEndpointsBuffer");
+  if (dst == NULL) {
+    return;
+  }
+
+  for (int i = 0; i < num_edges; ++i) {
+    dst[2 * i] = (jint)edges[i].node1;
+    dst[2 * i + 1] = (jint)edges[i].node2;
+  }
+}
+
+/**
+ * Remplit un DirectByteBuffer float[num_edges] avec les poids des arêtes.
+ */
+JNIEXPORT void JNICALL
+Java_com_mongraphe_graphui_rendering_GraphNativeEngine_fillEdgeWeightsBuffer(
+    JNIEnv *env, jobject obj, jobject buffer) {
+  jlong required = (jlong)num_edges * (jlong)sizeof(float);
+  float *dst = (float *)checked_direct_buffer(env, buffer, required,
+                                              "edgeWeightsBuffer");
+  if (dst == NULL) {
+    return;
+  }
+
+  for (int i = 0; i < num_edges; ++i) {
+    dst[i] = (float)edges[i].weight;
+  }
+}
+
+/**
+ * Remplit un DirectByteBuffer int[num_nodes] avec l'identifiant de communauté de
+ * chaque sommet.
+ */
+JNIEXPORT void JNICALL
+Java_com_mongraphe_graphui_rendering_GraphNativeEngine_fillCommunityIdsBuffer(
+    JNIEnv *env, jobject obj, jobject buffer) {
+  jlong required = (jlong)num_nodes * (jlong)sizeof(jint);
+  jint *dst =
+      (jint *)checked_direct_buffer(env, buffer, required, "communityIdsBuffer");
+  if (dst == NULL) {
+    return;
+  }
+
+  for (int i = 0; i < num_nodes; ++i) {
+    dst[i] = (jint)communities[i];
+  }
+}
+/**
+ * Remplit un DirectByteBuffer float[3 * num_nodes] avec les couleurs associées
+ * aux sommets.
+ *
+ * Format :
+ * [r0, g0, b0, r1, g1, b1, ...]
+ */
+JNIEXPORT void JNICALL
+Java_com_mongraphe_graphui_rendering_GraphNativeEngine_fillCommunityColorsBuffer(
+    JNIEnv *env, jobject obj, jobject buffer) {
+  jlong required = (jlong)num_nodes * 3L * (jlong)sizeof(float);
+  float *dst = (float *)checked_direct_buffer(env, buffer, required,
+                                              "communityColorsBuffer");
+  if (dst == NULL) {
+    return;
+  }
+
+  for (int i = 0; i < num_nodes; ++i) {
+    dst[3 * i] = cluster_colors[i][0];
+    dst[3 * i + 1] = cluster_colors[i][1];
+    dst[3 * i + 2] = cluster_colors[i][2];
+  }
+}
 JNIEXPORT jintArray JNICALL
 Java_com_mongraphe_graphui_rendering_GraphNativeEngine_getCommunities(
     JNIEnv *env, jobject obj) {
@@ -476,7 +644,7 @@ Java_com_mongraphe_graphui_rendering_GraphNativeEngine_initializeDot(
   thresholdS = (Lx / 4000) * (Ly / 4000);
   thresholdA = (Lx / 4000) * (Ly / 4000);
   epsilon = (Lx / 800) * (Ly / 800);
-  seuilrep = (Lx / 1000) * (Lx / 1000);
+  seuilrep = (Lx / 1000) * (Ly / 1000);
 
   friction = 0.1;
   Max_movementOld = 0.;
@@ -545,6 +713,10 @@ Java_com_mongraphe_graphui_rendering_GraphNativeEngine_setAmortissement(
 JNIEXPORT void JNICALL
 Java_com_mongraphe_graphui_rendering_GraphNativeEngine_setNodePosition(
     JNIEnv *env, jobject obj, jint index, jdouble x, jdouble y) {
+  if (index < 0 || index >= num_nodes) {
+    return;
+  }
+
   vertices[index].x = x;
   vertices[index].y = y;
 }
@@ -570,6 +742,9 @@ JNIEXPORT void JNICALL
 Java_com_mongraphe_graphui_rendering_GraphNativeEngine_deleteNode(JNIEnv *env,
                                                                   jobject obj,
                                                                   jint index) {
+  if (index < 0 || index >= num_nodes) {
+    return;
+  }
 
   if (vertices[index].deleted == 0) {
     vertices[index].deleted = 1;
@@ -582,6 +757,9 @@ JNIEXPORT void JNICALL
 Java_com_mongraphe_graphui_rendering_GraphNativeEngine_restoreNode(JNIEnv *env,
                                                                    jobject obj,
                                                                    jint index) {
+  if (index < 0 || index >= num_nodes) {
+    return;
+  }
 
   if (vertices[index].deleted == 1) {
     vertices[index].deleted = 0;

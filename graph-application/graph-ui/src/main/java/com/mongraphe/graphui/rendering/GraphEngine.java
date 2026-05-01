@@ -1,6 +1,7 @@
 package com.mongraphe.graphui.rendering;
 
 import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
 import java.nio.FloatBuffer;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -12,6 +13,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicLong;
 
 import com.mongraphe.graphui.model.*;
 
@@ -48,6 +50,26 @@ public final class GraphEngine {
     private volatile float clearR = 1f, clearG = 1f, clearB = 1f, clearA = 1f;
     private int clusterUpdateFrequency = 1;
     private boolean initialized = false;
+
+    /**
+     * Version logique des données utilisées par le renderer.
+     *
+     * <p>
+     * Le renderer compare cette version avec la dernière version envoyée au GPU.
+     * Si la version n'a pas changé, il ne reconstruit pas les tableaux CPU et ne
+     * fait pas de glBufferSubData inutile.
+     * </p>
+     */
+    private final AtomicLong renderDataVersion = new AtomicLong(0L);
+
+    /**
+     * Accès direct nativeId -> Vertex.
+     *
+     * <p>
+     * Cela évite une recherche dans le modèle à chaque synchronisation de position.
+     * </p>
+     */
+    private volatile Vertex[] verticesByNativeId = new Vertex[0];
 
     /** Exécuteur gérant le thread de calcul de la simulation de forces. */
     private final ScheduledExecutorService simulationExecutor = Executors.newSingleThreadScheduledExecutor(r -> {
@@ -89,7 +111,17 @@ public final class GraphEngine {
         }
     }
 
+    public long renderDataVersion() {
+        return renderDataVersion.get();
+    }
+
+    private void markRenderDataDirty() {
+        renderDataVersion.incrementAndGet();
+    }
+
     private void notifyDataChanged() {
+        markRenderDataDirty();
+
         List<GraphDataListener> copy;
         synchronized (dataListeners) {
             copy = new ArrayList<>(dataListeners);
@@ -306,6 +338,7 @@ public final class GraphEngine {
     private void resetLoadedGraph() {
         stopSimulation();
         graphLoaded = false;
+        verticesByNativeId = new Vertex[0];
         nativeEngine.freeAllocatedMemory();
         model.clear();
         notifyDataChanged();
@@ -323,8 +356,8 @@ public final class GraphEngine {
         int modeComm = getModeCommunity(communityMode);
         nativeEngine.initializeGraph(modeSim, modeComm, edgeThreshold, antiThreshold);
         rebuildModelFromNative();
-        notifyDataChanged();
         graphLoaded = true;
+        notifyDataChanged();
     }
 
     /** Charge un graphe depuis un fichier au format DOT. */
@@ -335,8 +368,8 @@ public final class GraphEngine {
         int modeComm = getModeCommunity(communityMode);
         nativeEngine.initializeDot(path, modeComm);
         rebuildModelFromNative();
-        notifyDataChanged();
         graphLoaded = true;
+        notifyDataChanged();
     }
 
     /** Calcule les seuils de distribution pour les données chargées. */
@@ -348,56 +381,30 @@ public final class GraphEngine {
     /**
      * Synchronise intégralement le modèle Java avec les structures de données
      * natives.
+     *
+     * <p>
+     * Version optimisée : elle ne demande plus au JNI de construire un
+     * {@code Vertex[]} et un {@code EdgeC[]}. Les données arrivent dans des buffers
+     * primitifs directs, puis la reconstruction objet est faite côté Java dans
+     * {@link GraphModel}.
+     * </p>
      */
     private void rebuildModelFromNative() {
-        Vertex[] verticesArray = nativeEngine.getPositions();
-        EdgeC[] edgesArray = nativeEngine.getEdges();
-        int[] communityIds = nativeEngine.getCommunities();
-        float[][] colors = nativeEngine.getCommunityColors();
+        GraphNativeEngine.NativeGraphBuffers nativeBuffers = nativeEngine.readNativeGraphBuffers();
 
-        if (verticesArray == null || edgesArray == null) {
-            throw new IllegalStateException("Moteur natif sans données");
-        }
+        GraphModel.NativeBuildResult result = model.buildFromNativeBuffers(
+                nativeBuffers.vertexCount(),
+                nativeBuffers.edgeCount(),
+                nativeBuffers.positionsAsFloatBuffer(),
+                nativeBuffers.edgeEndpointsAsIntBuffer(),
+                nativeBuffers.edgeWeightsAsFloatBuffer(),
+                nativeBuffers.communityIdsAsIntBuffer(),
+                nativeBuffers.communityColorsAsFloatBuffer());
 
-        for (int i = 0; i < verticesArray.length; i++) {
-            if (verticesArray[i] != null)
-                verticesArray[i].setId(i);
-        }
+        verticesByNativeId = result.verticesByNativeId();
 
-        Map<Integer, Community> communities = new HashMap<>();
-        for (int i = 0; i < verticesArray.length; i++) {
-            int cid = (communityIds != null && i < communityIds.length) ? communityIds[i] : 0;
-            Community c = communities.get(cid);
-            if (c == null) {
-                float r = (colors != null && i < colors.length) ? colors[i][0] : 0.7f;
-                float g = (colors != null && i < colors.length) ? colors[i][1] : 0.7f;
-                float b = (colors != null && i < colors.length) ? colors[i][2] : 0.7f;
-                c = new Community(cid, r, g, b);
-                communities.put(cid, c);
-            }
-            if (verticesArray[i] != null)
-                verticesArray[i].setCommunity(c);
-        }
-
-        model.clear();
-        for (Vertex v : verticesArray) {
-            if (v == null)
-                continue;
-            v.updateDiameter();
-            model.addVertex(v);
-        }
-        for (EdgeC ec : edgesArray) {
-            if (ec == null)
-                continue;
-            Vertex start = model.vertexById(ec.getStart());
-            Vertex end = model.vertexById(ec.getEnd());
-            if (start != null && end != null) {
-                model.addEdge(new Edge(start, end, ec.getWeight()));
-            }
-        }
-
-        nativeEngine.initSharedPositionsBuffer(model.vertexCount());
         visibility.apply(model);
+        markRenderDataDirty();
     }
 
     /** Démarre le thread de simulation de forces. */
@@ -460,15 +467,29 @@ public final class GraphEngine {
         ByteBuffer buf = nativeEngine.sharedPositionsBuffer;
         if (buf == null)
             return;
-        FloatBuffer fb = buf.asFloatBuffer();
-        fb.rewind();
-        for (Vertex v : model().vertices()) {
-            float x = fb.get();
-            float y = fb.get();
-            if (v != null) {
-                v.updatePosition(x, y);
-            }
+
+        Vertex[] vertices = verticesByNativeId;
+        if (vertices == null || vertices.length == 0)
+            return;
+
+        ByteBuffer duplicate = buf.duplicate();
+        duplicate.order(ByteOrder.nativeOrder());
+        duplicate.position(0);
+
+        FloatBuffer fb = duplicate.asFloatBuffer();
+        int count = Math.min(vertices.length, fb.capacity() / 2);
+
+        for (int i = 0; i < count; i++) {
+            Vertex v = vertices[i];
+            if (v == null)
+                continue;
+
+            float x = fb.get(i * 2);
+            float y = fb.get(i * 2 + 1);
+            v.updatePosition(x, y);
         }
+
+        markRenderDataDirty();
     }
 
     public boolean isSimulationRunning() {
@@ -540,8 +561,8 @@ public final class GraphEngine {
 
     public void setMinimumDegree(int degree) {
         visibility.setMinimumDegree(degree);
-        visibility.apply(model);
         model.setFilterMinDegree(degree);
+        visibility.apply(model);
         notifyDataChanged();
     }
 
@@ -555,18 +576,38 @@ public final class GraphEngine {
     public void setInitialNodeSize(double size) {
         Vertex.initial_node_size = size;
         nativeEngine.setInitialNodeSize(size);
-        for (Vertex v : model.vertices())
-            v.updateDiameter();
+
+        Vertex[] vertices = verticesByNativeId;
+        if (vertices != null && vertices.length > 0) {
+            for (Vertex v : vertices) {
+                if (v != null)
+                    v.updateDiameter();
+            }
+        } else {
+            for (Vertex v : model.vertices())
+                v.updateDiameter();
+        }
+
+        notifyDataChanged();
     }
 
     public void setDegreeScaleFactor(double factor) {
         Vertex.degree_scale_factor = factor;
         nativeEngine.setDegreeScaleFactor(factor);
-        for (Vertex v : model.vertices())
-            v.updateDiameter();
+
+        Vertex[] vertices = verticesByNativeId;
+        if (vertices != null && vertices.length > 0) {
+            for (Vertex v : vertices) {
+                if (v != null)
+                    v.updateDiameter();
+            }
+        } else {
+            for (Vertex v : model.vertices())
+                v.updateDiameter();
+        }
+
         notifyDataChanged();
     }
-
 
     /**
      * Modifie la fréquence d'exécution de la routine de simulation.
@@ -591,7 +632,8 @@ public final class GraphEngine {
             simulationTask = null;
         }
         long periodNanos = Math.max(1L, 1_000_000_000L / Math.max(1, simulationTicksPerSecond));
-        simulationTask = simulationExecutor.scheduleAtFixedRate(this::simulateStep, 0, periodNanos, TimeUnit.NANOSECONDS);
+        simulationTask = simulationExecutor.scheduleAtFixedRate(this::simulateStep, 0, periodNanos,
+                TimeUnit.NANOSECONDS);
     }
 
     public void setNewFriction(double f) {
@@ -646,7 +688,8 @@ public final class GraphEngine {
 
     public void setNodePosition(int index, double x, double y) {
         nativeEngine.setNodePosition(index, x, y);
-        Vertex v = model.vertexById(index);
+
+        Vertex v = vertexByNativeId(index);
         if (v != null) {
             v.updatePosition(x, y);
             notifyDataChanged();
@@ -655,16 +698,36 @@ public final class GraphEngine {
 
     public void deleteNode(int index) {
         nativeEngine.deleteNode(index);
-        Vertex v = model.vertexById(index);
-        if (v != null)
+        Vertex v = vertexByNativeId(index);
+        if (v != null) {
             model.deleteVertex(v);
+            visibility.apply(model);
+        }
         notifyDataChanged();
     }
 
     public void restoreNode(int index) {
         nativeEngine.restoreNode(index);
+
+        Vertex v = vertexByNativeId(index);
+        if (v != null) {
+            v.restore();
+            model.applyCurrentFilters();
+            visibility.apply(model);
+            notifyDataChanged();
+            return;
+        }
+
         rebuildModelFromNative();
         notifyDataChanged();
+    }
+
+    private Vertex vertexByNativeId(int index) {
+        Vertex[] vertices = verticesByNativeId;
+        if (vertices != null && index >= 0 && index < vertices.length) {
+            return vertices[index];
+        }
+        return model.vertexById(index);
     }
 
     public int getClusterUpdateFrequency() {
@@ -683,8 +746,9 @@ public final class GraphEngine {
             simulationExecutor.shutdownNow();
             Thread.currentThread().interrupt();
         }
-        nativeEngine.freeAllocatedMemory();
         model.clear();
+        verticesByNativeId = new Vertex[0];
+        markRenderDataDirty();
     }
 
     private float clamp01(float v) {

@@ -3,6 +3,8 @@ package com.mongraphe.graphui.rendering;
 import java.io.File;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
+import java.nio.FloatBuffer;
+import java.nio.IntBuffer;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -70,17 +72,183 @@ public final class GraphNativeEngine {
     private int sharedBufferCapacity; // nombre de floats (2 * num_nodes)
 
     /**
+     * Buffers directs utilisés au chargement du graphe.
+     *
+     * <p>
+     * Ils évitent le passage JNI objet par objet :
+     * <ul>
+     * <li>{@code edgeEndpointsBuffer} : [start0, end0, start1, end1, ...]</li>
+     * <li>{@code edgeWeightsBuffer} : [weight0, weight1, ...]</li>
+     * <li>{@code communityIdsBuffer} : [communityOfVertex0, ...]</li>
+     * <li>{@code communityColorsBuffer} : [r0, g0, b0, r1, g1, b1, ...]</li>
+     * </ul>
+     * </p>
+     */
+    private ByteBuffer edgeEndpointsBuffer;
+    private ByteBuffer edgeWeightsBuffer;
+    private ByteBuffer communityIdsBuffer;
+    private ByteBuffer communityColorsBuffer;
+
+    /**
+     * Snapshot primitif des données natives.
+     *
+     * <p>
+     * Les buffers restent possédés par {@link GraphNativeEngine}. Le modèle Java
+     * les
+     * lit immédiatement pour reconstruire ses objets métiers.
+     * </p>
+     */
+    public record NativeGraphBuffers(
+            int vertexCount,
+            int edgeCount,
+            ByteBuffer positionsBuffer,
+            ByteBuffer edgeEndpointsBuffer,
+            ByteBuffer edgeWeightsBuffer,
+            ByteBuffer communityIdsBuffer,
+            ByteBuffer communityColorsBuffer) {
+
+        public FloatBuffer positionsAsFloatBuffer() {
+            return duplicateNative(positionsBuffer).asFloatBuffer();
+        }
+
+        public IntBuffer edgeEndpointsAsIntBuffer() {
+            return duplicateNative(edgeEndpointsBuffer).asIntBuffer();
+        }
+
+        public FloatBuffer edgeWeightsAsFloatBuffer() {
+            return duplicateNative(edgeWeightsBuffer).asFloatBuffer();
+        }
+
+        public IntBuffer communityIdsAsIntBuffer() {
+            return duplicateNative(communityIdsBuffer).asIntBuffer();
+        }
+
+        public FloatBuffer communityColorsAsFloatBuffer() {
+            return duplicateNative(communityColorsBuffer).asFloatBuffer();
+        }
+
+        private static ByteBuffer duplicateNative(ByteBuffer buffer) {
+            ByteBuffer duplicate = buffer.duplicate();
+            duplicate.order(ByteOrder.nativeOrder());
+            duplicate.position(0);
+            return duplicate;
+        }
+    }
+
+    /**
      * Alloue un espace mémoire "Direct" partagé avec le moteur C.
-     * 
+     *
+     * <p>
+     * Version optimisée : le buffer est réutilisé si sa capacité suffit. Cela évite
+     * de réallouer de la mémoire directe à chaque chargement ou restauration.
+     * </p>
+     *
      * @param numNodes Nombre de sommets du graphe.
      */
     public void initSharedPositionsBuffer(int numNodes) {
-        int floatCount = numNodes * 2;
-        sharedPositionsBuffer = ByteBuffer.allocateDirect(floatCount * Float.BYTES);
+        if (numNodes < 0) {
+            throw new IllegalArgumentException("Nombre de sommets invalide : " + numNodes);
+        }
+
+        long floatCountLong = (long) numNodes * 2L;
+        long byteCountLong = floatCountLong * Float.BYTES;
+
+        if (byteCountLong > Integer.MAX_VALUE) {
+            throw new IllegalArgumentException(
+                    "Graphe trop grand pour un ByteBuffer Java unique : "
+                            + byteCountLong + " octets nécessaires");
+        }
+
+        int floatCount = (int) floatCountLong;
+        int byteCount = (int) byteCountLong;
+
+        if (sharedPositionsBuffer != null && sharedBufferCapacity >= floatCount) {
+            sharedPositionsBuffer.clear();
+            sharedPositionsBuffer.limit(byteCount);
+            sharedPositionsBuffer.order(ByteOrder.nativeOrder());
+            return;
+        }
+
+        sharedPositionsBuffer = ByteBuffer.allocateDirect(byteCount);
+
         // Important : aligner l'ordre des octets sur celui du processeur (Little/Big
         // Endian)
         sharedPositionsBuffer.order(ByteOrder.nativeOrder());
         sharedBufferCapacity = floatCount;
+    }
+
+    /**
+     * Lit les données natives via des DirectByteBuffer primitifs.
+     *
+     * <p>
+     * C'est le chemin rapide utilisé au chargement du modèle. Il remplace le coût
+     * élevé des anciens appels {@code getPositions()} et {@code getEdges()}, qui
+     * créaient un objet Java par sommet et par arête côté JNI.
+     * </p>
+     */
+    public synchronized NativeGraphBuffers readNativeGraphBuffers() {
+        int vertexCount = getNativeVertexCount();
+        int edgeCount = getNativeEdgeCount();
+
+        if (vertexCount < 0 || edgeCount < 0) {
+            throw new IllegalStateException("Compteurs natifs invalides : V=" + vertexCount + ", E=" + edgeCount);
+        }
+
+        initSharedPositionsBuffer(vertexCount);
+
+        edgeEndpointsBuffer = ensureDirectByteBuffer(
+                edgeEndpointsBuffer,
+                (long) edgeCount * 2L * Integer.BYTES,
+                "edgeEndpointsBuffer");
+
+        edgeWeightsBuffer = ensureDirectByteBuffer(
+                edgeWeightsBuffer,
+                (long) edgeCount * Float.BYTES,
+                "edgeWeightsBuffer");
+
+        communityIdsBuffer = ensureDirectByteBuffer(
+                communityIdsBuffer,
+                (long) vertexCount * Integer.BYTES,
+                "communityIdsBuffer");
+
+        communityColorsBuffer = ensureDirectByteBuffer(
+                communityColorsBuffer,
+                (long) vertexCount * 3L * Float.BYTES,
+                "communityColorsBuffer");
+
+        fillPositionsBuffer(sharedPositionsBuffer);
+        fillEdgeEndpointsBuffer(edgeEndpointsBuffer);
+        fillEdgeWeightsBuffer(edgeWeightsBuffer);
+        fillCommunityIdsBuffer(communityIdsBuffer);
+        fillCommunityColorsBuffer(communityColorsBuffer);
+
+        return new NativeGraphBuffers(
+                vertexCount,
+                edgeCount,
+                sharedPositionsBuffer,
+                edgeEndpointsBuffer,
+                edgeWeightsBuffer,
+                communityIdsBuffer,
+                communityColorsBuffer);
+    }
+
+    private static ByteBuffer ensureDirectByteBuffer(ByteBuffer existing, long byteCountLong, String name) {
+        if (byteCountLong < 0 || byteCountLong > Integer.MAX_VALUE) {
+            throw new IllegalArgumentException(name + " trop grand : " + byteCountLong + " octets");
+        }
+
+        int byteCount = (int) byteCountLong;
+
+        if (existing != null && existing.capacity() >= byteCount) {
+            existing.clear();
+            existing.limit(byteCount);
+            existing.order(ByteOrder.nativeOrder());
+            return existing;
+        }
+
+        ByteBuffer buffer = ByteBuffer.allocateDirect(byteCount);
+        buffer.order(ByteOrder.nativeOrder());
+        return buffer;
     }
 
     public static boolean isNativeLoaded() {
@@ -101,7 +269,7 @@ public final class GraphNativeEngine {
 
     /**
      * Tente de charger la bibliothèque native selon une liste de candidats.
-     * 
+     *
      * @throws UnsatisfiedLinkError si la bibliothèque reste introuvable.
      */
     public static synchronized void ensureNativeLoaded() {
@@ -232,7 +400,14 @@ public final class GraphNativeEngine {
      */
     public void freeAllocatedMemory() {
         nativeFreeAllocatedMemory(); // appel natif
+
         sharedPositionsBuffer = null; // éviter les références pendantes
+        edgeEndpointsBuffer = null;
+        edgeWeightsBuffer = null;
+        communityIdsBuffer = null;
+        communityColorsBuffer = null;
+
+        sharedBufferCapacity = 0;
     }
 
     // --- Méthodes Natives (Implémentées en C) ---
@@ -251,11 +426,32 @@ public final class GraphNativeEngine {
     /** Met à jour les positions dans le buffer partagé. Retourne true si succès. */
     public synchronized native boolean updatePositions(ByteBuffer positionsBuffer);
 
+    /*
+     * Anciennes méthodes conservées pour compatibilité.
+     * Le chemin optimisé utilise readNativeGraphBuffers().
+     */
     public synchronized native Vertex[] getPositions();
 
-    public synchronized native void setNodePosition(int index, double x, double y);
-
     public synchronized native EdgeC[] getEdges();
+
+    /*
+     * Nouveau chemin rapide : compteurs + remplissage de DirectByteBuffer.
+     */
+    private synchronized native int getNativeVertexCount();
+
+    private synchronized native int getNativeEdgeCount();
+
+    private synchronized native void fillPositionsBuffer(ByteBuffer positionsBuffer);
+
+    private synchronized native void fillEdgeEndpointsBuffer(ByteBuffer edgeEndpointsBuffer);
+
+    private synchronized native void fillEdgeWeightsBuffer(ByteBuffer edgeWeightsBuffer);
+
+    private synchronized native void fillCommunityIdsBuffer(ByteBuffer communityIdsBuffer);
+
+    private synchronized native void fillCommunityColorsBuffer(ByteBuffer communityColorsBuffer);
+
+    public synchronized native void setNodePosition(int index, double x, double y);
 
     public synchronized native int[] getCommunities();
 

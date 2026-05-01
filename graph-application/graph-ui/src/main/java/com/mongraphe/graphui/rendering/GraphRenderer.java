@@ -37,6 +37,22 @@ public final class GraphRenderer implements GLEventListener {
     private GLShaderProgram edgeShader;
     private volatile GraphRenderOptions renderOptions;
 
+    /**
+     * Version des données déjà envoyées au GPU.
+     *
+     * <p>
+     * Si la version du moteur ne change pas, le renderer ne reconstruit pas les
+     * tableaux CPU et ne refait pas les uploads GPU.
+     * </p>
+     */
+    private long lastUploadedRenderVersion = Long.MIN_VALUE;
+
+    /** Dernières options de rendu utilisées pour construire les buffers. */
+    private GraphRenderOptions lastUploadedOptions;
+
+    /** Indique si un premier upload GPU a déjà eu lieu. */
+    private boolean buffersUploaded = false;
+
     public GraphRenderer(GraphEngine engine, Camera2D camera) {
         this(engine, camera, GraphRenderOptions.straight());
     }
@@ -71,6 +87,10 @@ public final class GraphRenderer implements GLEventListener {
 
         pointShader = ShaderFactory.createPointShader(gl);
         edgeShader = ShaderFactory.createEdgeShader(gl);
+
+        lastUploadedRenderVersion = Long.MIN_VALUE;
+        lastUploadedOptions = null;
+        buffersUploaded = false;
     }
 
     /** Configuration des paramètres de rendu (transparence, couleur de fond). */
@@ -96,24 +116,39 @@ public final class GraphRenderer implements GLEventListener {
         GraphModel model = engine.model();
         GraphRenderOptions options = renderOptions;
 
-        // Étape 1 : Préparation des données sur le CPU
-        vertexBuffer.update(
-                gl,
-                model.vertices(),
-                model.getSelectedVertexId(),
-                model.getMaxDegree(),
-                model.getColoringMode(),
-                model.getUniformNodeR(),
-                model.getUniformNodeG(),
-                model.getUniformNodeB());
+        long currentVersion = engine.renderDataVersion();
+        boolean dataChanged = currentVersion != lastUploadedRenderVersion;
+        boolean optionsChanged = lastUploadedOptions != options;
 
-        edgeBuffer.update(model.edges(), options);
+        /*
+         * Étape 1 + 2 : préparation CPU et transfert GPU uniquement si nécessaire.
+         *
+         * Avant, ces opérations étaient faites à chaque frame. Sur un graphe avec
+         * 100 000 arêtes, cela provoquait un coût massif même quand le graphe ne
+         * changeait pas.
+         */
+        if (!buffersUploaded || dataChanged || optionsChanged) {
+            vertexBuffer.update(
+                    gl,
+                    model.vertices(),
+                    model.getSelectedVertexId(),
+                    model.getMaxDegree(),
+                    model.getColoringMode(),
+                    model.getUniformNodeR(),
+                    model.getUniformNodeG(),
+                    model.getUniformNodeB());
 
-        // Étape 2 : Transfert vers le GPU
-        vertexBuffer.upload(gl);
-        edgeBuffer.upload(gl);
+            edgeBuffer.update(model.edges(), options);
 
-        // Étape 3 : Dessin effectif
+            vertexBuffer.upload(gl);
+            edgeBuffer.upload(gl);
+
+            lastUploadedRenderVersion = currentVersion;
+            lastUploadedOptions = options;
+            buffersUploaded = true;
+        }
+
+        // Étape 3 : dessin effectif
         drawEdges(gl, options);
         drawVertices(gl);
     }
@@ -152,6 +187,10 @@ public final class GraphRenderer implements GLEventListener {
             if (edgeShader != null)
                 edgeShader.delete(gl);
         } catch (Exception ignored) {
+        } finally {
+            lastUploadedRenderVersion = Long.MIN_VALUE;
+            lastUploadedOptions = null;
+            buffersUploaded = false;
         }
     }
 }
