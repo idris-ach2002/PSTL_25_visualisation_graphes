@@ -8,21 +8,25 @@ import com.mongraphe.graphui.model.Vertex;
 import static org.lwjgl.opengl.GL11.*;
 
 /**
- * Renderer OpenGLFX/LWJGL orienté GPU pour les graphes dynamiques de grande taille.
+ * Renderer OpenGLFX/LWJGL orienté GPU pour les graphes dynamiques de grande
+ * taille.
  *
- * <p>Cette version retire le LOD CPU interactif qui coûtait trop cher dans le
+ * <p>
+ * Cette version retire le LOD CPU interactif qui coûtait trop cher dans le
  * profilage ({@code updateVisibleStatic}, {@code rebuildVertexSet},
  * {@code updateVisibleAttributes}). Le renderer ne reconstruit plus une liste
  * de sommets visibles à chaque frame. Il conserve au contraire une topologie et
  * des attributs statiques sur le GPU, puis met uniquement à jour le buffer de
- * positions lorsque le moteur C publie une nouvelle itération.</p>
+ * positions lorsque le moteur C publie une nouvelle itération.
+ * </p>
  *
- * <p>Le clipping de viewport est laissé au pipeline OpenGL. C'est volontaire :
- * parcourir 500 000 à 1 000 000 d'objets en Java pour décider quoi afficher est
+ * <p>
+ * Le clipping de viewport est laissé au pipeline OpenGL. Parcourir 500 000 à 1
+ * 000 000 d'objets en Java pour décider quoi afficher est
  * plus coûteux que de laisser le GPU rejeter les primitives hors écran. Le LOD
  * restant est visuel et non destructif : il adapte seulement le diamètre des
  * sommets selon le zoom, sans regrouper les couleurs ni supprimer les arêtes.
- * Ainsi le graphe ne change plus d'aspect pendant un drag.</p>
+ * </p>
  */
 public final class GraphRenderer {
 
@@ -40,7 +44,6 @@ public final class GraphRenderer {
 
     private long lastUploadedPositionVersion = Long.MIN_VALUE;
     private long lastUploadedDataVersion = Long.MIN_VALUE;
-    private GraphRenderOptions lastUploadedOptions;
     private int lastUploadedVertexCount = -1;
     private boolean initialized = false;
 
@@ -57,8 +60,9 @@ public final class GraphRenderer {
     /**
      * Construit un renderer OpenGLFX/LWJGL.
      *
-     * @param engine moteur contenant le modèle, la caméra et les buffers natifs
-     * @param camera paramètre conservé pour compatibilité de signature
+     * @param engine        moteur contenant le modèle, la caméra et les buffers
+     *                      natifs
+     * @param camera        paramètre conservé pour compatibilité de signature
      * @param renderOptions options de rendu initiales
      */
     public GraphRenderer(GraphEngine engine, Camera2D camera, GraphRenderOptions renderOptions) {
@@ -73,7 +77,6 @@ public final class GraphRenderer {
      */
     public void setRenderOptions(GraphRenderOptions renderOptions) {
         this.renderOptions = renderOptions == null ? GraphRenderOptions.straight() : renderOptions;
-        lastUploadedOptions = null;
     }
 
     /** @return options de rendu actuellement demandées par l'interface. */
@@ -105,7 +108,10 @@ public final class GraphRenderer {
         initialized = true;
     }
 
-    /** Configure un état OpenGL stable pour une surface OpenGLFX compositée par Prism. */
+    /**
+     * Configure un état OpenGL stable pour une surface OpenGLFX compositée par
+     * Prism.
+     */
     private void configureGL() {
         glDisable(GL_DEPTH_TEST);
         glDisable(GL_CULL_FACE);
@@ -119,9 +125,11 @@ public final class GraphRenderer {
     /**
      * Dessine une frame complète.
      *
-     * <p>Le chemin rapide fait seulement trois choses : clear, upload éventuel
+     * <p>
+     * Le chemin rapide fait seulement trois choses : clear, upload éventuel
      * des positions, deux draw calls. Les attributs et les arêtes ne sont
-     * reconstruits que si la version de données du modèle change.</p>
+     * reconstruits que si la version de données du modèle change.
+     * </p>
      */
     public void display() {
         if (!initialized) {
@@ -170,7 +178,6 @@ public final class GraphRenderer {
 
             lastUploadedDataVersion = dataVersion;
         }
-        lastUploadedOptions = options;
 
         positionBuffer.bind(POSITION_TEXTURE_UNIT);
         drawEdges(options);
@@ -193,7 +200,10 @@ public final class GraphRenderer {
         vertexBuffer.draw(positionBuffer.vertexCount());
     }
 
-    /** Dessine les arêtes droites ou courbes sans reconstruire de segments côté Java. */
+    /**
+     * Dessine les arêtes droites ou courbes sans reconstruire de segments côté
+     * Java.
+     */
     private void drawEdges(GraphRenderOptions options) {
         GraphRenderOptions safe = options == null ? GraphRenderOptions.straight() : options;
         GLShaderProgram shader = safe.edgeStyle() == GraphRenderOptions.EdgeStyle.CURVED_PARABOLIC
@@ -231,19 +241,24 @@ public final class GraphRenderer {
     public void invalidateBuffers() {
         lastUploadedPositionVersion = Long.MIN_VALUE;
         lastUploadedDataVersion = Long.MIN_VALUE;
-        lastUploadedOptions = null;
         lastUploadedVertexCount = -1;
     }
 
     /** Libère les ressources OpenGL. */
     public void dispose() {
         try {
-            if (pointShader != null) pointShader.delete();
-            if (straightEdgeShader != null) straightEdgeShader.delete();
-            if (curvedEdgeShader != null) curvedEdgeShader.delete();
-            if (vertexBuffer != null) vertexBuffer.dispose();
-            if (edgeBuffer != null) edgeBuffer.dispose();
-            if (positionBuffer != null) positionBuffer.dispose();
+            if (pointShader != null)
+                pointShader.delete();
+            if (straightEdgeShader != null)
+                straightEdgeShader.delete();
+            if (curvedEdgeShader != null)
+                curvedEdgeShader.delete();
+            if (vertexBuffer != null)
+                vertexBuffer.dispose();
+            if (edgeBuffer != null)
+                edgeBuffer.dispose();
+            if (positionBuffer != null)
+                positionBuffer.dispose();
         } catch (Exception ignored) {
         } finally {
             initialized = false;
