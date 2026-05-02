@@ -13,6 +13,15 @@ import org.lwjgl.BufferUtils;
  */
 public final class Camera2D {
 
+    /**
+     * Plus petit zoom accepté pour garder une projection finie.
+     *
+     * <p>Ce seuil n'est pas une limite utilisateur : il évite uniquement les
+     * divisions par zéro et les matrices OpenGL contenant NaN/Inf après un très
+     * grand nombre de dézooms successifs.</p>
+     */
+    private static final float MIN_FINITE_ZOOM = 1.0e-9f;
+
     private volatile float zoom = 1f;
     private volatile float offsetX, offsetY;
     private volatile int width = 1, height = 1;
@@ -82,15 +91,23 @@ public final class Camera2D {
     /**
      * Zoome autour d'un point écran.
      *
+     * <p>Le zoom n'est plus borné par une limite applicative. On garde seulement
+     * un garde-fou numérique minimal afin de ne jamais produire de matrice de
+     * projection invalide.</p>
+     *
      * @param screenX coordonnée écran X
      * @param screenY coordonnée écran Y
      * @param factor facteur multiplicatif du zoom
      */
     public void zoomAt(float screenX, float screenY, float factor) {
+        if (!Float.isFinite(factor) || factor <= 0f) {
+            return;
+        }
+
         float worldX = screenToWorldX(screenX);
         float worldY = screenToWorldY(screenY);
 
-        zoom = Math.max(0.02f, Math.min(250f, zoom * factor));
+        zoom = sanitizeZoom(zoom * factor);
 
         offsetX = worldX - (screenX - width / 2f) / zoom;
         offsetY = worldY - (height / 2f - screenY) / zoom;
@@ -104,11 +121,30 @@ public final class Camera2D {
     /**
      * Fixe le zoom de la caméra.
      *
-     * @param zoom nouveau zoom
+     * @param zoom nouveau zoom demandé
      */
     public void setZoom(float zoom) {
-        this.zoom = zoom;
+        this.zoom = sanitizeZoom(zoom);
         updateProjection();
+    }
+
+    /**
+     * Nettoie une valeur de zoom sans imposer de borne visuelle.
+     *
+     * @param value zoom candidat
+     * @return zoom strictement positif et fini
+     */
+    private static float sanitizeZoom(float value) {
+        if (Float.isNaN(value) || value <= 0f) {
+            return MIN_FINITE_ZOOM;
+        }
+        if (value < MIN_FINITE_ZOOM) {
+            return MIN_FINITE_ZOOM;
+        }
+        if (Float.isInfinite(value)) {
+            return Float.MAX_VALUE;
+        }
+        return value;
     }
 
     /** Réinitialise la caméra. */
@@ -121,6 +157,8 @@ public final class Camera2D {
 
     /** Recalcule les bornes visibles et la matrice orthographique OpenGL. */
     private void updateProjection() {
+        zoom = sanitizeZoom(zoom);
+
         float hw = width / 2f / zoom;
         float hh = height / 2f / zoom;
 
