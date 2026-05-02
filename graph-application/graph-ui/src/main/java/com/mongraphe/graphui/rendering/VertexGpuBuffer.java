@@ -1,227 +1,290 @@
 package com.mongraphe.graphui.rendering;
 
 import java.nio.FloatBuffer;
-import java.util.concurrent.ConcurrentLinkedQueue;
 
-import com.jogamp.opengl.GL4;
 import com.mongraphe.graphui.model.Community;
-import com.mongraphe.graphui.model.Vertex;
 import com.mongraphe.graphui.model.GraphModel.ColoringMode;
+import com.mongraphe.graphui.model.Vertex;
+
+import org.lwjgl.BufferUtils;
+
+import static org.lwjgl.opengl.GL11.*;
+import static org.lwjgl.opengl.GL15.*;
+import static org.lwjgl.opengl.GL20.*;
+import static org.lwjgl.opengl.GL30.*;
+import static org.lwjgl.opengl.GL31.*;
+import static org.lwjgl.opengl.GL33.*;
 
 /**
- * Gestionnaire de tampons GPU pour le rendu haute performance des sommets
- * (noeuds).
- * *
- * <p>
- * Cette classe gère plusieurs Vertex Buffer Objects (VBO) pour stocker les
- * attributs
- * des sommets. Elle supporte le redimensionnement dynamique de la capacité et
- * différents modes de coloration (par degré, par communauté ou uniforme).
- * </p>
- * *
- * <h2>Attributs gérés</h2>
- * <ul>
- * <li><b>Position (Location 0) :</b> Coordonnées (x, y) en 2D.</li>
- * <li><b>Taille (Location 1) :</b> Diamètre du point (gl_PointSize).</li>
- * <li><b>Couleur (Location 2) :</b> Données RGB (float).</li>
- * <li><b>Visibilité (Location 3) :</b> Facteur 0.0 (caché) ou 1.0
- * (visible).</li>
- * </ul>
+ * VBO des attributs de sommets visibles ou agrégés.
+ *
+ * <p>Les positions sont stockées séparément dans {@link PositionTextureBuffer}.
+ * Ce buffer contient uniquement les attributs par instance : diamètre, couleur
+ * et visibilité. Quand le renderer active le LOD, une instance peut représenter
+ * plusieurs sommets proches à l'écran.</p>
  */
 public final class VertexGpuBuffer {
 
-    private float[] pos, col, size, vis;
-
-    private int posVbo, colVbo, sizeVbo, visVbo;
-
-    private int count;
-    private int capacity;
-
     private static final int INITIAL_CAPACITY = 1024;
+    private static final int ATTRIB_FLOATS = 5; // diameter, r, g, b, visible
+    private static final int ATTRIB_STRIDE_BYTES = ATTRIB_FLOATS * Float.BYTES;
+    private static final float MIN_POINT_SIZE = 2.5f;
 
-    /**
-     * Initialise les VBOs et alloue les tableaux CPU initiaux.
-     * 
-     * @param gl Le contexte OpenGL 4.
-     */
-    public void init(GL4 gl) {
-        int[] b = new int[4];
-        gl.glGenBuffers(4, b, 0);
+    private static final float[] UNIT_QUAD = {
+            -0.5f, -0.5f, 0.5f, -0.5f, 0.5f, 0.5f,
+            -0.5f, -0.5f, 0.5f, 0.5f, -0.5f, 0.5f
+    };
 
-        posVbo = b[0];
-        sizeVbo = b[1];
-        colVbo = b[2];
-        visVbo = b[3];
+    private float[] attributes;
+    private FloatBuffer directAttributes;
+    private int capacity;
+    private int count;
+    private int gpuCapacity;
 
-        capacity = INITIAL_CAPACITY;
+    private int vao;
+    private int quadVbo;
+    private int attribVbo;
 
-        pos = new float[capacity * 2];
-        col = new float[capacity * 3];
-        size = new float[capacity];
-        vis = new float[capacity];
-
-        allocateGpu(gl, capacity);
+    /** Initialise les VAO/VBO nécessaires au rendu instancié des sommets. */
+    public void init() {
+        vao = glGenVertexArrays();
+        quadVbo = glGenBuffers();
+        attribVbo = glGenBuffers();
+        resizeCpuStorage(INITIAL_CAPACITY);
+        configureVertexArray();
     }
 
-    /**
-     * Alloue la mémoire sur la carte graphique pour la capacité spécifiée.
-     */
-    private void allocateGpu(GL4 gl, int cap) {
-        gl.glBindBuffer(GL4.GL_ARRAY_BUFFER, posVbo);
-        gl.glBufferData(GL4.GL_ARRAY_BUFFER, cap * 2L * Float.BYTES, null, GL4.GL_DYNAMIC_DRAW);
-
-        gl.glBindBuffer(GL4.GL_ARRAY_BUFFER, colVbo);
-        gl.glBufferData(GL4.GL_ARRAY_BUFFER, cap * 3L * Float.BYTES, null, GL4.GL_DYNAMIC_DRAW);
-
-        gl.glBindBuffer(GL4.GL_ARRAY_BUFFER, sizeVbo);
-        gl.glBufferData(GL4.GL_ARRAY_BUFFER, cap * Float.BYTES, null, GL4.GL_DYNAMIC_DRAW);
-
-        gl.glBindBuffer(GL4.GL_ARRAY_BUFFER, visVbo);
-        gl.glBufferData(GL4.GL_ARRAY_BUFFER, cap * Float.BYTES, null, GL4.GL_DYNAMIC_DRAW);
-    }
 
     /**
-     * Redimensionne les buffers si le nombre de sommets dépasse la capacité
-     * actuelle.
-     * Utilise une stratégie de doublement de capacité.
+     * Reconstruit les attributs pour tous les sommets indexés par identifiant natif.
+     *
+     * <p>Cette méthode est utilisée par le pipeline GPU exact : elle n'est pas
+     * appelée à chaque frame, mais seulement lorsque le style ou la structure du
+     * graphe change. Les positions restent dans un buffer séparé mis à jour par
+     * le moteur C.</p>
+     *
+     * @param verticesById table nativeId -> Vertex
+     * @param totalVertices nombre de sommets exploitables
+     * @param selectedVertexId sommet sélectionné, ou -1
+     * @param maxDegree degré maximal du graphe
+     * @param mode mode de coloration
+     * @param uniformR rouge uniforme
+     * @param uniformG vert uniforme
+     * @param uniformB bleu uniforme
      */
-    private void ensureCapacity(GL4 gl, int vertexCount) {
-        if (vertexCount <= capacity)
-            return;
-
-        int newCap = capacity;
-        while (newCap < vertexCount)
-            newCap *= 2;
-
-        capacity = newCap;
-
-        pos = new float[capacity * 2];
-        col = new float[capacity * 3];
-        size = new float[capacity];
-        vis = new float[capacity];
-
-        allocateGpu(gl, capacity);
-    }
-
-    /**
-     * Met à jour les tableaux CPU à partir du modèle logique du graphe.
-     * * @param gl Le contexte OpenGL.
-     * 
-     * @param vertices         La file des sommets à traiter.
-     * @param selectedVertexId ID du sommet actuellement sélectionné (sera affiché
-     *                         en blanc).
-     * @param maxDegree        Degré maximum trouvé dans le graphe (pour la
-     *                         normalisation du mode DEGREE).
-     * @param mode             Mode de coloration souhaité.
-     * @param uniformR         Composante Rouge pour le mode UNIFORM.
-     * @param uniformG         Composante Verte pour le mode UNIFORM.
-     * @param uniformB         Composante Bleue pour le mode UNIFORM.
-     */
-    public void update(GL4 gl,
-            ConcurrentLinkedQueue<Vertex> vertices,
+    public void updateAllAttributes(
+            Vertex[] verticesById,
+            int totalVertices,
             int selectedVertexId,
             int maxDegree,
             ColoringMode mode,
-            float uniformR, float uniformG, float uniformB) {
+            float uniformR,
+            float uniformG,
+            float uniformB) {
 
-        if (vertices == null) {
-            count = 0;
-            return;
-        }
-
-        count = 0;
+        count = Math.max(0, Math.min(totalVertices, verticesById == null ? 0 : verticesById.length));
+        ensureCapacity(count);
         int maxDeg = Math.max(1, maxDegree);
 
-        for (Vertex v : vertices) {
-            if (v == null)
+        for (int id = 0; id < count; id++) {
+            Vertex vertex = verticesById[id];
+            int base = id * ATTRIB_FLOATS;
+            if (vertex == null || vertex.isDeleted() || !vertex.isVisible()) {
+                attributes[base] = MIN_POINT_SIZE;
+                attributes[base + 1] = 0f;
+                attributes[base + 2] = 0f;
+                attributes[base + 3] = 0f;
+                attributes[base + 4] = 0f;
                 continue;
-
-            ensureCapacity(gl, count + 1);
-
-            int p = count * 2;
-            int c = count * 3;
-
-            pos[p] = (float) v.getX();
-            pos[p + 1] = (float) v.getY();
-
-            size[count] = (float) v.getDiameter();
-            vis[count] = (v.isDeleted() || !v.isVisible()) ? 0f : 1f;
-
-            float r, g, b;
-            // Logique de calcul de la couleur par sommet
-            if (v.getId() == selectedVertexId) {
-                r = g = b = 1f; // Sélection = Blanc
-            } else if (mode == ColoringMode.UNIFORM) {
-                r = uniformR;
-                g = uniformG;
-                b = uniformB;
-            } else if (mode == ColoringMode.DEGREE) {
-                float t = (float) v.getDegree() / maxDeg;
-                float base = 0.15f;
-                float intensity = base + (1f - base) * t;
-                r = g = b = intensity; // Dégradé de gris selon le degré
-            } else {
-                Community com = v.getCommunity();
-                if (com != null) {
-                    r = com.getR();
-                    g = com.getG();
-                    b = com.getB();
-                } else {
-                    r = g = b = 0.6f;
-                }
             }
-
-            col[c] = r;
-            col[c + 1] = g;
-            col[c + 2] = b;
-
-            count++;
+            attributes[base] = Math.max(MIN_POINT_SIZE, safeFloat(vertex.getDiameter()));
+            writeColor(vertex, selectedVertexId, maxDeg, mode, uniformR, uniformG, uniformB, base + 1);
+            attributes[base + 4] = 1f;
         }
     }
 
     /**
-     * Envoie les données préparées vers la mémoire vidéo (VRAM).
+     * Reconstruit les attributs pour les sommets visibles ou agrégés.
+     *
+     * @param verticesById table nativeId -> Vertex
+     * @param visibleIds identifiants natifs représentatifs, dans l'ordre du buffer compact
+     * @param aggregateCounts nombre de sommets représentés par chaque instance
+     * @param visibleCount nombre d'entrées valides dans {@code visibleIds}
+     * @param selectedVertexId sommet sélectionné, ou -1
+     * @param maxDegree degré maximal du graphe
+     * @param mode mode de coloration
+     * @param uniformR rouge uniforme
+     * @param uniformG vert uniforme
+     * @param uniformB bleu uniforme
      */
-    public void upload(GL4 gl) {
-        upload(gl, posVbo, pos, count * 2);
-        upload(gl, colVbo, col, count * 3);
-        upload(gl, sizeVbo, size, count);
-        upload(gl, visVbo, vis, count);
+    public void updateVisibleAttributes(
+            Vertex[] verticesById,
+            int[] visibleIds,
+            int[] aggregateCounts,
+            int visibleCount,
+            int selectedVertexId,
+            int maxDegree,
+            ColoringMode mode,
+            float uniformR,
+            float uniformG,
+            float uniformB) {
+
+        count = Math.max(0, visibleCount);
+        ensureCapacity(count);
+        int maxDeg = Math.max(1, maxDegree);
+
+        for (int i = 0; i < count; i++) {
+            int id = visibleIds[i];
+            Vertex vertex = id >= 0 && id < verticesById.length ? verticesById[id] : null;
+            int base = i * ATTRIB_FLOATS;
+            if (vertex == null || vertex.isDeleted() || !vertex.isVisible()) {
+                attributes[base] = MIN_POINT_SIZE;
+                attributes[base + 1] = 0f;
+                attributes[base + 2] = 0f;
+                attributes[base + 3] = 0f;
+                attributes[base + 4] = 0f;
+                continue;
+            }
+            int represented = aggregateCounts != null && i < aggregateCounts.length ? Math.max(1, aggregateCounts[i]) : 1;
+            float baseDiameter = Math.max(MIN_POINT_SIZE, safeFloat(vertex.getDiameter()));
+            attributes[base] = Math.min(9f, baseDiameter + densityBoost(represented));
+            writeColor(vertex, selectedVertexId, maxDeg, mode, uniformR, uniformG, uniformB, base + 1);
+            attributes[base + 4] = 1f;
+        }
     }
 
-    private void upload(GL4 gl, int vbo, float[] data, int elements) {
-        gl.glBindBuffer(GL4.GL_ARRAY_BUFFER, vbo);
-        gl.glBufferSubData(
-                GL4.GL_ARRAY_BUFFER,
-                0,
-                elements * (long) Float.BYTES,
-                FloatBuffer.wrap(data, 0, elements));
+    /** Transfère les attributs visibles vers le GPU sans réallocation inutile. */
+    public void uploadAttributes() {
+        if (count <= 0) return;
+        int elements = count * ATTRIB_FLOATS;
+        directAttributes.clear();
+        directAttributes.put(attributes, 0, elements).flip();
+
+        glBindBuffer(GL_ARRAY_BUFFER, attribVbo);
+        ensureGpuCapacity(elements);
+        glBufferSubData(GL_ARRAY_BUFFER, 0L, directAttributes);
+        glBindBuffer(GL_ARRAY_BUFFER, 0);
     }
 
     /**
-     * Active les attributs de sommets et lance l'appel de dessin GL_POINTS.
+     * Dessine les sommets visibles avec un seul draw call instancié.
+     *
+     * @param positionCount nombre de positions compactes disponibles
      */
-    public void draw(GL4 gl) {
-        // Position
-        gl.glEnableVertexAttribArray(0);
-        gl.glBindBuffer(GL4.GL_ARRAY_BUFFER, posVbo);
-        gl.glVertexAttribPointer(0, 2, GL4.GL_FLOAT, false, 0, 0);
+    public void draw(int positionCount) {
+        int drawCount = Math.min(count, positionCount);
+        if (drawCount <= 0) return;
+        glBindVertexArray(vao);
+        glDrawArraysInstanced(GL_TRIANGLES, 0, 6, drawCount);
+        glBindVertexArray(0);
+    }
 
-        // Taille
-        gl.glEnableVertexAttribArray(1);
-        gl.glBindBuffer(GL4.GL_ARRAY_BUFFER, sizeVbo);
-        gl.glVertexAttribPointer(1, 1, GL4.GL_FLOAT, false, 0, 0);
+    /**
+     * @return nombre d'instances de sommets actuellement préparées côté GPU.
+     */
+    public int count() {
+        return count;
+    }
 
-        // Couleur
-        gl.glEnableVertexAttribArray(2);
-        gl.glBindBuffer(GL4.GL_ARRAY_BUFFER, colVbo);
-        gl.glVertexAttribPointer(2, 3, GL4.GL_FLOAT, false, 0, 0);
+    /** Libère les ressources OpenGL. */
+    public void dispose() {
+        if (quadVbo != 0) glDeleteBuffers(quadVbo);
+        if (attribVbo != 0) glDeleteBuffers(attribVbo);
+        if (vao != 0) glDeleteVertexArrays(vao);
+        vao = 0;
+        quadVbo = 0;
+        attribVbo = 0;
+        count = 0;
+        gpuCapacity = 0;
+    }
 
-        // Visibilité
-        gl.glEnableVertexAttribArray(3);
-        gl.glBindBuffer(GL4.GL_ARRAY_BUFFER, visVbo);
-        gl.glVertexAttribPointer(3, 1, GL4.GL_FLOAT, false, 0, 0);
+    private void configureVertexArray() {
+        FloatBuffer quad = BufferUtils.createFloatBuffer(UNIT_QUAD.length);
+        quad.put(UNIT_QUAD).flip();
 
-        gl.glDrawArrays(GL4.GL_POINTS, 0, count);
+        glBindVertexArray(vao);
+
+        glBindBuffer(GL_ARRAY_BUFFER, quadVbo);
+        glBufferData(GL_ARRAY_BUFFER, quad, GL_STATIC_DRAW);
+        glEnableVertexAttribArray(0);
+        glVertexAttribPointer(0, 2, GL_FLOAT, false, 2 * Float.BYTES, 0L);
+
+        glBindBuffer(GL_ARRAY_BUFFER, attribVbo);
+        glBufferData(GL_ARRAY_BUFFER, INITIAL_CAPACITY * (long) ATTRIB_STRIDE_BYTES, GL_STREAM_DRAW);
+        gpuCapacity = INITIAL_CAPACITY * ATTRIB_FLOATS;
+
+        glEnableVertexAttribArray(1);
+        glVertexAttribPointer(1, 1, GL_FLOAT, false, ATTRIB_STRIDE_BYTES, 0L);
+        glVertexAttribDivisor(1, 1);
+
+        glEnableVertexAttribArray(2);
+        glVertexAttribPointer(2, 3, GL_FLOAT, false, ATTRIB_STRIDE_BYTES, Float.BYTES);
+        glVertexAttribDivisor(2, 1);
+
+        glEnableVertexAttribArray(3);
+        glVertexAttribPointer(3, 1, GL_FLOAT, false, ATTRIB_STRIDE_BYTES, 4L * Float.BYTES);
+        glVertexAttribDivisor(3, 1);
+
+        glBindBuffer(GL_ARRAY_BUFFER, 0);
+        glBindVertexArray(0);
+    }
+
+    private void ensureCapacity(int required) {
+        if (required <= capacity) return;
+        int newCapacity = capacity;
+        while (newCapacity < required) newCapacity *= 2;
+        resizeCpuStorage(newCapacity);
+    }
+
+    private void resizeCpuStorage(int newCapacity) {
+        capacity = Math.max(1, newCapacity);
+        attributes = new float[capacity * ATTRIB_FLOATS];
+        directAttributes = BufferUtils.createFloatBuffer(capacity * ATTRIB_FLOATS);
+    }
+
+    private void ensureGpuCapacity(int requiredFloats) {
+        if (requiredFloats <= gpuCapacity) return;
+        int newCapacity = gpuCapacity <= 0 ? INITIAL_CAPACITY * ATTRIB_FLOATS : gpuCapacity;
+        while (newCapacity < requiredFloats) newCapacity *= 2;
+        gpuCapacity = newCapacity;
+        glBufferData(GL_ARRAY_BUFFER, gpuCapacity * (long) Float.BYTES, GL_STREAM_DRAW);
+    }
+
+    private void writeColor(Vertex vertex, int selectedVertexId, int maxDegree, ColoringMode mode,
+            float uniformR, float uniformG, float uniformB, int colorIndex) {
+        float r, g, b;
+        if (vertex.getId() == selectedVertexId) {
+            r = 1f; g = 1f; b = 1f;
+        } else if (mode == ColoringMode.UNIFORM) {
+            r = uniformR; g = uniformG; b = uniformB;
+        } else if (mode == ColoringMode.DEGREE) {
+            float t = (float) vertex.getDegree() / maxDegree;
+            float intensity = 0.15f + 0.85f * t;
+            r = intensity; g = intensity; b = intensity;
+        } else {
+            Community community = vertex.getCommunity();
+            if (community != null) {
+                r = community.getR(); g = community.getG(); b = community.getB();
+            } else {
+                r = 0.8f; g = 0.8f; b = 0.85f;
+            }
+        }
+        attributes[colorIndex] = clamp01(r);
+        attributes[colorIndex + 1] = clamp01(g);
+        attributes[colorIndex + 2] = clamp01(b);
+    }
+
+    private static float densityBoost(int represented) {
+        if (represented <= 1) return 0f;
+        return (float) Math.min(4.0, Math.log(represented) * 0.9);
+    }
+
+    private static float safeFloat(double value) {
+        return Double.isFinite(value) ? (float) value : 0f;
+    }
+
+    private static float clamp01(float value) {
+        if (Float.isNaN(value) || Float.isInfinite(value)) return 0f;
+        return Math.max(0f, Math.min(1f, value));
     }
 }

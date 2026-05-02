@@ -1,15 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project xmlns="http://maven.apache.org/POM/4.0.0"
          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0
-         https://maven.apache.org/xsd/maven-4.0.0.xsd">
-
-    <repositories>
-        <repository>
-            <id>jogamp</id>
-            <url>https://jogamp.org/deployment/maven</url>
-        </repository>
-    </repositories>
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
 
     <modelVersion>4.0.0</modelVersion>
 
@@ -21,29 +13,57 @@
     <properties>
         <java.version>21</java.version>
         <javafx.version>21</javafx.version>
-        <jogamp.version>2.4.0</jogamp.version>
+        <openglfx.version>4.2.3</openglfx.version>
+        <kotlin.version>2.1.0</kotlin.version>
+        <lwjgl.version>3.3.6</lwjgl.version>
+        <lwjgl.natives>natives-linux</lwjgl.natives>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     </properties>
 
+    <dependencyManagement>
+        <dependencies>
+            <dependency>
+                <groupId>org.lwjgl</groupId>
+                <artifactId>lwjgl-bom</artifactId>
+                <version>${lwjgl.version}</version>
+                <scope>import</scope>
+                <type>pom</type>
+            </dependency>
+            <dependency>
+                <groupId>org.jetbrains.kotlin</groupId>
+                <artifactId>kotlin-stdlib-jdk8</artifactId>
+                <version>${kotlin.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.jetbrains.kotlin</groupId>
+                <artifactId>kotlin-stdlib-jdk7</artifactId>
+                <version>${kotlin.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.jetbrains.kotlin</groupId>
+                <artifactId>kotlin-stdlib</artifactId>
+                <version>${kotlin.version}</version>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
+
     <dependencies>
+        <dependency>
+            <groupId>org.jetbrains.kotlin</groupId>
+            <artifactId>kotlin-stdlib-jdk8</artifactId>
+            <version>${kotlin.version}</version>
+        </dependency>
+
         <dependency>
             <groupId>org.openjfx</groupId>
             <artifactId>javafx-controls</artifactId>
             <version>${javafx.version}</version>
         </dependency>
-
-        <dependency>
-            <groupId>org.openjfx</groupId>
-            <artifactId>javafx-swing</artifactId>
-            <version>${javafx.version}</version>
-        </dependency>
-
         <dependency>
             <groupId>org.openjfx</groupId>
             <artifactId>javafx-fxml</artifactId>
             <version>${javafx.version}</version>
         </dependency>
-
         <dependency>
             <groupId>org.openjfx</groupId>
             <artifactId>javafx-web</artifactId>
@@ -51,17 +71,96 @@
         </dependency>
 
         <dependency>
-            <groupId>org.jogamp.jogl</groupId>
-            <artifactId>jogl-all-main</artifactId>
-            <version>${jogamp.version}</version>
+            <groupId>com.huskerdev</groupId>
+            <artifactId>openglfx-lwjgl</artifactId>
+            <version>${openglfx.version}</version>
+            <exclusions>
+                <exclusion>
+                    <groupId>org.jetbrains.kotlin</groupId>
+                    <artifactId>kotlin-stdlib-jdk8</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>org.jetbrains.kotlin</groupId>
+                    <artifactId>kotlin-stdlib-jdk7</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>org.jetbrains.kotlin</groupId>
+                    <artifactId>kotlin-stdlib</artifactId>
+                </exclusion>
+            </exclusions>
         </dependency>
 
         <dependency>
-            <groupId>org.jogamp.gluegen</groupId>
-            <artifactId>gluegen-rt-main</artifactId>
-            <version>${jogamp.version}</version>
+            <groupId>org.lwjgl</groupId>
+            <artifactId>lwjgl</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.lwjgl</groupId>
+            <artifactId>lwjgl-opengl</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.lwjgl</groupId>
+            <artifactId>lwjgl</artifactId>
+            <classifier>${lwjgl.natives}</classifier>
+        </dependency>
+        <dependency>
+            <groupId>org.lwjgl</groupId>
+            <artifactId>lwjgl-opengl</artifactId>
+            <classifier>${lwjgl.natives}</classifier>
         </dependency>
     </dependencies>
+
+    <profiles>
+        <profile>
+            <id>lwjgl-natives-linux-x64</id>
+            <activation>
+                <os><family>linux</family><arch>amd64</arch></os>
+            </activation>
+            <properties><lwjgl.natives>natives-linux</lwjgl.natives></properties>
+        </profile>
+        <profile>
+            <id>lwjgl-natives-linux-x86_64</id>
+            <activation>
+                <os><family>linux</family><arch>x86_64</arch></os>
+            </activation>
+            <properties><lwjgl.natives>natives-linux</lwjgl.natives></properties>
+        </profile>
+        <profile>
+            <id>lwjgl-natives-linux-arm64</id>
+            <activation>
+                <os><family>linux</family><arch>aarch64</arch></os>
+            </activation>
+            <properties><lwjgl.natives>natives-linux-arm64</lwjgl.natives></properties>
+        </profile>
+        <profile>
+            <id>lwjgl-natives-windows-x64</id>
+            <activation>
+                <os><family>windows</family></os>
+            </activation>
+            <properties><lwjgl.natives>natives-windows</lwjgl.natives></properties>
+        </profile>
+        <profile>
+            <id>lwjgl-natives-macos-x64</id>
+            <activation>
+                <os><family>mac</family><arch>x86_64</arch></os>
+            </activation>
+            <properties><lwjgl.natives>natives-macos</lwjgl.natives></properties>
+        </profile>
+        <profile>
+            <id>lwjgl-natives-macos-amd64</id>
+            <activation>
+                <os><family>mac</family><arch>amd64</arch></os>
+            </activation>
+            <properties><lwjgl.natives>natives-macos</lwjgl.natives></properties>
+        </profile>
+        <profile>
+            <id>lwjgl-natives-macos-arm64</id>
+            <activation>
+                <os><family>mac</family><arch>aarch64</arch></os>
+            </activation>
+            <properties><lwjgl.natives>natives-macos-arm64</lwjgl.natives></properties>
+        </profile>
+    </profiles>
 
     <build>
         <plugins>
@@ -73,7 +172,6 @@
                     <release>${java.version}</release>
                 </configuration>
             </plugin>
-
             <plugin>
                 <groupId>org.openjfx</groupId>
                 <artifactId>javafx-maven-plugin</artifactId>
@@ -82,38 +180,21 @@
                     <mainClass>com.mongraphe.graphui.app.MainApp</mainClass>
                     <options>
                         <option>-Djava.library.path=${project.basedir}/../graph-native/out</option>
-                        <option>-Dmongraphe.native.path=${project.basedir}/../graph-native/out/libnative.so</option>
-
-                        <option>--enable-native-access=ALL-UNNAMED</option>
-                        <option>--enable-native-access=javafx.graphics</option>
-                        <option>--enable-native-access=javafx.swing</option>
-
-                        <option>-Dprism.verbose=true</option>
                         <option>-Dprism.forceGPU=true</option>
-
-                        <option>--add-opens</option>
+                        <option>-Dprism.vsync=false</option>
+                        <option>--enable-native-access=ALL-UNNAMED</option>
+                        <option>--add-exports</option>
+                        <option>javafx.graphics/com.sun.prism=ALL-UNNAMED</option>
+                        <option>--add-exports</option>
+                        <option>javafx.graphics/com.sun.javafx.scene.layout=ALL-UNNAMED</option>
+                        <option>--add-exports</option>
+                        <option>javafx.graphics/com.sun.javafx.sg.prism=ALL-UNNAMED</option>
+                        <option>--add-exports</option>
+                        <option>javafx.graphics/com.sun.scenario=ALL-UNNAMED</option>
+                        <option>--add-exports</option>
                         <option>javafx.graphics/com.sun.javafx.tk=ALL-UNNAMED</option>
-
-                        <option>--add-opens</option>
-                        <option>javafx.graphics/com.sun.javafx.tk.quantum=ALL-UNNAMED</option>
-
-                        <option>--add-opens</option>
+                        <option>--add-exports</option>
                         <option>javafx.graphics/com.sun.glass.ui=ALL-UNNAMED</option>
-
-                        <option>--add-opens</option>
-                        <option>javafx.graphics/com.sun.javafx.scene=ALL-UNNAMED</option>
-
-                        <option>--add-opens</option>
-                        <option>javafx.graphics/javafx.stage=ALL-UNNAMED</option>
-
-                        <option>--add-exports</option>
-                        <option>javafx.graphics/com.sun.javafx.tk=ALL-UNNAMED</option>
-
-                        <option>--add-exports</option>
-                        <option>javafx.graphics/com.sun.javafx.tk.quantum=ALL-UNNAMED</option>
-
-                        <option>--add-exports</option>
-                        <option>javafx.graphics/com.sun.javafx.stage=ALL-UNNAMED</option>
                     </options>
                 </configuration>
             </plugin>

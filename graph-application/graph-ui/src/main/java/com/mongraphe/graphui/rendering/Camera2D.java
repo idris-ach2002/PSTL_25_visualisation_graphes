@@ -1,64 +1,65 @@
 package com.mongraphe.graphui.rendering;
 
 import java.nio.FloatBuffer;
-import com.jogamp.common.nio.Buffers;
+import java.util.concurrent.atomic.AtomicLong;
+import org.lwjgl.BufferUtils;
 
 /**
- * Caméra orthographique 2D pour la gestion de la vue du graphe.
- * *
- * <p>
- * Cette classe gère les transformations de vue (zoom et translation) et génère
- * la matrice de projection correspondante. Elle utilise un système de
- * double-buffering
- * pour assurer que le thread de rendu OpenGL accède toujours à une matrice
- * stable,
- * même si celle-ci est mise à jour simultanément par le thread UI.
- * </p>
- * *
- * <h2>Coordonnées</h2>
- * <ul>
- * <li><b>World Space :</b> L'espace où vivent les sommets du graphe.</li>
- * <li><b>Screen Space :</b> L'espace en pixels de la fenêtre (0,0 en haut à
- * gauche).</li>
- * </ul>
+ * Caméra orthographique 2D utilisée par le renderer et les interactions.
+ *
+ * <p>La caméra expose à la fois la matrice OpenGL et les bornes visibles en
+ * coordonnées monde. Le renderer s'appuie sur ces bornes pour ne préparer que
+ * les sommets et les arêtes susceptibles d'apparaître à l'écran.</p>
  */
 public final class Camera2D {
 
     private volatile float zoom = 1f;
     private volatile float offsetX, offsetY;
     private volatile int width = 1, height = 1;
+    private volatile float worldLeft = -0.5f;
+    private volatile float worldRight = 0.5f;
+    private volatile float worldBottom = -0.5f;
+    private volatile float worldTop = 0.5f;
+
+    /** Version incrémentée à chaque changement de projection ou de taille. */
+    private final AtomicLong viewVersion = new AtomicLong(0L);
 
     /** Buffers directs pour éviter les allocations à chaque frame. */
-    private final FloatBuffer bufferA = Buffers.newDirectFloatBuffer(16);
-    private final FloatBuffer bufferB = Buffers.newDirectFloatBuffer(16);
+    private final FloatBuffer bufferA = BufferUtils.createFloatBuffer(16);
+    private final FloatBuffer bufferB = BufferUtils.createFloatBuffer(16);
 
-    /** Buffer actuellement utilisé pour le rendu (lecture seule). */
+    /** Buffer actuellement utilisé par OpenGL. */
     private volatile FloatBuffer projection = bufferA;
 
-    /** Buffer utilisé pour calculer la prochaine matrice (écriture). */
+    /** Buffer d'écriture pour le double-buffering de matrice. */
     private FloatBuffer writeBuffer = bufferB;
 
-    public int getWidth() {
-        return width;
-    }
+    public int getWidth() { return width; }
+    public int getHeight() { return height; }
+    public float getOffsetX() { return offsetX; }
+    public float getOffsetY() { return offsetY; }
+    public float getZoom() { return zoom; }
 
-    public int getHeight() {
-        return height;
-    }
+    /** @return version monotone de la vue, utile pour invalider le culling. */
+    public long getViewVersion() { return viewVersion.get(); }
 
-    public float getOffsetX() {
-        return offsetX;
-    }
+    /** @return borne gauche visible en coordonnées monde. */
+    public float worldLeft() { return worldLeft; }
 
-    public float getOffsetY() {
-        return offsetY;
-    }
+    /** @return borne droite visible en coordonnées monde. */
+    public float worldRight() { return worldRight; }
+
+    /** @return borne basse visible en coordonnées monde. */
+    public float worldBottom() { return worldBottom; }
+
+    /** @return borne haute visible en coordonnées monde. */
+    public float worldTop() { return worldTop; }
 
     /**
-     * Met à jour les dimensions du viewport et recalcule la projection.
-     * 
-     * @param w Largeur en pixels.
-     * @param h Hauteur en pixels.
+     * Met à jour la taille du viewport.
+     *
+     * @param w largeur framebuffer en pixels
+     * @param h hauteur framebuffer en pixels
      */
     public void resize(int w, int h) {
         width = Math.max(1, w);
@@ -67,10 +68,10 @@ public final class Camera2D {
     }
 
     /**
-     * Déplace la caméra (translation).
-     * 
-     * @param dx Déplacement horizontal en pixels.
-     * @param dy Déplacement vertical en pixels.
+     * Déplace la caméra en pixels écran.
+     *
+     * @param dx déplacement horizontal écran
+     * @param dy déplacement vertical écran
      */
     public void pan(float dx, float dy) {
         offsetX -= dx / zoom;
@@ -79,20 +80,17 @@ public final class Camera2D {
     }
 
     /**
-     * Applique un zoom centré sur une coordonnée spécifique de l'écran.
-     * <p>
-     * Essentiel pour permettre de zoomer vers le curseur de la souris.
-     * </p>
-     * 
-     * @param screenX Position X de la souris.
-     * @param screenY Position Y de la souris.
-     * @param factor  Facteur multiplicateur (ex: 1.1 pour +10%).
+     * Zoome autour d'un point écran.
+     *
+     * @param screenX coordonnée écran X
+     * @param screenY coordonnée écran Y
+     * @param factor facteur multiplicatif du zoom
      */
     public void zoomAt(float screenX, float screenY, float factor) {
         float worldX = screenToWorldX(screenX);
         float worldY = screenToWorldY(screenY);
 
-        zoom *= factor;
+        zoom = Math.max(0.02f, Math.min(250f, zoom * factor));
 
         offsetX = worldX - (screenX - width / 2f) / zoom;
         offsetY = worldY - (height / 2f - screenY) / zoom;
@@ -100,20 +98,20 @@ public final class Camera2D {
         updateProjection();
     }
 
-    public void zoomIn() {
-        zoomAt(width / 2f, height / 2f, 1.1f);
-    }
+    public void zoomIn() { zoomAt(width / 2f, height / 2f, 1.1f); }
+    public void zoomOut() { zoomAt(width / 2f, height / 2f, 0.9f); }
 
-    public void zoomOut() {
-        zoomAt(width / 2f, height / 2f, 0.9f);
-    }
-
+    /**
+     * Fixe le zoom de la caméra.
+     *
+     * @param zoom nouveau zoom
+     */
     public void setZoom(float zoom) {
         this.zoom = zoom;
         updateProjection();
     }
 
-    /** Réinitialise la vue à l'origine avec un zoom par défaut. */
+    /** Réinitialise la caméra. */
     public void reset() {
         zoom = 1f;
         offsetX = 0f;
@@ -121,19 +119,8 @@ public final class Camera2D {
         updateProjection();
     }
 
-    /**
-     * Calcule la matrice de projection orthographique.
-     * <p>
-     * La matrice est générée au format column-major pour OpenGL. Elle définit
-     * un volume de vue où le centre de l'écran correspond à (offsetX, offsetY).
-     * </p>
-     * * Formule simplifiée de la matrice résultante :
-     * $$M_{ortho} = \begin{bmatrix} \frac{2}{r-l} & 0 & 0 & -\frac{r+l}{r-l} \\ 0 &
-     * \frac{2}{t-b} & 0 & -\frac{t+b}{t-b} \\ 0 & 0 & -1 & 0 \\ 0 & 0 & 0 & 1
-     * \end{bmatrix}$$
-     */
+    /** Recalcule les bornes visibles et la matrice orthographique OpenGL. */
     private void updateProjection() {
-
         float hw = width / 2f / zoom;
         float hh = height / 2f / zoom;
 
@@ -141,6 +128,11 @@ public final class Camera2D {
         float right = hw + offsetX;
         float bottom = -hh + offsetY;
         float top = hh + offsetY;
+
+        worldLeft = left;
+        worldRight = right;
+        worldBottom = bottom;
+        worldTop = top;
 
         float[] ortho = {
                 2f / (right - left), 0, 0, 0,
@@ -154,39 +146,34 @@ public final class Camera2D {
         writeBuffer.clear();
         writeBuffer.put(ortho).flip();
 
-        // Swap atomique des buffers (Double Buffering)
         FloatBuffer oldRead = projection;
         projection = writeBuffer;
         writeBuffer = oldRead;
+        viewVersion.incrementAndGet();
     }
 
     /**
-     * @return La matrice de projection actuelle prête pour
-     *         {@code glUniformMatrix4fv}.
+     * @return matrice de projection column-major prête pour glUniformMatrix4fv
      */
-    public FloatBuffer getProjection() {
-        return projection;
-    }
+    public FloatBuffer getProjection() { return projection; }
 
     /**
-     * Convertit une coordonnée écran X en coordonnée monde.
-     * 
-     * @param screenX Coordonnée en pixels (0 = gauche).
+     * Convertit un X écran en X monde.
+     *
+     * @param screenX coordonnée écran X en pixels
+     * @return coordonnée monde X
      */
     public float screenToWorldX(float screenX) {
         return (screenX - width / 2f) / zoom + offsetX;
     }
 
     /**
-     * Convertit une coordonnée écran Y en coordonnée monde.
-     * 
-     * @param screenY Coordonnée en pixels (0 = haut).
+     * Convertit un Y écran en Y monde.
+     *
+     * @param screenY coordonnée écran Y en pixels
+     * @return coordonnée monde Y
      */
     public float screenToWorldY(float screenY) {
         return (height / 2f - screenY) / zoom + offsetY;
-    }
-
-    public float getZoom() {
-        return zoom;
     }
 }

@@ -42,7 +42,7 @@
                         </ScrollPane>
                     </left>
                     <center>
-                        <StackPane fx:id="graphHostPane"/>
+                        <StackPane fx:id="graphHostPane" style="-fx-background-color: white;"/>
                     </center>
                     <right>
                         <fx:include source="GraphStats.fxml" fx:id="graphStats" visible="true"/>

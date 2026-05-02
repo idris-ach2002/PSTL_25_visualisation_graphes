@@ -14,6 +14,7 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import com.mongraphe.graphui.model.*;
 
@@ -61,6 +62,33 @@ public final class GraphEngine {
      * </p>
      */
     private final AtomicLong renderDataVersion = new AtomicLong(0L);
+
+    /** Version incrementee uniquement lorsqu'un nouveau slot de positions est publié. */
+    private final AtomicLong renderPositionVersion = new AtomicLong(0L);
+
+    /** Nombre de slots de positions utilisés pour découpler simulation, upload GPU et rendu. */
+    private static final int POSITION_SLOT_COUNT = 3;
+
+    /** Buffers directs écrits par le JNI. Un slot publié n'est jamais réécrit immédiatement. */
+    private volatile ByteBuffer[] positionSlotBytes = new ByteBuffer[0];
+
+    /** Vues float des slots directs, conservées pour éviter les allocations par frame. */
+    private volatile FloatBuffer[] positionSlotFloats = new FloatBuffer[0];
+
+    /** Dernier slot entièrement écrit par le moteur natif et prêt pour le renderer. */
+    private final AtomicInteger latestReadyPositionSlot = new AtomicInteger(-1);
+
+    /** Slot que le thread simulation tentera d'utiliser au prochain tick. */
+    private int nextSimulationWriteSlot = 0;
+
+    /** Nombre de sommets disponibles dans le buffer de positions de rendu. */
+    private final AtomicInteger renderPositionVertexCount = new AtomicInteger(0);
+
+    /** Dernier temps de synchronisation des objets Vertex Java pour stats/interaction. */
+    private volatile long lastJavaVertexSyncNanos = 0L;
+
+    /** Fréquence maximale de synchronisation des objets Vertex Java. */
+    private static final long JAVA_VERTEX_SYNC_INTERVAL_NANOS = 250_000_000L;
 
     /**
      * Accès direct nativeId -> Vertex.
@@ -115,8 +143,53 @@ public final class GraphEngine {
         return renderDataVersion.get();
     }
 
+    /** Retourne la version des positions publiees pour le rendu. */
+    public long renderPositionVersion() {
+        return renderPositionVersion.get();
+    }
+
+    /**
+     * Retourne un duplicata direct du buffer de positions le plus récent.
+     *
+     * @return positions x,y en mémoire directe, ou null si aucun graphe n est chargé
+     */
+    public FloatBuffer renderPositionsBuffer() {
+        int slot = latestReadyPositionSlot.get();
+        FloatBuffer[] slots = positionSlotFloats;
+        if (slot < 0 || slot >= slots.length) {
+            return null;
+        }
+        FloatBuffer source = slots[slot];
+        if (source == null) {
+            return null;
+        }
+        FloatBuffer duplicate = source.duplicate();
+        duplicate.position(0);
+        duplicate.limit(Math.min(duplicate.capacity(), renderPositionVertexCount.get() * 2));
+        return duplicate;
+    }
+
+    /** Retourne le nombre de sommets presents dans le buffer de positions de rendu. */
+    public int renderPositionVertexCount() {
+        return renderPositionVertexCount.get();
+    }
+
+    /**
+     * Retourne la table nativeId -> Vertex utilisée par le culling de rendu.
+     *
+     * @return tableau de sommets indexé par identifiant natif
+     */
+    public Vertex[] renderVerticesByNativeId() {
+        Vertex[] vertices = verticesByNativeId;
+        return vertices == null ? new Vertex[0] : vertices;
+    }
+
     private void markRenderDataDirty() {
         renderDataVersion.incrementAndGet();
+    }
+
+    private void markRenderPositionsDirty() {
+        renderPositionVersion.incrementAndGet();
     }
 
     private void notifyDataChanged() {
@@ -339,6 +412,12 @@ public final class GraphEngine {
         stopSimulation();
         graphLoaded = false;
         verticesByNativeId = new Vertex[0];
+        positionSlotBytes = new ByteBuffer[0];
+        positionSlotFloats = new FloatBuffer[0];
+        latestReadyPositionSlot.set(-1);
+        nextSimulationWriteSlot = 0;
+        renderPositionVertexCount.set(0);
+        markRenderPositionsDirty();
         nativeEngine.freeAllocatedMemory();
         model.clear();
         notifyDataChanged();
@@ -402,6 +481,7 @@ public final class GraphEngine {
                 nativeBuffers.communityColorsAsFloatBuffer());
 
         verticesByNativeId = result.verticesByNativeId();
+        publishInitialRenderPositions(nativeBuffers.positionsAsFloatBuffer(), result.vertexCount());
 
         visibility.apply(model);
         markRenderDataDirty();
@@ -447,49 +527,160 @@ public final class GraphEngine {
         }
     }
 
-    /** Exécute une itération de simulation et synchronise les positions. */
+    /**
+     * Exécute une itération de simulation sans bloquer le renderer.
+     *
+     * <p>Le moteur natif écrit directement dans un slot de positions direct choisi
+     * par le thread simulation. Une fois l'appel JNI terminé, le slot est publié
+     * atomiquement. Le renderer consomme uniquement le dernier slot prêt et peut
+     * ignorer les versions intermédiaires si l'écran n'a pas le temps de les
+     * afficher.</p>
+     */
     private void simulateStep() {
-        if (!simulationRunning || !graphLoaded)
+        if (!simulationRunning || !graphLoaded) {
             return;
-        ByteBuffer buf = nativeEngine.sharedPositionsBuffer;
-        if (buf == null)
+        }
+        ByteBuffer target = acquirePositionWriteSlot();
+        if (target == null) {
             return;
-        if (nativeEngine.updatePositions(buf)) {
-            updateVerticesFromBuffer();
+        }
+        int writtenSlot = nextSimulationWriteSlot;
+        if (nativeEngine.updatePositions(target)) {
+            publishPositionSlot(writtenSlot);
+            maybeSyncJavaVerticesFromSlot(writtenSlot);
         }
     }
 
     /**
-     * Lit le tampon natif partagé pour mettre à jour les coordonnées des Vertex
-     * Java.
+     * Retourne un slot direct non publié pour l'appel JNI {@code updatePositions}.
+     *
+     * @return buffer direct réutilisable ou {@code null} si aucun graphe n'est prêt
      */
-    private void updateVerticesFromBuffer() {
-        ByteBuffer buf = nativeEngine.sharedPositionsBuffer;
-        if (buf == null)
-            return;
-
-        Vertex[] vertices = verticesByNativeId;
-        if (vertices == null || vertices.length == 0)
-            return;
-
-        ByteBuffer duplicate = buf.duplicate();
-        duplicate.order(ByteOrder.nativeOrder());
-        duplicate.position(0);
-
-        FloatBuffer fb = duplicate.asFloatBuffer();
-        int count = Math.min(vertices.length, fb.capacity() / 2);
-
-        for (int i = 0; i < count; i++) {
-            Vertex v = vertices[i];
-            if (v == null)
-                continue;
-
-            float x = fb.get(i * 2);
-            float y = fb.get(i * 2 + 1);
-            v.updatePosition(x, y);
+    private ByteBuffer acquirePositionWriteSlot() {
+        ByteBuffer[] byteSlots = positionSlotBytes;
+        if (byteSlots.length == 0) {
+            return null;
         }
 
-        markRenderDataDirty();
+        int latest = latestReadyPositionSlot.get();
+        int candidate = nextSimulationWriteSlot;
+        for (int i = 0; i < byteSlots.length; i++) {
+            if (candidate != latest && byteSlots[candidate] != null) {
+                nextSimulationWriteSlot = candidate;
+                ByteBuffer target = byteSlots[candidate].duplicate();
+                target.order(ByteOrder.nativeOrder());
+                target.clear();
+                target.limit(Math.min(target.capacity(), Math.max(0, renderPositionVertexCount.get()) * 2 * Float.BYTES));
+                return target;
+            }
+            candidate = (candidate + 1) % byteSlots.length;
+        }
+
+        // Avec trois slots cette branche ne devrait pratiquement pas arriver.
+        // On préfère sauter une frame de simulation plutôt que réécrire le buffer
+        // que le thread OpenGL est peut-être en train d'uploader.
+        return null;
+    }
+
+    /**
+     * Publie le slot écrit par le moteur natif.
+     *
+     * @param slot index du slot entièrement rempli
+     */
+    private void publishPositionSlot(int slot) {
+        FloatBuffer[] floatSlots = positionSlotFloats;
+        if (slot < 0 || slot >= floatSlots.length || floatSlots[slot] == null) {
+            return;
+        }
+        latestReadyPositionSlot.set(slot);
+        nextSimulationWriteSlot = (slot + 1) % Math.max(1, floatSlots.length);
+        markRenderPositionsDirty();
+    }
+
+    /** Initialise le triple buffer de rendu à partir des positions chargées. */
+    private void publishInitialRenderPositions(FloatBuffer positions, int vertexCount) {
+        ensurePositionSlots(vertexCount);
+        int count = Math.max(0, vertexCount);
+        renderPositionVertexCount.set(count);
+
+        if (positions != null && count > 0 && positionSlotFloats.length > 0) {
+            FloatBuffer src = positions.duplicate();
+            src.position(0);
+            src.limit(Math.min(src.capacity(), count * 2));
+
+            FloatBuffer dst = positionSlotFloats[0].duplicate();
+            dst.clear();
+            dst.put(src);
+            dst.flip();
+
+            latestReadyPositionSlot.set(0);
+            nextSimulationWriteSlot = 1 % POSITION_SLOT_COUNT;
+        } else {
+            latestReadyPositionSlot.set(-1);
+            nextSimulationWriteSlot = 0;
+        }
+        markRenderPositionsDirty();
+    }
+
+    /**
+     * Garantit l'existence de trois buffers directs assez grands pour les positions.
+     *
+     * @param vertexCount nombre de sommets du graphe
+     */
+    private void ensurePositionSlots(int vertexCount) {
+        int floats = Math.max(2, vertexCount * 2);
+        int bytes = floats * Float.BYTES;
+        ByteBuffer[] oldBytes = positionSlotBytes;
+        if (oldBytes.length == POSITION_SLOT_COUNT) {
+            boolean enough = true;
+            for (ByteBuffer buffer : oldBytes) {
+                enough &= buffer != null && buffer.capacity() >= bytes;
+            }
+            if (enough) {
+                return;
+            }
+        }
+
+        ByteBuffer[] byteSlots = new ByteBuffer[POSITION_SLOT_COUNT];
+        FloatBuffer[] floatSlots = new FloatBuffer[POSITION_SLOT_COUNT];
+        for (int i = 0; i < POSITION_SLOT_COUNT; i++) {
+            ByteBuffer buffer = ByteBuffer.allocateDirect(bytes).order(ByteOrder.nativeOrder());
+            byteSlots[i] = buffer;
+            floatSlots[i] = buffer.asFloatBuffer();
+        }
+        positionSlotBytes = byteSlots;
+        positionSlotFloats = floatSlots;
+        latestReadyPositionSlot.set(-1);
+        nextSimulationWriteSlot = 0;
+    }
+
+    /** Synchronise ponctuellement les objets Java pour les interactions et les stats. */
+    private void maybeSyncJavaVerticesFromSlot(int slot) {
+        long now = System.nanoTime();
+        if (now - lastJavaVertexSyncNanos < JAVA_VERTEX_SYNC_INTERVAL_NANOS) {
+            return;
+        }
+        lastJavaVertexSyncNanos = now;
+
+        Vertex[] vertices = verticesByNativeId;
+        FloatBuffer[] slots = positionSlotFloats;
+        if (vertices == null || slot < 0 || slot >= slots.length || slots[slot] == null) {
+            return;
+        }
+        syncJavaVerticesFromPositions(slots[slot], vertices, Math.min(vertices.length, renderPositionVertexCount.get()));
+    }
+
+    /** Synchronise ponctuellement les objets Java pour les interactions et les stats. */
+    private void syncJavaVerticesFromPositions(FloatBuffer positions, Vertex[] vertices, int count) {
+        FloatBuffer src = positions.duplicate();
+        src.position(0);
+        for (int i = 0; i < count; i++) {
+            Vertex v = vertices[i];
+            if (v == null) {
+                continue;
+            }
+            v.updatePosition(src.get(i * 2), src.get(i * 2 + 1));
+        }
     }
 
     public boolean isSimulationRunning() {
@@ -632,7 +823,11 @@ public final class GraphEngine {
             simulationTask = null;
         }
         long periodNanos = Math.max(1L, 1_000_000_000L / Math.max(1, simulationTicksPerSecond));
-        simulationTask = simulationExecutor.scheduleAtFixedRate(this::simulateStep, 0, periodNanos,
+        // scheduleWithFixedDelay évite l'effet de rattrapage : si une itération C
+        // prend plus que la période cible, on ne lance pas immédiatement une rafale
+        // de ticks en retard. Cela réduit la pression sur le CPU et sur les uploads
+        // de positions quand le graphe devient très grand.
+        simulationTask = simulationExecutor.scheduleWithFixedDelay(this::simulateStep, 0, periodNanos,
                 TimeUnit.NANOSECONDS);
     }
 
@@ -692,6 +887,7 @@ public final class GraphEngine {
         Vertex v = vertexByNativeId(index);
         if (v != null) {
             v.updatePosition(x, y);
+            updatePublishedSinglePosition(index, (float) x, (float) y);
             notifyDataChanged();
         }
     }
@@ -720,6 +916,34 @@ public final class GraphEngine {
 
         rebuildModelFromNative();
         notifyDataChanged();
+    }
+
+    /**
+     * Met à jour la position publiée lors d'un déplacement manuel de sommet.
+     *
+     * <p>Le déplacement manuel est rare par rapport aux ticks de simulation. On
+     * écrit donc la nouvelle position dans tous les slots afin que le renderer ne
+     * puisse pas réafficher une ancienne coordonnée si le slot courant change juste
+     * après l'interaction.</p>
+     */
+    private void updatePublishedSinglePosition(int index, float x, float y) {
+        if (index < 0) {
+            return;
+        }
+        FloatBuffer[] slots = positionSlotFloats;
+        int offset = index * 2;
+        boolean updated = false;
+        for (FloatBuffer slot : slots) {
+            if (slot == null || offset + 1 >= slot.capacity()) {
+                continue;
+            }
+            slot.put(offset, x);
+            slot.put(offset + 1, y);
+            updated = true;
+        }
+        if (updated) {
+            markRenderPositionsDirty();
+        }
     }
 
     private Vertex vertexByNativeId(int index) {

@@ -1,57 +1,26 @@
 package com.mongraphe.graphui.rendering;
 
-import com.jogamp.opengl.GL4;
-
 import java.nio.FloatBuffer;
+import java.util.HashMap;
+import java.util.Map;
+
+import static org.lwjgl.opengl.GL20.*;
 
 /**
- * Représente un programme de shader OpenGL.
+ * Programme shader OpenGL manipulé directement via LWJGL.
  *
- * <p>
- * Cette classe encapsule la création, la compilation et l'utilisation
- * d'un programme de shaders OpenGL dans l'environnement JOGL.
- * Un programme de shader est constitué généralement d'un shader
- * de sommet (vertex shader) et d'un shader de fragment (fragment shader).
- * </p>
- *
- * <p>
- * Elle fournit des méthodes utilitaires permettant :
- * </p>
- *
- * <ul>
- * <li>de compiler les shaders GLSL</li>
- * <li>de lier les shaders dans un programme GPU</li>
- * <li>d'activer le programme dans le pipeline OpenGL</li>
- * <li>d'envoyer des uniforms (ex: matrices)</li>
- * <li>de libérer les ressources GPU associées</li>
- * </ul>
- *
- * <h2>Cycle de vie typique</h2>
- *
- * <pre>
- * GLShaderProgram program =
- *      GLShaderProgram.createShaderProgram(gl, vertexSrc, fragmentSrc);
- *
- * program.use(gl);
- * program.setMat4(gl, "uProjection", matrixBuffer);
- *
- * ...
- *
- * program.delete(gl);
- * </pre>
- *
- * <p>
- * Les erreurs de compilation ou de liaison sont détectées et provoquent
- * une {@link RuntimeException} contenant le log GLSL généré par OpenGL.
- * </p>
+ * <p>La classe encapsule la compilation, l'édition des uniformes et la
+ * destruction du programme. Les emplacements d'uniformes sont mis en cache afin
+ * d'éviter des appels répétés à {@code glGetUniformLocation} pendant la boucle
+ * de rendu.</p>
  */
-public class GLShaderProgram {
+public final class GLShaderProgram {
 
-    /** Identifiant OpenGL du programme shader. */
     private final int programId;
+    private final Map<String, Integer> uniformLocationCache = new HashMap<>();
 
     /**
-     * Construit un objet représentant un programme shader déjà créé.
+     * Construit un wrapper autour d'un programme OpenGL déjà lié.
      *
      * @param programId identifiant OpenGL du programme
      */
@@ -60,141 +29,176 @@ public class GLShaderProgram {
     }
 
     /**
-     * Compile les shaders GLSL et crée un programme shader OpenGL.
+     * Compile deux shaders GLSL et les lie dans un programme OpenGL.
      *
-     * <p>
-     * La méthode effectue les étapes suivantes :
-     * </p>
-     *
-     * <ol>
-     * <li>création des shaders vertex et fragment</li>
-     * <li>chargement du code source GLSL</li>
-     * <li>compilation des shaders</li>
-     * <li>vérification des erreurs de compilation</li>
-     * <li>création du programme OpenGL</li>
-     * <li>attachement des shaders</li>
-     * <li>édition des liens (link)</li>
-     * <li>vérification des erreurs de liaison</li>
-     * <li>suppression des shaders intermédiaires</li>
-     * </ol>
-     *
-     * @param gl          contexte OpenGL actif
-     * @param vertexSrc   code source GLSL du vertex shader
-     * @param fragmentSrc code source GLSL du fragment shader
+     * @param vertexSrc source GLSL du vertex shader
+     * @param fragmentSrc source GLSL du fragment shader
      * @return programme shader prêt à être utilisé
-     *
-     * @throws RuntimeException si la compilation ou la liaison échoue
      */
-    public static GLShaderProgram createShaderProgram(GL4 gl, String vertexSrc, String fragmentSrc) {
+    public static GLShaderProgram createShaderProgram(String vertexSrc, String fragmentSrc) {
+        int vertexShader = compileShader(GL_VERTEX_SHADER, vertexSrc, "Vertex");
+        int fragmentShader = compileShader(GL_FRAGMENT_SHADER, fragmentSrc, "Fragment");
 
-        int vertexShader = gl.glCreateShader(GL4.GL_VERTEX_SHADER);
-        int fragmentShader = gl.glCreateShader(GL4.GL_FRAGMENT_SHADER);
+        int program = glCreateProgram();
+        glAttachShader(program, vertexShader);
+        glAttachShader(program, fragmentShader);
+        glLinkProgram(program);
 
-        // Charger le code source
-        gl.glShaderSource(vertexShader, 1, new String[] { vertexSrc }, null);
-        gl.glShaderSource(fragmentShader, 1, new String[] { fragmentSrc }, null);
-
-        // Compiler les shaders
-        gl.glCompileShader(vertexShader);
-        gl.glCompileShader(fragmentShader);
-
-        // Vérifier compilation vertex
-        int[] compiled = new int[1];
-        gl.glGetShaderiv(vertexShader, GL4.GL_COMPILE_STATUS, compiled, 0);
-        if (compiled[0] == 0) {
-            byte[] info = new byte[1024];
-            gl.glGetShaderInfoLog(vertexShader, info.length, null, 0, info, 0);
-            throw new RuntimeException("Vertex shader compilation failed: " + new String(info));
+        if (glGetProgrami(program, GL_LINK_STATUS) == 0) {
+            String info = glGetProgramInfoLog(program);
+            glDeleteShader(vertexShader);
+            glDeleteShader(fragmentShader);
+            glDeleteProgram(program);
+            throw new RuntimeException("Shader program linking failed: " + info);
         }
 
-        // Vérifier compilation fragment
-        gl.glGetShaderiv(fragmentShader, GL4.GL_COMPILE_STATUS, compiled, 0);
-        if (compiled[0] == 0) {
-            byte[] info = new byte[1024];
-            gl.glGetShaderInfoLog(fragmentShader, info.length, null, 0, info, 0);
-            throw new RuntimeException("Fragment shader compilation failed: " + new String(info));
-        }
-
-        // Créer le programme
-        int program = gl.glCreateProgram();
-        gl.glAttachShader(program, vertexShader);
-        gl.glAttachShader(program, fragmentShader);
-        gl.glLinkProgram(program);
-
-        // Vérifier le lien
-        int[] linked = new int[1];
-        gl.glGetProgramiv(program, GL4.GL_LINK_STATUS, linked, 0);
-        if (linked[0] == 0) {
-            byte[] info = new byte[1024];
-            gl.glGetProgramInfoLog(program, info.length, null, 0, info, 0);
-            throw new RuntimeException("Shader program linking failed: " + new String(info));
-        }
-
-        // Supprimer les shaders attachés après le lien
-        gl.glDeleteShader(vertexShader);
-        gl.glDeleteShader(fragmentShader);
+        glDetachShader(program, vertexShader);
+        glDetachShader(program, fragmentShader);
+        glDeleteShader(vertexShader);
+        glDeleteShader(fragmentShader);
 
         return new GLShaderProgram(program);
     }
 
     /**
-     * Active ce programme shader dans le pipeline OpenGL.
+     * Compile un vertex shader, un geometry shader et un fragment shader.
      *
-     * <p>
-     * Une fois activé, toutes les opérations de rendu suivantes
-     * utiliseront ce programme shader jusqu'à ce qu'un autre programme
-     * soit activé.
-     * </p>
-     *
-     * @param gl contexte OpenGL actif
+     * @param vertexSrc source du vertex shader
+     * @param geometrySrc source du geometry shader
+     * @param fragmentSrc source du fragment shader
+     * @return programme shader prêt à être utilisé
      */
-    public void use(GL4 gl) {
-        gl.glUseProgram(programId);
+    public static GLShaderProgram createShaderProgram(String vertexSrc, String geometrySrc, String fragmentSrc) {
+        int vertexShader = compileShader(GL_VERTEX_SHADER, vertexSrc, "Vertex");
+        int geometryShader = compileShader(org.lwjgl.opengl.GL32.GL_GEOMETRY_SHADER, geometrySrc, "Geometry");
+        int fragmentShader = compileShader(GL_FRAGMENT_SHADER, fragmentSrc, "Fragment");
+
+        int program = glCreateProgram();
+        glAttachShader(program, vertexShader);
+        glAttachShader(program, geometryShader);
+        glAttachShader(program, fragmentShader);
+        glLinkProgram(program);
+
+        if (glGetProgrami(program, GL_LINK_STATUS) == 0) {
+            String info = glGetProgramInfoLog(program);
+            glDeleteShader(vertexShader);
+            glDeleteShader(geometryShader);
+            glDeleteShader(fragmentShader);
+            glDeleteProgram(program);
+            throw new RuntimeException("Shader program linking failed: " + info);
+        }
+
+        glDetachShader(program, vertexShader);
+        glDetachShader(program, geometryShader);
+        glDetachShader(program, fragmentShader);
+        glDeleteShader(vertexShader);
+        glDeleteShader(geometryShader);
+        glDeleteShader(fragmentShader);
+        return new GLShaderProgram(program);
+    }
+
+    private static int compileShader(int type, String source, String label) {
+        int shader = glCreateShader(type);
+        glShaderSource(shader, source);
+        glCompileShader(shader);
+        if (glGetShaderi(shader, GL_COMPILE_STATUS) == 0) {
+            String info = glGetShaderInfoLog(shader);
+            glDeleteShader(shader);
+            throw new RuntimeException(label + " shader compilation failed: " + info);
+        }
+        return shader;
+    }
+    /** Active ce programme pour les appels de rendu suivants. */
+    public void use() {
+        glUseProgram(programId);
     }
 
     /**
-     * Retourne l'identifiant OpenGL du programme shader.
+     * Retourne l'identifiant OpenGL brut du programme.
      *
-     * @return identifiant GPU du programme
+     * @return identifiant du programme
      */
     public int id() {
         return programId;
     }
 
     /**
-     * Envoie une matrice 4x4 vers une variable uniforme du shader.
+     * Écrit une matrice 4x4 dans un uniforme GLSL.
      *
-     * <p>
-     * Cette méthode est généralement utilisée pour transmettre
-     * des matrices de transformation telles que :
-     * </p>
-     *
-     * <ul>
-     * <li>matrice modèle</li>
-     * <li>matrice vue</li>
-     * <li>matrice projection</li>
-     * </ul>
-     *
-     * @param gl     contexte OpenGL actif
-     * @param name   nom de la variable uniforme dans le shader GLSL
-     * @param matrix buffer contenant les 16 valeurs de la matrice
+     * @param name nom de l'uniforme
+     * @param matrix matrice column-major stockée dans un {@link FloatBuffer}
      */
-    public void setMat4(GL4 gl, String name, FloatBuffer matrix) {
-        int loc = gl.glGetUniformLocation(programId, name);
-        gl.glUniformMatrix4fv(loc, 1, false, matrix);
+    public void setMat4(String name, FloatBuffer matrix) {
+        int loc = uniformLocation(name);
+        if (loc >= 0) {
+            FloatBuffer copy = matrix.duplicate();
+            copy.rewind();
+            glUniformMatrix4fv(loc, false, copy);
+        }
     }
 
     /**
-     * Libère les ressources GPU associées au programme shader.
+     * Écrit un vecteur 2D dans un uniforme GLSL.
      *
-     * <p>
-     * Cette méthode doit être appelée lorsque le programme
-     * n'est plus utilisé afin d'éviter les fuites mémoire GPU.
-     * </p>
-     *
-     * @param gl contexte OpenGL actif
+     * @param name nom de l'uniforme
+     * @param x première composante
+     * @param y seconde composante
      */
-    public void delete(GL4 gl) {
-        gl.glDeleteProgram(programId);
+    public void setVec2(String name, float x, float y) {
+        int loc = uniformLocation(name);
+        if (loc >= 0) {
+            glUniform2f(loc, x, y);
+        }
+    }
+
+    /**
+     * Écrit un entier dans un uniforme GLSL.
+     *
+     *  name nom de l.uniforme
+     *  value valeur entière à écrire
+     */
+    public void setInt(String name, int value) {
+        int loc = uniformLocation(name);
+        if (loc >= 0) {
+            glUniform1i(loc, value);
+        }
+    }
+
+
+    /**
+     * Écrit un flottant dans un uniforme GLSL.
+     *
+     * @param name nom de l'uniforme
+     * @param value valeur à écrire
+     */
+    public void setFloat(String name, float value) {
+        int loc = uniformLocation(name);
+        if (loc >= 0) {
+            glUniform1f(loc, value);
+        }
+    }
+
+    /**
+     * Retourne l'emplacement d'un uniforme en utilisant un cache local.
+     *
+     * @param name nom de l'uniforme GLSL
+     * @return emplacement OpenGL, ou {@code -1} si l'uniforme est absent
+     */
+    private int uniformLocation(String name) {
+        Integer cached = uniformLocationCache.get(name);
+        if (cached != null) {
+            return cached;
+        }
+        int loc = glGetUniformLocation(programId, name);
+        uniformLocationCache.put(name, loc);
+        return loc;
+    }
+
+    /** Libère le programme shader côté GPU. */
+    public void delete() {
+        if (programId != 0) {
+            glDeleteProgram(programId);
+        }
+        uniformLocationCache.clear();
     }
 }

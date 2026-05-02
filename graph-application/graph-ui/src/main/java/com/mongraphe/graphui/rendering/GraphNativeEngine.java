@@ -171,7 +171,7 @@ public final class GraphNativeEngine {
 
         sharedPositionsBuffer = ByteBuffer.allocateDirect(byteCount);
 
-        // Important : aligner l'ordre des octets sur celui du processeur (Little/Big
+        // Aligner l'ordre des octets sur celui du processeur (Little/Big
         // Endian)
         sharedPositionsBuffer.order(ByteOrder.nativeOrder());
         sharedBufferCapacity = floatCount;
@@ -346,10 +346,11 @@ public final class GraphNativeEngine {
 
         candidates.add(cwd.resolve("../graph-native/out/lib" + LIB_BASENAME + ext));
         candidates.add(cwd.resolve("graph-native/out/lib" + LIB_BASENAME + ext));
-        candidates.add(cwd.resolve("../graph-native/out/linux/lib" + LIB_BASENAME + ext));
-        candidates.add(cwd.resolve("graph-native/out/linux/lib" + LIB_BASENAME + ext));
+        String osDir = nativeOsDirectory();
+        candidates.add(cwd.resolve("../graph-native/out/" + osDir + "/lib" + LIB_BASENAME + ext));
+        candidates.add(cwd.resolve("graph-native/out/" + osDir + "/lib" + LIB_BASENAME + ext));
         candidates.add(cwd.resolve("out/lib" + LIB_BASENAME + ext));
-        candidates.add(cwd.resolve("out/linux/lib" + LIB_BASENAME + ext));
+        candidates.add(cwd.resolve("out/" + osDir + "/lib" + LIB_BASENAME + ext));
 
         String libraryPath = System.getProperty("java.library.path", "");
         if (!libraryPath.isBlank()) {
@@ -371,6 +372,19 @@ public final class GraphNativeEngine {
             return;
         }
         candidates.add(Paths.get(rawPath.trim()));
+    }
+
+
+    /** Nom du sous-dossier produit par le Makefile natif pour l'OS courant. */
+    private static String nativeOsDirectory() {
+        String os = System.getProperty("os.name", "").toLowerCase(Locale.ROOT);
+        if (os.contains("win")) {
+            return "win32";
+        }
+        if (os.contains("mac") || os.contains("darwin")) {
+            return "darwin";
+        }
+        return "linux";
     }
 
     /** Identifie l'extension de fichier selon l'OS. */

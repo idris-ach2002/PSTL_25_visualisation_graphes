@@ -13,7 +13,7 @@ import com.mongraphe.graphui.rendering.GraphEngine;
 import com.mongraphe.graphui.rendering.GraphRenderOptions;
 import com.mongraphe.graphui.rendering.GraphRenderer;
 
-import javafx.embed.swing.SwingNode;
+import javafx.scene.Node;
 import javafx.fxml.FXML;
 import javafx.scene.control.Alert;
 import javafx.scene.control.CheckBox;
@@ -147,12 +147,12 @@ public class PreviewController implements CommandBusLinkedI<GraphEngine> {
     }
 
     /**
-     * Intègre le composant d'affichage Swing (contenant le graphe) dans l'interface
+     * Intègre le composant d'affichage JavaFX/OpenGLFX dans l'interface
      * JavaFX.
      *
-     * @param panel Le {@link SwingNode} encapsulant le canvas de rendu du graphe.
+     * @param panel le nœud JavaFX encapsulant le canvas de rendu du graphe.
      */
-    public void setGraphPanel(SwingNode panel) {
+    public void setGraphPanel(Node panel) {
         if (graphContainer != null) {
             graphContainer.setCenter(panel);
         }

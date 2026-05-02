@@ -1,118 +1,195 @@
 package com.mongraphe.graphui.view;
 
-import javax.swing.SwingUtilities;
+import java.io.File;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
 
-import javafx.application.Platform;
-
-import com.jogamp.opengl.GLCapabilities;
-import com.jogamp.opengl.GLProfile;
-import com.jogamp.opengl.awt.GLJPanel;
-import com.jogamp.opengl.util.FPSAnimator;
+import com.huskerdev.grapl.gl.GLProfile;
+import com.huskerdev.openglfx.canvas.GLCanvas;
+import com.huskerdev.openglfx.lwjgl.LWJGLExecutor;
+import com.mongraphe.graphui.export.OpenGLFXPngExporter;
 import com.mongraphe.graphui.export.OpenGLGraphImageExporter;
 import com.mongraphe.graphui.interaction.InteractionService;
-import com.mongraphe.graphui.interaction.SwingInputHandler;
+import com.mongraphe.graphui.interaction.JavaFxInputHandler;
 import com.mongraphe.graphui.interfaces.GraphImageExporter;
 import com.mongraphe.graphui.rendering.GraphRenderer;
 
-import javafx.embed.swing.SwingNode;
-import javafx.scene.layout.Region;
+import javafx.animation.AnimationTimer;
+import javafx.application.Platform;
+import javafx.scene.Node;
+import javafx.scene.layout.StackPane;
 
 /**
- * Composant de rendu principal du graphe.
+ * Surface JavaFX/OpenGLFX basée sur LWJGL, sans JogAmp ni Swing/AWT.
  *
- * <p>
- * {@code GraphPanel} encapsule une surface OpenGL (JOGL {@link GLJPanel})
- * intégrée dans JavaFX via {@link SwingNode}.
+ * <p>Cette version évite un thread Java supplémentaire pour planifier les
+ * repaint. Un seul {@link AnimationTimer}, exécuté sur le pulse JavaFX, vérifie
+ * s'il existe une nouvelle version de données, de positions ou un export PNG en
+ * attente. Si rien n'a changé, aucun {@code GLCanvas.repaint()} n'est demandé.</p>
  *
- * <p>
- * Responsabilités :
- * <ul>
- * <li>rendu du graphe via {@link GraphRenderer}</li>
- * <li>gestion du pipeline OpenGL (GL4)</li>
- * <li>animation via {@link FPSAnimator}</li>
- * <li>gestion des interactions utilisateur (souris, clavier)</li>
- * <li>export d’image du rendu OpenGL</li>
- * </ul>
- *
- * <p>
- * Architecture hybride :
- * <ul>
- * <li>JavaFX pour l’UI globale</li>
- * <li>SwingNode comme pont d’intégration</li>
- * <li>JOGL pour le rendu GPU</li>
- * </ul>
+ * <p>Le but est de réduire l'overhead observé dans les profils sous
+ * {@code RenderJob}, {@code Platform.runLater}, {@code GLCanvas.fireRenderEvent}
+ * et dans les chemins natifs GTK/Prism. La simulation peut publier beaucoup plus
+ * vite que l'écran, le panel ne garde que la dernière version disponible.</p>
  */
 public final class GraphPanel {
 
-    /** Surface de rendu OpenGL JOGL. */
-    private final GLJPanel glPanel;
+    private static final long TARGET_FRAME_PERIOD_NANOS = 1_000_000_000L / 60L;
 
-    /** Pont d’intégration Swing → JavaFX. */
-    private final SwingNode swingNode;
-
-    /** Contrôleur d’animation FPS (boucle de rendu). */
-    private final FPSAnimator animator;
-
-    /** Renderer OpenGL responsable du dessin du graphe. */
+    private final GLCanvas canvas;
+    private final StackPane container;
     private final GraphRenderer renderer;
-
-    /** Gestionnaire d'entrée Swing conservé pour le retrait propre. */
-    private final SwingInputHandler inputHandler;
+    private final JavaFxInputHandler inputHandler;
+    private final AtomicReference<PendingPngExport> pendingPngExport = new AtomicReference<>();
+    private final AtomicBoolean explicitFrameRequested = new AtomicBoolean(false);
 
     private volatile boolean disposed = false;
+    private volatile boolean renderingEnabled = false;
+    private volatile long lastRequestedRenderVersion = Long.MIN_VALUE;
+    private volatile long lastRequestedPositionVersion = Long.MIN_VALUE;
+
+    private final AnimationTimer renderTimer = new AnimationTimer() {
+        private long lastFrameNanos = 0L;
+
+        @Override
+        public void handle(long now) {
+            if (disposed || !renderingEnabled) {
+                return;
+            }
+            if (now - lastFrameNanos < TARGET_FRAME_PERIOD_NANOS) {
+                return;
+            }
+            if (shouldRepaint()) {
+                lastFrameNanos = now;
+                canvas.repaint();
+            }
+        }
+    };
 
     /**
-     * Construit un panneau de rendu graphique du graphe.
+     * Construit le panel OpenGLFX.
      *
-     * @param renderer    moteur de rendu OpenGL du graphe
-     * @param interaction service de gestion des interactions utilisateur
+     * @param renderer renderer LWJGL chargé de dessiner le graphe
+     * @param interaction service d'interaction souris/clavier à connecter au canvas
      */
     public GraphPanel(GraphRenderer renderer, InteractionService interaction) {
         this.renderer = renderer;
+        this.canvas = createCanvas();
+        this.container = createContainer(canvas);
+        this.inputHandler = new JavaFxInputHandler(interaction, this::requestFrame);
 
-        GLProfile profile = GLProfile.get(GLProfile.GL4);
-        GLCapabilities caps = new GLCapabilities(profile);
-
-        glPanel = new GLJPanel(caps);
-        glPanel.addGLEventListener(renderer);
-
-        inputHandler = new SwingInputHandler(interaction);
-        glPanel.addMouseListener(inputHandler);
-        glPanel.addMouseMotionListener(inputHandler);
-        glPanel.addMouseWheelListener(inputHandler);
-        glPanel.addKeyListener(inputHandler);
-
-        glPanel.setFocusable(true);
-
-        animator = new FPSAnimator(glPanel, 60, true);
-
-        swingNode = new SwingNode();
-        createAndSetSwingContent();
+        configureCanvasEvents();
+        configureInitialPaintHooks();
+        inputHandler.attach(canvas);
     }
 
     /**
-     * Initialise le contenu Swing dans le thread EDT.
+     * Crée le canvas OpenGLFX en mode LWJGL/Core Profile.
      *
-     * <p>
-     * Nécessaire pour respecter les contraintes Swing (thread UI unique).
+     * @return canvas OpenGLFX prêt à être intégré dans JavaFX
      */
-    private void createAndSetSwingContent() {
-        SwingUtilities.invokeLater(() -> {
-            if (!disposed) {
-                swingNode.setContent(glPanel);
+    private GLCanvas createCanvas() {
+        GLCanvas.Builder.ContextDescription.New context = new GLCanvas.Builder.ContextDescription.New()
+                .setProfile(GLProfile.CORE)
+                .setMajorVersion(4)
+                .setMinorVersion(1);
+
+        return new GLCanvas.Builder()
+                .setExecutor(LWJGLExecutor.LWJGL_MODULE)
+                .setContextDescription(context)
+                .setMSAA(0)
+                .setFps(0.0)
+                .setSwapBuffers(1)
+                .build();
+    }
+
+    /**
+     * Crée le conteneur JavaFX stable autour du canvas.
+     *
+     * @param canvas canvas OpenGLFX
+     * @return conteneur exposé aux contrôleurs FXML
+     */
+    private StackPane createContainer(GLCanvas canvas) {
+        StackPane pane = new StackPane(canvas);
+        pane.setStyle("-fx-background-color: white;");
+        pane.setMinSize(0, 0);
+        pane.setMaxSize(Double.MAX_VALUE, Double.MAX_VALUE);
+        pane.setPickOnBounds(true);
+        pane.setVisible(true);
+        pane.setOpacity(1.0);
+
+        canvas.setStyle("-fx-background-color: white;");
+        canvas.setMinSize(0, 0);
+        canvas.setMaxSize(Double.MAX_VALUE, Double.MAX_VALUE);
+        canvas.setFocusTraversable(true);
+        canvas.prefWidthProperty().bind(pane.widthProperty());
+        canvas.prefHeightProperty().bind(pane.heightProperty());
+
+        pane.widthProperty().addListener((obs, oldValue, newValue) -> requestFrame());
+        pane.heightProperty().addListener((obs, oldValue, newValue) -> requestFrame());
+        return pane;
+    }
+
+    /** Configure les callbacks OpenGLFX exécutés sur le thread de rendu OpenGL. */
+    private void configureCanvasEvents() {
+        canvas.addOnInitEvent(event -> renderer.init());
+
+        canvas.addOnReshapeEvent(event -> {
+            int w = Math.max(1, canvas.getScaledWidth());
+            int h = Math.max(1, canvas.getScaledHeight());
+            renderer.reshape(w, h);
+            requestFrame();
+        });
+
+        canvas.addOnRenderEvent(event -> {
+            int w = Math.max(1, canvas.getScaledWidth());
+            int h = Math.max(1, canvas.getScaledHeight());
+            renderer.reshape(w, h);
+            renderer.display();
+
+            PendingPngExport export = pendingPngExport.getAndSet(null);
+            if (export != null) {
+                export.run(renderer);
+            }
+        });
+
+        canvas.addOnDisposeEvent(event -> renderer.dispose());
+    }
+
+    /** Demande quelques frames au moment où la surface devient visible. */
+    private void configureInitialPaintHooks() {
+        canvas.sceneProperty().addListener((obs, oldScene, newScene) -> {
+            if (newScene == null) {
+                return;
+            }
+            requestFrame();
+            Platform.runLater(this::requestFrame);
+            newScene.windowProperty().addListener((wObs, oldWindow, newWindow) -> {
+                if (newWindow != null) {
+                    newWindow.showingProperty().addListener((sObs, wasShowing, isShowing) -> {
+                        if (isShowing) {
+                            requestFrame();
+                            Platform.runLater(this::requestFrame);
+                        }
+                    });
+                }
+            });
+        });
+        canvas.visibleProperty().addListener((obs, wasVisible, isVisible) -> {
+            if (isVisible) {
+                requestFrame();
             }
         });
     }
 
-    /**
-     * Crée un exporteur d’image du graphe basé sur OpenGL.
-     *
-     * @return exporteur capable de capturer le rendu courant
-     */
+    /** Détache le contenu du parent JavaFX courant. */
     public void detachContent() {
         Runnable detach = () -> {
             try {
-                swingNode.setContent(null);
+                if (container.getParent() instanceof javafx.scene.layout.Pane pane) {
+                    pane.getChildren().remove(container);
+                }
             } catch (Exception ignored) {
             }
         };
@@ -124,149 +201,230 @@ public final class GraphPanel {
         }
     }
 
-    private void requestAnimatorStopAsync() {
-        if (!animator.isStarted())
-            return;
-
-        Thread stopThread = new Thread(() -> {
-            try {
-                if (animator.isAnimating()) {
-                    animator.pause();
-                }
-            } catch (Exception ignored) {
-            }
-
-            try {
-                animator.stop();
-            } catch (Exception ignored) {
-            }
-        }, "graphpanel-animator-stop");
-
-        stopThread.setDaemon(true);
-        stopThread.start();
-    }
-
+    /** @return exporteur PNG lié à cette surface OpenGLFX. */
     public GraphImageExporter createExporter() {
-        return new OpenGLGraphImageExporter(glPanel, renderer);
+        return new OpenGLGraphImageExporter(this);
     }
 
-    /**
-     * Retourne le nœud JavaFX contenant le canvas OpenGL.
-     *
-     * @return SwingNode encapsulant le GLJPanel
-     */
-    public SwingNode canvas() {
-        return swingNode;
+    /** @return nœud JavaFX à insérer dans le FXML. */
+    public Node canvas() {
+        return container;
     }
 
-    /**
-     * Retourne le renderer OpenGL utilisé pour le graphe.
-     *
-     * @return instance du renderer
-     */
+    /** @return renderer associé au panel. */
     public GraphRenderer renderer() {
         return renderer;
     }
 
     /**
-     * Démarre la boucle de rendu (animation OpenGL).
+     * Démarre le scheduler de rendu borné à 60 Hz.
      *
-     * <p>
-     * Si l’animation est déjà en pause, elle est reprise.
+     * La surface reste visible pendant le changement d'onglet. Le micro-lag est
+     * évité en forçant quelques repaints après le démarrage et les changements de
+     * taille, sans masquer le canvas par opacité nulle.
      */
     public void start() {
-        if (!animator.isStarted()) {
-            animator.start();
-        } else if (animator.isPaused()) {
-            animator.resume();
-        }
-    }
-
-    /**
-     * Arrête la boucle de rendu.
-     */
-    public void stop() {
-        requestAnimatorStopAsync();
-    }
-
-    /**
-     * Met en pause la boucle de rendu.
-     */
-    public void pause() {
-        try {
-            if (animator.isStarted()) {
-                animator.pause();
-            }
-        } catch (Exception ignored) {
-        }
-    }
-
-    /**
-     * Libère les ressources OpenGL et Swing associées au panneau.
-     *
-     * <p>
-     * Actions :
-     * <ul>
-     * <li>arrêt de l’animator</li>
-     * <li>désenregistrement du renderer OpenGL</li>
-     * </ul>
-     *
-     * <p>
-     * Les exceptions sont ignorées volontairement pour éviter les crashes
-     * lors de la fermeture UI.
-     */
-    public void dispose() {
-        if (disposed)
+        if (disposed) {
             return;
-        disposed = true;
-
-        requestAnimatorStopAsync();
-
-        SwingUtilities.invokeLater(() -> {
-            try {
-                glPanel.removeMouseListener(inputHandler);
-                glPanel.removeMouseMotionListener(inputHandler);
-                glPanel.removeMouseWheelListener(inputHandler);
-                glPanel.removeKeyListener(inputHandler);
-            } catch (Exception ignored) {
-            }
-
-            try {
-                glPanel.removeGLEventListener(renderer);
-            } catch (Exception ignored) {
-            }
-
-            try {
-                glPanel.setFocusable(false);
-                glPanel.setEnabled(false);
-                glPanel.setVisible(false);
-            } catch (Exception ignored) {
+        }
+        renderingEnabled = true;
+        container.setVisible(true);
+        container.setOpacity(1.0);
+        lastRequestedRenderVersion = Long.MIN_VALUE;
+        lastRequestedPositionVersion = Long.MIN_VALUE;
+        canvas.setFps(0.0);
+        renderTimer.start();
+        requestFrame();
+        Platform.runLater(() -> {
+            if (!disposed && renderingEnabled) {
+                requestFrame();
+                canvas.repaint();
             }
         });
     }
 
+    /** Arrête le scheduler de rendu sans détruire les ressources OpenGL. */
+    public void stop() {
+        renderingEnabled = false;
+        renderTimer.stop();
+        if (!disposed) {
+            canvas.setFps(0.0);
+        }
+    }
+
+    /** Alias utilisé par les contrôleurs pour suspendre le rendu. */
+    public void pause() {
+        stop();
+    }
+
     /**
-     * Redimensionne la surface de rendu.
+     * Indique si une frame doit être demandée à OpenGLFX.
      *
-     * <p>
-     * Met à jour :
-     * <ul>
-     * <li>la taille du GLJPanel</li>
-     * <li>la taille du SwingNode parent (JavaFX Region)</li>
-     * </ul>
-     *
-     * @param w largeur en pixels
-     * @param h hauteur en pixels
+     * @return {@code true} si les données, les positions, une interaction ou un
+     *         export nécessitent une nouvelle frame
      */
-    public void resize(int w, int h) {
-        if (w <= 0 || h <= 0)
+    private boolean shouldRepaint() {
+        if (pendingPngExport.get() != null || explicitFrameRequested.getAndSet(false)) {
+            updateRequestedVersions();
+            return true;
+        }
+
+        long renderVersion = rendererVersion();
+        long positionVersion = rendererPositionVersion();
+        if (renderVersion == lastRequestedRenderVersion && positionVersion == lastRequestedPositionVersion) {
+            return false;
+        }
+        lastRequestedRenderVersion = renderVersion;
+        lastRequestedPositionVersion = positionVersion;
+        return true;
+    }
+
+    private void updateRequestedVersions() {
+        lastRequestedRenderVersion = rendererVersion();
+        lastRequestedPositionVersion = rendererPositionVersion();
+    }
+
+    private long rendererVersion() {
+        return renderer.engineForScheduling().renderDataVersion();
+    }
+
+    private long rendererPositionVersion() {
+        return renderer.engineForScheduling().renderPositionVersion();
+    }
+
+    /** Demande une frame sans empiler de {@code Platform.runLater}. */
+    private void requestFrame() {
+        explicitFrameRequested.set(true);
+    }
+
+    /** Libère les ressources JavaFX et OpenGL associées au panel. */
+    public void dispose() {
+        if (disposed) {
             return;
+        }
+        disposed = true;
+        stop();
 
-        glPanel.setSize(w, h);
-        glPanel.repaint();
+        Runnable disposeAction = () -> {
+            try {
+                inputHandler.detach(canvas);
+            } catch (Exception ignored) {
+            }
+            try {
+                canvas.dispose();
+            } catch (Exception ignored) {
+            }
+        };
 
-        if (swingNode.getParent() instanceof Region region) {
-            region.setPrefSize(w, h);
+        if (Platform.isFxApplicationThread()) {
+            disposeAction.run();
+        } else {
+            Platform.runLater(disposeAction);
+        }
+    }
+
+    /**
+     * Redimensionne la surface côté JavaFX.
+     *
+     * <p>Les propriétés {@code prefWidth}/{@code prefHeight} du canvas sont liées
+     * au conteneur. On ne les modifie donc jamais directement pour éviter
+     * l'exception JavaFX "bound value cannot be set".</p>
+     *
+     * @param width largeur demandée en pixels JavaFX
+     * @param height hauteur demandée en pixels JavaFX
+     */
+    public void resize(int width, int height) {
+        Runnable resizeAction = () -> {
+            int w = Math.max(1, width);
+            int h = Math.max(1, height);
+            container.setPrefSize(w, h);
+            container.resize(w, h);
+            requestFrame();
+            if (renderingEnabled && !disposed) {
+                canvas.repaint();
+            }
+        };
+
+        if (Platform.isFxApplicationThread()) {
+            resizeAction.run();
+        } else {
+            Platform.runLater(resizeAction);
+        }
+    }
+
+
+    /**
+     * Variante historique conservée pour {@link OpenGLGraphImageExporter}.
+     *
+     * @param file fichier de sortie
+     * @param width largeur exportée
+     * @param height hauteur exportée
+     */
+    public void exportPngSync(File file, int width, int height) {
+        exportPng(file, width, height);
+    }
+
+    /**
+     * Planifie un export PNG. L'export est exécuté dans le callback de rendu afin
+     * de disposer d'un contexte OpenGL courant.
+     *
+     * @param file fichier de sortie
+     * @param width largeur exportée
+     * @param height hauteur exportée
+     * @return {@code true} si la demande est acceptée. Depuis le thread JavaFX,
+     *         l'écriture est exécutée au prochain callback OpenGL pour ne pas
+     *         bloquer le pulse de l'interface.
+     */
+    public boolean exportPng(File file, int width, int height) {
+        if (file == null || width <= 0 || height <= 0 || disposed) {
+            return false;
+        }
+
+        CountDownLatch latch = new CountDownLatch(1);
+        AtomicBoolean ok = new AtomicBoolean(false);
+        pendingPngExport.set(new PendingPngExport(file, width, height, ok, latch));
+        requestFrame();
+
+        if (Platform.isFxApplicationThread()) {
+            canvas.repaint();
+            return true;
+        }
+
+        Platform.runLater(canvas::repaint);
+        try {
+            latch.await();
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            return false;
+        }
+        return ok.get();
+    }
+
+    /** Requête d'export PNG exécutée lorsque le contexte OpenGL est courant. */
+    private static final class PendingPngExport {
+        private final File file;
+        private final int width;
+        private final int height;
+        private final AtomicBoolean ok;
+        private final CountDownLatch latch;
+
+        PendingPngExport(File file, int width, int height, AtomicBoolean ok, CountDownLatch latch) {
+            this.file = file;
+            this.width = width;
+            this.height = height;
+            this.ok = ok;
+            this.latch = latch;
+        }
+
+        void run(GraphRenderer renderer) {
+            try {
+                new OpenGLFXPngExporter().export(renderer, file, width, height);
+                ok.set(true);
+            } catch (Exception ignored) {
+                ok.set(false);
+            } finally {
+                latch.countDown();
+            }
         }
     }
 }

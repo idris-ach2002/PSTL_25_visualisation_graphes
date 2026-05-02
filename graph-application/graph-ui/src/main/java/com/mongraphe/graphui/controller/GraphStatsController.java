@@ -51,6 +51,15 @@ public class GraphStatsController implements GraphEngine.GraphDataListener, Comm
 
     private volatile boolean disposed = false;
 
+    /** Evite d'empiler des rafraîchissements de stats dans la file JavaFX. */
+    private final java.util.concurrent.atomic.AtomicBoolean refreshQueued = new java.util.concurrent.atomic.AtomicBoolean(false);
+
+    /** Dernier rafraîchissement effectif des labels de statistiques. */
+    private volatile long lastRefreshNanos = 0L;
+
+    /** Fréquence maximale de mise à jour UI des statistiques pendant les gros calculs. */
+    private static final long MIN_REFRESH_INTERVAL_NANOS = 250_000_000L;
+
     /**
      * Bus de commandes utilisé pour communiquer avec le moteur de graphe.
      */
@@ -139,13 +148,28 @@ public class GraphStatsController implements GraphEngine.GraphDataListener, Comm
      */
     @Override
     public void onGraphDataChanged() {
-        if (disposed)
+        if (disposed || !refreshQueued.compareAndSet(false, true)) {
             return;
+        }
         Platform.runLater(() -> {
-            if (!disposed) {
-                refreshStats();
+            try {
+                if (!disposed) {
+                    refreshStatsThrottled();
+                }
+            } finally {
+                refreshQueued.set(false);
             }
         });
+    }
+
+    /** Rafraîchit les stats au maximum quatre fois par seconde. */
+    private void refreshStatsThrottled() {
+        long now = System.nanoTime();
+        if (now - lastRefreshNanos < MIN_REFRESH_INTERVAL_NANOS) {
+            return;
+        }
+        lastRefreshNanos = now;
+        refreshStats();
     }
 
     /**

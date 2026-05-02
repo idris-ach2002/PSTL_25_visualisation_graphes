@@ -35,6 +35,11 @@ void toroidal_vector(Point *dir, Point p1, Point p2) {
     dir->y -= copysign(Ly, dir->y);
 }
 
+static inline void layout_vector(Point *dir, Point p1, Point p2) {
+  dir->x = p2.x - p1.x;
+  dir->y = p2.y - p1.y;
+}
+
 // Calculer la distance toroïdale entre deux points
 double toroidal_distance(Point p1, Point p2) {
   Point dir;
@@ -74,28 +79,9 @@ void random_point_in_center(int index) {
 }
 
 void translate_positions(double dx, double dy) {
-  double half_Lx = Lx / 2.0;
-  double half_Ly = Ly / 2.0;
   for (int i = 0; i < num_nodes; ++i) {
-    double x = vertices[i].x + dx;
-    double y = vertices[i].y + dy;
-    // Appliquer les conditions aux limites toroïdales
-
-    while (x < -half_Lx) {
-      x += Lx;
-    }
-    while (x > half_Lx) {
-      x -= Lx;
-    }
-    while (y < -half_Ly) {
-      y += Ly;
-    }
-    while (y > half_Ly) {
-      y -= Ly;
-    }
-
-    vertices[i].x = x;
-    vertices[i].y = y;
+    vertices[i].x += dx;
+    vertices[i].y += dy;
   }
 }
 
@@ -107,7 +93,7 @@ void repulsion_edges(double (*forces)[2]) {
 
     if (vertices[node1].deleted == 0 && vertices[node2].deleted == 0) {
       Point dir;
-      toroidal_vector(&dir, vertices[node1], vertices[node2]);
+      layout_vector(&dir, vertices[node1], vertices[node2]);
 
       double dist_squared = dir.x * dir.x + dir.y * dir.y;
       double att_force = attraction_coeff; //*dist_squared;
@@ -130,7 +116,7 @@ void repulsion_anti_edges(double (*forces)[2]) {
 
     if (vertices[node1].deleted == 0 && vertices[node2].deleted == 0) {
       Point dir;
-      toroidal_vector(&dir, vertices[node1], vertices[node2]);
+      layout_vector(&dir, vertices[node1], vertices[node2]);
 
       double dist = sqrt(dir.x * dir.x + dir.y * dir.y);
       if (dist > seuilrep) {
@@ -151,51 +137,73 @@ void repulsion_anti_edges(double (*forces)[2]) {
   }
 }
 
-// probablement privé utilisé dans update_positions
-// Étape 3 : Mettre à jour les positions des sommets du graphe en fonction des
-// forces
+
+/**
+ * Applique les forces accumulées aux sommets et nettoie le buffer de forces.
+ *
+ * @param forces tableau mutable forces[num_nodes][2]. Les valeurs sont lues,
+ *        intégrées dans velocities, puis remises à zéro dans la même boucle.
+ * @param PasMaxX déplacement horizontal maximal autorisé pour un tick.
+ * @param PasMaxY déplacement vertical maximal autorisé pour un tick.
+ * @param Max_movement valeur de départ utilisée pour calculer le maximum.
+ * @return le plus grand déplacement carré observé pendant ce tick.
+ *
+ * @details Le nettoyage du buffer de forces est fusionné avec l'intégration des
+ *          positions. Les coordonnées ne sont plus repliées dans un rectangle.
+ *          Le graphe est seulement recentré par son barycentre pour éviter une
+ *          dérive globale de la scène.
+ */
 double update_position_forces(double (*forces)[2], double PasMaxX,
                               double PasMaxY, double Max_movement) {
-  double half_Lx = Lx / 2.0;
-  double half_Ly = Ly / 2.0;
-
   double new_max_movement = 0.0;
+  double sum_x = 0.0;
+  double sum_y = 0.0;
+  int active = 0;
+
   for (int i = 0; i < num_nodes; i++) {
     if (vertices[i].deleted == 0) {
       velocities[i][0] = (velocities[i][0] + forces[i][0]) * friction;
       velocities[i][1] = (velocities[i][1] + forces[i][1]) * friction;
-      velocities[i][0] = fmin(fmax(velocities[i][0], -PasMaxX),
-                              PasMaxX); // Capper la force en x à 1
-      velocities[i][1] = fmin(fmax(velocities[i][1], -PasMaxY),
-                              PasMaxY); // Capper la force en y à 1
 
-      double x = vertices[i].x + velocities[i][0];
-      double y = vertices[i].y + velocities[i][1];
-      // Appliquer les conditions aux limites toroïdales
-
-      if (x < -half_Lx) {
-        x = -half_Lx;
-      }
-      if (x > half_Lx) {
-        x = half_Lx;
-      }
-      if (y < -half_Ly) {
-        y = -half_Ly;
-      }
-      if (y > half_Ly) {
-        y = half_Ly;
+      if (velocities[i][0] < -PasMaxX) {
+        velocities[i][0] = -PasMaxX;
+      } else if (velocities[i][0] > PasMaxX) {
+        velocities[i][0] = PasMaxX;
       }
 
-      vertices[i].x = x;
-      vertices[i].y = y;
+      if (velocities[i][1] < -PasMaxY) {
+        velocities[i][1] = -PasMaxY;
+      } else if (velocities[i][1] > PasMaxY) {
+        velocities[i][1] = PasMaxY;
+      }
 
-      new_max_movement =
-          fmax(Max_movement, velocities[i][0] * velocities[i][0] +
-                                 velocities[i][1] * velocities[i][1]);
+      vertices[i].x += velocities[i][0];
+      vertices[i].y += velocities[i][1];
+
+      sum_x += vertices[i].x;
+      sum_y += vertices[i].y;
+      active++;
+
+      const double movement = velocities[i][0] * velocities[i][0] +
+                              velocities[i][1] * velocities[i][1];
+      if (movement > new_max_movement) {
+        new_max_movement = movement;
+      }
+    }
+
+    forces[i][0] = 0.0;
+    forces[i][1] = 0.0;
+  }
+
+  if (active > 0) {
+    const double mean_x = sum_x / (double)active;
+    const double mean_y = sum_y / (double)active;
+    if (fabs(mean_x) > 1e-9 || fabs(mean_y) > 1e-9) {
+      translate_positions(-mean_x, -mean_y);
     }
   }
 
-  return new_max_movement;
+  return new_max_movement > Max_movement ? new_max_movement : Max_movement;
 }
 
 // Normaliser un point

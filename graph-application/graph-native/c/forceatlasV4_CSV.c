@@ -102,6 +102,19 @@ static void *checked_direct_buffer(JNIEnv *env, jobject buffer,
  *
  */
 
+/**
+ * Avance la simulation d'un tick et publie les positions dans un DirectByteBuffer.
+ *
+ * @param env environnement JNI.
+ * @param obj instance Java appelante.
+ * @param buffer DirectByteBuffer optionnel recevant float[2 * num_nodes].
+ * @return JNI_TRUE si le tick a été exécuté et si le buffer fourni est valide.
+ *
+ * @details Cette fonction est le point chaud appelé depuis Java. Elle garde un
+ *          seul passage JNI pour simulation + publication des positions. Les
+ *          forces sont remises à zéro dans update_position_forces(), ce qui
+ *          évite une passe mémoire supplémentaire sur tous les sommets.
+ */
 JNIEXPORT jboolean JNICALL
 Java_com_mongraphe_graphui_rendering_GraphNativeEngine_updatePositions(
     JNIEnv *env, jobject obj, jobject buffer) {
@@ -136,11 +149,6 @@ Java_com_mongraphe_graphui_rendering_GraphNativeEngine_updatePositions(
 
     Max_movementOld = Max_movement;
     friction *= amortissement;
-  }
-
-  for (int i = 0; i < num_nodes; ++i) {
-    forces[i][0] = 0.;
-    forces[i][1] = 0.;
   }
 
   if (buffer != NULL) {

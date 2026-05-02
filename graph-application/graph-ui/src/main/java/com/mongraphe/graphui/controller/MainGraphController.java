@@ -39,7 +39,7 @@ import javafx.stage.Stage;
  * <p>
  * Cette classe agit comme le point central de l'application (Main Controller).
  * Elle orchestre
- * les interactions entre le moteur de rendu OpenGL (JOGL), le système de
+ * les interactions entre le moteur de rendu OpenGL (OpenGLFX/LWJGL), le système de
  * commandes,
  * l'état de l'UI et les différents sous-contrôleurs injectés via FXML.
  * </p>
@@ -78,7 +78,7 @@ public final class MainGraphController implements GraphEngine.GraphEngineListene
     /** Données du projet en cours (Fichier source et type). */
     private GraphProject project;
 
-    /** Panneau d'affichage principal utilisant JOGL pour le rendu OpenGL. */
+    /** Panneau d'affichage principal utilisant OpenGLFX/LWJGL pour le rendu OpenGL. */
     private GraphPanel panel;
 
     /** Système de transport des commandes pour manipuler le moteur de rendu. */
@@ -162,7 +162,7 @@ public final class MainGraphController implements GraphEngine.GraphEngineListene
         // Configuration de l'aperçu (Preview)
         GraphRenderer previewRenderer = new GraphRenderer(engine, engine.camera(), GraphRenderOptions.previewView());
         previewGraphPanel = new GraphPanel(previewRenderer, interaction);
-        previewGraphPanel.start();
+        previewGraphPanel.stop();
 
         previewController.setPreviewRenderer(previewRenderer);
         previewController.setGraphPanel(previewGraphPanel.canvas());
@@ -195,16 +195,28 @@ public final class MainGraphController implements GraphEngine.GraphEngineListene
                 return;
             String tabText = newTab.getText();
             boolean isOverview = "Overview".equals(tabText);
+            boolean isPreview = "Preview".equals(tabText);
 
             if (toolsBox != null) {
                 toolsBox.setVisible(isOverview);
                 toolsBox.setManaged(isOverview);
             }
 
+            // Un seul GLCanvas doit tourner à la fois. L'ancienne version lançait
+            // l'aperçu dès l'initialisation, ce qui doublait le coût GLCanvas,
+            // les uploads et les callbacks OpenGLFX même lorsque l'onglet Preview
+            // n'était pas visible.
+            if (panel != null) {
+                if (isOverview) panel.start(); else panel.stop();
+            }
+            if (previewGraphPanel != null) {
+                if (isPreview) previewGraphPanel.start(); else previewGraphPanel.stop();
+            }
+
             if ("Data".equals(tabText)) {
                 dataViewController.refresh();
             }
-            if ("Preview".equals(tabText)) {
+            if (isPreview) {
                 bus.dispatch(e -> e.stopSimulation());
             }
         });
@@ -496,7 +508,7 @@ public final class MainGraphController implements GraphEngine.GraphEngineListene
      *
      * <p>
      * Cette méthode peut être appelée plusieurs fois sans effet secondaire.
-     * Elle évite de laisser en mémoire un ancien moteur, un ancien canvas JOGL
+     * Elle évite de laisser en mémoire un ancien moteur, un ancien canvas OpenGLFX
      * ou un ancien thread d'exécution lors d'un retour à l'accueil ou d'un
      * changement de scène.
      * </p>
@@ -568,7 +580,7 @@ public final class MainGraphController implements GraphEngine.GraphEngineListene
     }
 
     /**
-     * Libère les ressources JOGL et natif lors de la fermeture de l'application.
+     * Libère les ressources OpenGLFX/LWJGL et natives lors de la fermeture de l'application.
      */
     private void setupCloseWindowListener(GraphNativeEngine nat) {
         rootTabPane.sceneProperty().addListener((obs, oldScene, scene) -> {

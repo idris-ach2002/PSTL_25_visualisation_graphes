@@ -179,7 +179,7 @@ public final class MainMenuController implements CommandBusLinkedI<GraphEngine> 
     private void handleAbout() {
         alert(Alert.AlertType.INFORMATION,
                 "À propos",
-                "MonGraphe\nVisualisation de graphes (JavaFX + JOGL + JNI)\nBuild refactor + fonctionnalités restaurées.");
+                "MonGraphe\nVisualisation de graphes (JavaFX + OpenGLFX/LWJGL + JNI)\nBuild refactor + fonctionnalités restaurées.");
     }
 
     @FXML
