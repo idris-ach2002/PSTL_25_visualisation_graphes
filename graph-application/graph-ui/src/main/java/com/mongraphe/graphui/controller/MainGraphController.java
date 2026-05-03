@@ -165,7 +165,7 @@ public final class MainGraphController implements GraphEngine.GraphEngineListene
         previewGraphPanel.stop();
 
         previewController.setPreviewRenderer(previewRenderer);
-        previewController.setGraphPanel(previewGraphPanel.canvas());
+        previewController.setGraphPanel(previewGraphPanel);
 
         engine.addListener(this);
 
@@ -210,7 +210,12 @@ public final class MainGraphController implements GraphEngine.GraphEngineListene
                 if (isOverview) panel.start(); else panel.stop();
             }
             if (previewGraphPanel != null) {
-                if (isPreview) previewGraphPanel.start(); else previewGraphPanel.stop();
+                if (isPreview) {
+                    previewGraphPanel.start();
+                    previewGraphPanel.forceRenderBurst();
+                } else {
+                    previewGraphPanel.stop();
+                }
             }
 
             if ("Data".equals(tabText)) {

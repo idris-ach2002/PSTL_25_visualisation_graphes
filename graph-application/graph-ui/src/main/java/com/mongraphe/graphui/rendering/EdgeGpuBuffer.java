@@ -186,6 +186,10 @@ public final class EdgeGpuBuffer {
         glBindBuffer(GL_ARRAY_BUFFER, 0);
     }
 
+    public int count() {
+        return vertexCount / 2;
+    }
+
     /** Dessine les arêtes visibles avec un seul draw call. */
     public void draw() {
         if (vertexCount <= 0) return;

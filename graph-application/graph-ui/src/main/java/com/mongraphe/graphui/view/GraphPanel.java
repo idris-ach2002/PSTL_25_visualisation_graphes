@@ -43,11 +43,14 @@ public final class GraphPanel {
     private final JavaFxInputHandler inputHandler;
     private final AtomicReference<PendingPngExport> pendingPngExport = new AtomicReference<>();
     private final AtomicBoolean explicitFrameRequested = new AtomicBoolean(false);
+    private final AtomicBoolean repaintQueued = new AtomicBoolean(false);
 
     private volatile boolean disposed = false;
     private volatile boolean renderingEnabled = false;
     private volatile long lastRequestedRenderVersion = Long.MIN_VALUE;
     private volatile long lastRequestedPositionVersion = Long.MIN_VALUE;
+    private volatile long lastRequestedCameraVersion = Long.MIN_VALUE;
+    private volatile long lastRequestedRendererStateVersion = Long.MIN_VALUE;
 
     private final AnimationTimer renderTimer = new AnimationTimer() {
         private long lastFrameNanos = 0L;
@@ -232,15 +235,11 @@ public final class GraphPanel {
         container.setOpacity(1.0);
         lastRequestedRenderVersion = Long.MIN_VALUE;
         lastRequestedPositionVersion = Long.MIN_VALUE;
+        lastRequestedCameraVersion = Long.MIN_VALUE;
+        lastRequestedRendererStateVersion = Long.MIN_VALUE;
         canvas.setFps(0.0);
         renderTimer.start();
-        requestFrame();
-        Platform.runLater(() -> {
-            if (!disposed && renderingEnabled) {
-                requestFrame();
-                canvas.repaint();
-            }
-        });
+        forceRenderBurst();
     }
 
     /** Arrête le scheduler de rendu sans détruire les ressources OpenGL. */
@@ -271,17 +270,26 @@ public final class GraphPanel {
 
         long renderVersion = rendererVersion();
         long positionVersion = rendererPositionVersion();
-        if (renderVersion == lastRequestedRenderVersion && positionVersion == lastRequestedPositionVersion) {
+        long cameraVersion = renderer.engineForScheduling().camera().getViewVersion();
+        long stateVersion = renderer.renderStateVersion();
+        if (renderVersion == lastRequestedRenderVersion
+                && positionVersion == lastRequestedPositionVersion
+                && cameraVersion == lastRequestedCameraVersion
+                && stateVersion == lastRequestedRendererStateVersion) {
             return false;
         }
         lastRequestedRenderVersion = renderVersion;
         lastRequestedPositionVersion = positionVersion;
+        lastRequestedCameraVersion = cameraVersion;
+        lastRequestedRendererStateVersion = stateVersion;
         return true;
     }
 
     private void updateRequestedVersions() {
         lastRequestedRenderVersion = rendererVersion();
         lastRequestedPositionVersion = rendererPositionVersion();
+        lastRequestedCameraVersion = renderer.engineForScheduling().camera().getViewVersion();
+        lastRequestedRendererStateVersion = renderer.renderStateVersion();
     }
 
     private long rendererVersion() {
@@ -293,8 +301,40 @@ public final class GraphPanel {
     }
 
     /** Demande une frame sans empiler de {@code Platform.runLater}. */
-    private void requestFrame() {
+    public void requestFrame() {
         explicitFrameRequested.set(true);
+        queueRepaint();
+    }
+
+    public void forceRenderBurst() {
+        requestFrame();
+        Platform.runLater(this::requestFrame);
+        Thread.ofVirtual().start(() -> {
+            sleepQuietly(45);
+            requestFrame();
+            sleepQuietly(90);
+            requestFrame();
+        });
+    }
+
+    private void queueRepaint() {
+        if (disposed || !renderingEnabled || !repaintQueued.compareAndSet(false, true)) {
+            return;
+        }
+        Platform.runLater(() -> {
+            repaintQueued.set(false);
+            if (!disposed && renderingEnabled) {
+                canvas.repaint();
+            }
+        });
+    }
+
+    private static void sleepQuietly(long millis) {
+        try {
+            Thread.sleep(millis);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        }
     }
 
     /** Libère les ressources JavaFX et OpenGL associées au panel. */

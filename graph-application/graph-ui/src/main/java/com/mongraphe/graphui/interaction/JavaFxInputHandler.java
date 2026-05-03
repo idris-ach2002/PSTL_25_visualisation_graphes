@@ -3,6 +3,8 @@ package com.mongraphe.graphui.interaction;
 import java.awt.event.KeyEvent;
 import java.awt.event.MouseEvent;
 
+import com.huskerdev.openglfx.canvas.GLCanvas;
+
 import javafx.scene.Node;
 import javafx.scene.input.KeyCode;
 
@@ -35,20 +37,26 @@ public final class JavaFxInputHandler {
         node.setOnMousePressed(event -> {
             activeButton = toAwtButton(event.getButton());
             node.requestFocus();
-            interaction.onMousePressed((int) event.getX(), (int) event.getY(), activeButton);
+            int sx = toFramebufferX(node, event.getX());
+            int sy = toFramebufferY(node, event.getY());
+            interaction.onMousePressed(sx, sy, activeButton);
             requestRepaint();
             event.consume();
         });
 
         node.setOnMouseDragged(event -> {
-            interaction.onMouseDragged((int) event.getX(), (int) event.getY(), activeButton);
+            int sx = toFramebufferX(node, event.getX());
+            int sy = toFramebufferY(node, event.getY());
+            interaction.onMouseDragged(sx, sy, activeButton);
             requestRepaint();
             event.consume();
         });
 
         node.setOnMouseReleased(event -> {
             int button = activeButton == 0 ? toAwtButton(event.getButton()) : activeButton;
-            interaction.onMouseReleased((int) event.getX(), (int) event.getY(), button);
+            int sx = toFramebufferX(node, event.getX());
+            int sy = toFramebufferY(node, event.getY());
+            interaction.onMouseReleased(sx, sy, button);
             activeButton = 0;
             requestRepaint();
             event.consume();
@@ -57,7 +65,9 @@ public final class JavaFxInputHandler {
         node.setOnScroll(event -> {
             double deltaY = event.getDeltaY();
             if (Math.abs(deltaY) > 1e-9) {
-                interaction.onMouseWheel((int) event.getX(), (int) event.getY(), deltaY < 0 ? 1f : -1f);
+                int sx = toFramebufferX(node, event.getX());
+                int sy = toFramebufferY(node, event.getY());
+                interaction.onMouseWheel(sx, sy, deltaY < 0 ? 1f : -1f);
                 requestRepaint();
             }
             event.consume();
@@ -81,6 +91,28 @@ public final class JavaFxInputHandler {
         node.setOnMouseReleased(null);
         node.setOnScroll(null);
         node.setOnKeyPressed(null);
+    }
+
+    private int toFramebufferX(Node node, double x) {
+        return (int) Math.round(x * framebufferScaleX(node));
+    }
+
+    private int toFramebufferY(Node node, double y) {
+        return (int) Math.round(y * framebufferScaleY(node));
+    }
+
+    private double framebufferScaleX(Node node) {
+        if (node instanceof GLCanvas canvas && canvas.getWidth() > 0.0) {
+            return Math.max(1.0, canvas.getScaledWidth() / canvas.getWidth());
+        }
+        return 1.0;
+    }
+
+    private double framebufferScaleY(Node node) {
+        if (node instanceof GLCanvas canvas && canvas.getHeight() > 0.0) {
+            return Math.max(1.0, canvas.getScaledHeight() / canvas.getHeight());
+        }
+        return 1.0;
     }
 
     private void requestRepaint() {

@@ -692,6 +692,36 @@ public final class GraphEngine {
         return simulationTicksPerSecond;
     }
 
+    public Vertex findVertexAt(int screenX, int screenY) {
+        float worldX = camera.screenToWorldX(screenX);
+        float worldY = camera.screenToWorldY(screenY);
+        FloatBuffer positions = renderPositionsBuffer();
+        Vertex[] vertices = renderVerticesByNativeId();
+        int count = Math.min(renderPositionVertexCount.get(), vertices.length);
+
+        if (positions != null) {
+            Vertex best = null;
+            double bestDist2 = Double.MAX_VALUE;
+            for (int i = 0; i < count; i++) {
+                Vertex v = vertices[i];
+                if (v == null || v.isDeleted() || !v.isVisible()) {
+                    continue;
+                }
+                double dx = worldX - positions.get(i * 2);
+                double dy = worldY - positions.get(i * 2 + 1);
+                double r = Math.max(5.0, v.getDiameter() * 0.65) / Math.max(camera.getZoom(), 1.0e-6f);
+                double dist2 = dx * dx + dy * dy;
+                if (dist2 <= r * r && dist2 < bestDist2) {
+                    best = v;
+                    bestDist2 = dist2;
+                }
+            }
+            return best;
+        }
+
+        return model.findVertexAt(screenX, screenY, camera);
+    }
+
     public GraphModel model() {
         return model;
     }

@@ -12,6 +12,7 @@ import com.mongraphe.graphui.model.GraphModel;
 import com.mongraphe.graphui.rendering.GraphEngine;
 import com.mongraphe.graphui.rendering.GraphRenderOptions;
 import com.mongraphe.graphui.rendering.GraphRenderer;
+import com.mongraphe.graphui.view.GraphPanel;
 
 import javafx.scene.Node;
 import javafx.fxml.FXML;
@@ -59,6 +60,8 @@ public class PreviewController implements CommandBusLinkedI<GraphEngine> {
 
     /** Moteur de rendu dédié exclusivement à la zone de prévisualisation. */
     private GraphRenderer previewRenderer;
+
+    private GraphPanel previewPanel;
 
     @FXML
     private TextField degreeFactor;
@@ -152,7 +155,21 @@ public class PreviewController implements CommandBusLinkedI<GraphEngine> {
      *
      * @param panel le nœud JavaFX encapsulant le canvas de rendu du graphe.
      */
+    public void setGraphPanel(GraphPanel panel) {
+        this.previewPanel = panel;
+        if (graphContainer != null) {
+            graphContainer.setCenter(panel == null ? null : panel.canvas());
+            graphContainer.widthProperty().addListener((obs, oldValue, newValue) -> requestPreviewFrame());
+            graphContainer.heightProperty().addListener((obs, oldValue, newValue) -> requestPreviewFrame());
+            graphContainer.visibleProperty().addListener((obs, oldValue, visible) -> {
+                if (visible) requestPreviewFrame();
+            });
+        }
+        requestPreviewFrame();
+    }
+
     public void setGraphPanel(Node panel) {
+        this.previewPanel = null;
         if (graphContainer != null) {
             graphContainer.setCenter(panel);
         }
@@ -310,6 +327,13 @@ public class PreviewController implements CommandBusLinkedI<GraphEngine> {
         }
 
         previewRenderer.setRenderOptions(options);
+        requestPreviewFrame();
+    }
+
+    private void requestPreviewFrame() {
+        if (previewPanel != null) {
+            previewPanel.forceRenderBurst();
+        }
     }
 
     /**

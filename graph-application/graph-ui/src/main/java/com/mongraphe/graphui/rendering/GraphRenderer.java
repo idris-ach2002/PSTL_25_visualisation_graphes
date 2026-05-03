@@ -1,6 +1,7 @@
 package com.mongraphe.graphui.rendering;
 
 import java.nio.FloatBuffer;
+import java.util.concurrent.atomic.AtomicLong;
 
 import com.mongraphe.graphui.model.GraphModel;
 import com.mongraphe.graphui.model.Vertex;
@@ -41,6 +42,7 @@ public final class GraphRenderer {
     private GLShaderProgram straightEdgeShader;
     private GLShaderProgram curvedEdgeShader;
     private volatile GraphRenderOptions renderOptions;
+    private final AtomicLong renderStateVersion = new AtomicLong(0L);
 
     private long lastUploadedPositionVersion = Long.MIN_VALUE;
     private long lastUploadedDataVersion = Long.MIN_VALUE;
@@ -77,6 +79,11 @@ public final class GraphRenderer {
      */
     public void setRenderOptions(GraphRenderOptions renderOptions) {
         this.renderOptions = renderOptions == null ? GraphRenderOptions.straight() : renderOptions;
+        renderStateVersion.incrementAndGet();
+    }
+
+    public long renderStateVersion() {
+        return renderStateVersion.get();
     }
 
     /** @return options de rendu actuellement demandées par l'interface. */
@@ -161,7 +168,8 @@ public final class GraphRenderer {
         GraphRenderOptions options = effectiveOptions(model, renderOptions);
         long dataVersion = engine.renderDataVersion();
         boolean dataChanged = dataVersion != lastUploadedDataVersion;
-        if (dataChanged || totalVertices != vertexBuffer.count()) {
+        boolean staticMissing = edgeBuffer.count() == 0 && !model.edges().isEmpty();
+        if (dataChanged || totalVertices != vertexBuffer.count() || staticMissing) {
             vertexBuffer.updateAllAttributes(
                     verticesById,
                     totalVertices,
@@ -242,6 +250,7 @@ public final class GraphRenderer {
         lastUploadedPositionVersion = Long.MIN_VALUE;
         lastUploadedDataVersion = Long.MIN_VALUE;
         lastUploadedVertexCount = -1;
+        renderStateVersion.incrementAndGet();
     }
 
     /** Libère les ressources OpenGL. */
