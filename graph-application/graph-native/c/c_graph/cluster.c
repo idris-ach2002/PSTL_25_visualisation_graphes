@@ -203,7 +203,10 @@ void kmeans_map(void *arg) {
 
     if (vertices[vertex_index].deleted == 0) {
       for (int i = 0; i < arguments->num_clusters; ++i) {
-        double dist = squared_distance(centers[i], vertices[vertex_index]);
+        Point center_point = {centers[i][0], centers[i][1], 0};
+        Point dir;
+        toroidal_vector(&dir, vertices[vertex_index], center_point);
+        double dist = dir.x * dir.x + dir.y * dir.y;
 
         if (dist < min_dist) {
           min_dist = dist;
@@ -303,18 +306,20 @@ void kmeans_iteration(int num_points, int num_clusters, int *labels,
       centers[i][0] = new_centers[i][0] / counts[i];
       centers[i][1] = new_centers[i][1] / counts[i];
 
-      double dist = squared_distance(centers[i], old_center);
-      *max_diff = *max_diff < dist ? dist : *max_diff;
-
       // Ramener les centres dans l'espace torique
-      if (centers[i][0] < -Lx / 2)
-        centers[i][0] = Lx;
-      if (centers[i][0] > Lx / 2)
-        centers[i][0] = Lx;
-      if (centers[i][1] < -Ly / 2)
-        centers[i][1] = Ly;
-      if (centers[i][1] > Ly / 2)
-        centers[i][1] = Ly;
+      while (centers[i][0] < -Lx / 2)
+        centers[i][0] += Lx;
+      while (centers[i][0] > Lx / 2)
+        centers[i][0] -= Lx;
+      while (centers[i][1] < -Ly / 2)
+        centers[i][1] += Ly;
+      while (centers[i][1] > Ly / 2)
+        centers[i][1] -= Ly;
+
+      double dx = centers[i][0] - old_center.x;
+      double dy = centers[i][1] - old_center.y;
+      double dist = dx * dx + dy * dy;
+      *max_diff = *max_diff < dist ? dist : *max_diff;
     }
 
     free(new_centers[i]);
@@ -353,14 +358,14 @@ void repulsion_intra_clusters(double (*forces)[2], double FMaxX, double FMaxY) {
               if (mode == 1) {
                 rep_force = repulsion_coeff / dist_squared;
               } else if (mode == 2 &&
-                         communities[i] !=
-                             communities[j]) { // printf("extra repulsion %d, %d
-                                               // \n",i,j);
-                rep_force = 100000 * repulsion_coeff * (node_degrees[i] + 1) *
-                            (node_degrees[j] + 1) / dist_squared;
+                         communities[node_i] !=
+                             communities[node_j]) { // printf("extra repulsion %d, %d
+                                                    // \n", node_i, node_j);
+                rep_force = 100000 * repulsion_coeff * (node_degrees[node_i] + 1) *
+                            (node_degrees[node_j] + 1) / dist_squared;
               } else { // mode == 0 est le mode par defaut
-                rep_force = repulsion_coeff * (node_degrees[i] + 1) *
-                            (node_degrees[j] + 1) / dist_squared;
+                rep_force = repulsion_coeff * (node_degrees[node_i] + 1) *
+                            (node_degrees[node_j] + 1) / dist_squared;
               }
 
               forces[node_i][0] -= dir.x * rep_force;
@@ -425,11 +430,11 @@ void repulsion_intra_cluster_job(void *args) {
               rep_force = repulsion_coeff / dist_squared;
             } else if (mode == 2 &&
                        communities[node_i] != communities[node_j]) {
-              rep_force = 100000 * repulsion_coeff * (node_degrees[i] + 1) *
-                          (node_degrees[j] + 1) / dist_squared;
+              rep_force = 100000 * repulsion_coeff * (node_degrees[node_i] + 1) *
+                          (node_degrees[node_j] + 1) / dist_squared;
             } else { // mode == 0 est le mode par defaut
-              rep_force = repulsion_coeff * (node_degrees[i] + 1) *
-                          (node_degrees[j] + 1) / dist_squared;
+              rep_force = repulsion_coeff * (node_degrees[node_i] + 1) *
+                          (node_degrees[node_j] + 1) / dist_squared;
             }
 
             forces[node_i][0] -= dir.x * rep_force;
@@ -483,6 +488,7 @@ void update_clusters() {
 
   int modified = 0;
   if (kmeans_mode != 0 && iteration % (saut * (1 + 0 * espacement)) == 0) {
+    espacement++;
     int centers_converged = 0;
     while (centers_converged == 0) {
       // the biggest difference between the former centers and the new ones
