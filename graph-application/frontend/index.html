@@ -1,0 +1,19 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Graph Web WASM</title>
+    <link rel="icon" href="data:,">
+    <style>
+      html, body { margin: 0; width: 100%; height: 100%; background: #0b0f18; }
+      #boot-fallback { position: fixed; inset: 0; display: grid; place-items: center; color: #dbeafe; font-family: system-ui, sans-serif; background: #0b0f18; }
+      #root:not(:empty) + #boot-fallback { display: none; }
+    </style>
+  </head>
+  <body>
+    <div id="root"></div>
+    <div id="boot-fallback">Chargement de MonGraphe Web…<br><small>Si ce message reste affiché, ouvre la console du navigateur : F12 → Console.</small></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
