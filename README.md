@@ -1,6 +1,6 @@
 # PSTL_25_visualisation_graphes
 
-Application de visualisation de graphes avec interface JavaFX, rendu OpenGL et calculs natifs en C.
+Application de visualisation de graphes graphes exécutée dans le navigateur avec interface gérée par React, TypeScript, WebGL, WebAssembly, Web Worker, Docker, Nginx, rendu OpenGL et calculs natifs en C.
 
 ## À quoi sert le projet
 
@@ -11,107 +11,67 @@ L'application permet de :
 - exporter des rendus graphiques.
 
 Le projet est composé de deux parties :
-- `graph-ui` : interface graphique Java ;
-- `graph-native` : moteur natif en C chargé via JNI.
+- `frontend` : interface graphique utilisé côté client?
+- `wasm_engine` : moteur natif en C.
+---
 
-## Prérequis
+## Guide
 
-À installer sur la machine :
-- **Java JDK 21**
-- **GCC**
-- **Make**
-- une connexion Internet au premier lancement Maven pour télécharger les dépendances Java
+Pour comprendre rapidement le projet :
 
-## Lancement rapide
+1. [Rapport technique complet](graph-application/docs/REPORT.md)
+2. [Guide d'installation](graph-application/docs/INSTALLATION.md)
+3. [Guide utilisateur](graph-application/docs/USER_GUIDE.md)
+4. [Architecture](graph-application/docs/ARCHITECTURE.md)
 
-Depuis la racine du projet :
+---
 
-```bash
-cd graph-application
-bash run-app.sh
-```
+## Documentation utilisateur
 
-Ce script :
-1. compile la bibliothèque native C ;
-2. lance l'application JavaFX avec Maven.
+| Fichier | Rôle |
+|---|---|
+| [INSTALLATION.md](graph-application/docs/INSTALLATION.md) | Installer et lancer l'application |
+| [USER_GUIDE.md](graph-application/docs/USER_GUIDE.md) | Utiliser l'interface |
+| [IMPORT_AND_LIMITS.md](graph-application/docs/IMPORT_AND_LIMITS.md) | Comprendre l'import et les limites |
+| [FEATURES.md](graph-application/docs/FEATURES.md) | Découvrir les fonctionnalités |
+| [TROUBLESHOOTING.md](graph-application/docs/TROUBLESHOOTING.md) | Résoudre les problèmes fréquents |
 
-## Premier test
+---
 
-Pour vérifier que tout fonctionne :
+## Documentation technique
 
-1. lancer l'application
-2. selectionner un fichier csv proposer
-3. lancer le rendu du graphe
+| Fichier | Rôle |
+|---|---|
+| [ARCHITECTURE.md](graph-application/docs/ARCHITECTURE.md) | Architecture globale |
+| [WASM_ENGINE.md](graph-application/docs/WASM_ENGINE.md) | Moteur C / WebAssembly |
+| [RENDERING.md](graph-application/docs/RENDERING.md) | Rendu WebGL, 2D, 3D |
+| [DEVELOPMENT.md](graph-application/docs/DEVELOPMENT.md) | Développement local |
+| [DOCKER.md](graph-application/docs/DOCKER.md) | Docker, Nginx, production |
 
-## Lancement manuel
+---
 
-Si vous préférez lancer le projet étape par étape :
+## Documentation projet
 
-### 1. Compiler la partie native
+| Fichier | Rôle |
+|---|---|
+| [GIT_WORKFLOW.md](graph-application/docs/GIT_WORKFLOW.md) | Commits et workflow |
+| [ROADMAP.md](graph-application/docs/ROADMAP.md) | Évolutions possibles |
+| [REPORT.md](graph-application/docs/REPORT.md) | Rapport détaillé complet |
 
-```bash
-cd graph-application/graph-native
-make clean
-make
-```
+---
 
-### 2. Lancer l'interface Java
+## Objectif de séparation
 
-```bash
-cd ../graph-ui
-../tools/apache-maven-3.9.6/bin/mvn javafx:run
-```
+La documentation est volontairement séparée afin de limiter les fichiers trop génériques.
 
-## Structure utile du projet
+Chaque fichier correspond à une responsabilité :
 
-```text
-graph-application/
-├── graph-native/     # code C / JNI
-├── graph-ui/         # interface JavaFX
-│   └── samples/      # exemples de graphes
-├── tools/            # Maven fourni avec le projet
-└── run-app.sh        # script de lancement
-```
-
-## Fichiers d'exemple
-
-Des fichiers de test sont déjà fournis dans `graph-ui/samples/`.
-
-Exemples :
-- `iris.csv`
-- `one.dot`
-- `predicancerNUadd9239.csv`
-
-## Problèmes fréquents
-
-### `java not found in PATH`
-Java 21 n'est pas installé ou n'est pas accessible depuis le terminal.
-
-### Erreur liée à `JAVA_HOME`
-Définir la variable d'environnement `JAVA_HOME` si nécessaire.
-
-Exemple Linux :
-
-```bash
-export JAVA_HOME=/chemin/vers/jdk-21
-export PATH="$JAVA_HOME/bin:$PATH"
-```
-
-### `UnsatisfiedLinkError`
-La bibliothèque native n'a pas été compilée correctement. Relancer :
-
-```bash
-cd graph-application/graph-native
-make clean
-make
-```
-
-## Conseils
-
-- utiliser de préférence **le script `run-app.sh`** ;
-- lancer le projet depuis un terminal ;
-- tester d'abord avec un fichier du dossier `samples` avant d'utiliser vos propres données.
-
-## Auteurs
-
-Ce fork a été réalisé dans le cadre du PSTL par Idris Achabou et Bilal Chetouani. Le code est un fork de https://github.com/damrib/PSTL_25_visualisation_graphes 
+- comprendre le projet ;
+- installer ;
+- utiliser ;
+- importer ;
+- développer ;
+- maintenir ;
+- déployer ;
+- dépanner ;
+- expliquer les choix techniques.
