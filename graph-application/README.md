@@ -1,28 +1,56 @@
-# MonGraphe Web WASM
+# MonGraphe Web
 
-Migration web performante de l'application desktop JavaFX/JOGL/JNI de visualisation de graphes.
+**MonGraphe Web** est une application web de visualisation interactive de graphes, issue de la migration d'une application desktop JavaFX / JOGL / JNI vers une architecture web moderne fondée sur **React**, **TypeScript**, **WebGL**, **WebAssembly** et **Docker**.
 
-La version web utilise :
+Cette version web vise un objectif précis : proposer une application accessible depuis le navigateur, simple à lancer, fluide, visuellement lisible et suffisamment riche pour explorer des graphes dans un cadre pédagogique, expérimental ou démonstratif.
 
-- React + TypeScript pour l'interface ;
-- WebGL2 pour le rendu GPU ;
-- WebAssembly pour le moteur de simulation écrit en C ;
-- Web Worker pour éviter de bloquer l'interface ;
-- Docker pour compiler les dépendances et lancer l'application avec une commande.
+---
 
+## Résumé du projet
 
-## Rendu graphique amélioré
+L'application permet de :
 
-La vue du graphe propose maintenant deux modes :
-- **2D nette** : rendu plat, précis et lisible ;
-- **3D cinématique** : profondeur pseudo-3D, perspective, rotations, grille de fond et éclairage sphérique des nœuds.
+- importer des graphes depuis des fichiers **CSV**, **DOT** ou edge-list ;
+- analyser les fichiers avant import ;
+- contrôler une limite de nœuds paramétrable ;
+- visualiser les graphes en **2D simple** ou en **3D orbitale** ;
+- explorer les nœuds, arêtes, degrés, communautés et composantes ;
+- filtrer les graphes par degré, poids ou communauté ;
+- sélectionner des éléments et afficher leurs informations ;
+- sauvegarder un projet au format JSON ;
+- exporter des rendus PNG / SVG ;
+- consulter une documentation intégrée depuis l'interface ;
+- lancer l'application sans dépendance locale complexe grâce à Docker.
 
-Le mode 3D reste basé sur WebGL2 et sur des buffers GPU, afin de garder de bonnes performances même sur des graphes volumineux.
+---
 
-## Lancement
+## Philosophie de la version web
+
+La version web ne cherche pas à reproduire exactement les capacités d'un outil desktop lourd sur des graphes massifs.  
+Elle assume une limite contrôlée du nombre de nœuds afin de privilégier :
+
+- la fluidité dans le navigateur ;
+- la qualité de rendu ;
+- la lisibilité ;
+- la facilité d'utilisation ;
+- l'interactivité ;
+- la portabilité ;
+- la simplicité de lancement.
+
+Par défaut :
+
+- l'import externe est limité à **1 000 nœuds** ;
+- la démo générée est limitée à **400 nœuds** ;
+- ces limites sont modifiables depuis l'application.
+
+---
+
+## Lancement rapide
+
+Depuis la racine du projet :
 
 ```bash
-./run_app.sh
+./run_app.sh fresh
 ```
 
 Puis ouvrir :
@@ -43,132 +71,94 @@ Puis ouvrir :
 http://localhost:5173
 ```
 
-## Interface
+---
 
-L'interface est organisée comme une application desktop :
-
-- menu supérieur : Fichier, Édition, Affichage, Outils, Aide ;
-- barre d'outils : Select, Move, Delete, zoom, play/pause, step ;
-- onglets : Overview, Data, Preview ;
-- panneau gauche : chargement, construction CSV, ForceAtlas, paramètres dynamiques, preview ;
-- zone centrale : rendu WebGL2 du graphe ;
-- panneau droit : statistiques, sélection, source ;
-- barre de statut : état du moteur, itération, mode actif.
-
-## Fonctionnalités principales
-
-- Import CSV / DOT ;
-- construction de graphe depuis CSV numérique ;
-- similarité cosinus, corrélation et distance euclidienne ;
-- seuils automatiques ou manuels ;
-- anti-arêtes ;
-- simulation de forces dans le moteur C/WASM ;
-- communautés par label propagation ;
-- K-Means spatial ;
-- affichage Data paginé ;
-- preview : tailles, couleurs, filtres, arêtes courbes ;
-- export PNG ;
-- export SVG ;
-- sauvegarde et ouverture de projet JSON ;
-- undo / redo pour suppression et déplacement de nœuds.
-
-## Structure
+## Structure simplifiée
 
 ```text
-graph_web_migration/
-├── frontend/                 # React + TypeScript + WebGL2
-├── wasm-engine/              # moteur C compilé en WebAssembly
-├── legacy/                   # ancien moteur C conservé comme référence
-├── Dockerfile                # build production
-├── Dockerfile.dev            # build développement
-├── docker-compose.yml
-├── nginx.conf
-└── run_app.sh
+graph-application/
+├── frontend/              # Application React + TypeScript + WebGL
+├── wasm-engine/           # Moteur C compilé en WebAssembly
+├── legacy/                # Ancien moteur natif conservé comme référence
+├── docs/                  # Documentation détaillée
+├── scripts/               # Scripts utilitaires
+├── Dockerfile             # Build production
+├── Dockerfile.dev         # Build développement
+├── docker-compose.yml     # Orchestration Docker
+├── nginx.conf             # Serveur Nginx production
+└── run_app.sh             # Script principal de lancement
 ```
 
-## Notes
+---
 
-Cette migration n'est pas un lancement JavaFX dans le navigateur. Le rendu et l'interface sont natifs web. Le moteur est compilé en WebAssembly pour rester proche de l'approche C performante du projet original.
+## Documentation détaillée
 
+### Rapport complet
 
-## Correctif chargement WASM
+- [Rapport technique complet](docs/REPORT.md)
 
-Le moteur WASM est servi comme asset public via `/wasm/graph-engine.js` et `/wasm/graph-engine.wasm`, ce qui évite les blocages de bundling Worker/Vite en production Docker.
+### Utilisation
 
-## Correction rendu des arêtes
+- [Guide d'installation](docs/INSTALLATION.md)
+- [Guide utilisateur détaillé](docs/USER_GUIDE.md)
+- [Import, formats et limites web](docs/IMPORT_AND_LIMITS.md)
+- [Fonctionnalités détaillées](docs/FEATURES.md)
+- [Guide de dépannage](docs/TROUBLESHOOTING.md)
 
-Cette version remplace le rendu `gl.LINES` par des rubans GPU en triangles. Cela évite la limite classique de WebGL où `lineWidth` reste souvent bloqué à 1px selon le navigateur/GPU. Les arêtes sont donc plus nettes, plus visibles, compatibles avec le zoom, les écrans haute densité et le mode 3D cinématique.
+### Technique
 
-## Rendu haute qualité des arêtes
+- [Architecture détaillée](docs/ARCHITECTURE.md)
+- [Moteur WebAssembly](docs/WASM_ENGINE.md)
+- [Rendu WebGL, 2D et 3D orbitale](docs/RENDERING.md)
+- [Développement local](docs/DEVELOPMENT.md)
+- [Docker et déploiement](docs/DOCKER.md)
 
-Cette version ajoute un rendu d'arêtes plus premium : les arêtes ne sont plus seulement des segments ou rubans simples. Elles sont dessinées en deux passes GPU :
+### Projet
 
-1. un halo / contour de contraste pour rendre les relations lisibles sur fond clair ;
-2. un cœur anti-crénelé avec léger éclairage et variation selon le poids de l'arête.
+- [Workflow Git](docs/GIT_WORKFLOW.md)
+- [Feuille de route](docs/ROADMAP.md)
+- [Index de la documentation](docs/README.md)
 
-Les options ajoutées dans Preview > Arêtes sont :
+---
 
-- Style arêtes : Scientifique net, Premium contrasté, Néon dynamique ;
-- Halo / contraste ;
-- Flux lumineux ;
-- Épaisseur et opacité conservées.
+## Technologies
 
-Le rendu reste en WebGL2 avec buffers et triangles, donc compatible avec de gros graphes sans créer d'objet DOM par arête.
+| Domaine | Technologies |
+|---|---|
+| Interface | React, TypeScript, Vite |
+| Rendu | Canvas WebGL |
+| Calcul | C, WebAssembly, Web Worker |
+| Packaging | Docker, Docker Compose |
+| Production | Nginx |
+| Documentation | Markdown |
 
-## Version enhanced : limite web, assistant et documentation intégrée
+---
 
-Cette version ajoute une contrainte explicite de visualisation web : **1 000 nœuds maximum paramétrables**.
-Le navigateur reste très fluide pour l’exploration interactive, le rendu WebGL2, la simulation WASM et les exports. Si un fichier importé dépasse cette limite, l’application bloque le chargement et affiche une fenêtre explicative invitant l’utilisateur à importer un fichier plus petit.
-
-### Fonctionnalités ajoutées
-
-- Analyse des imports CSV/DOT/edge-list avant chargement effectif.
-- Blocage propre au-dessus de 1 000 nœuds avec pop-up utilisateur.
-- Démo générée automatiquement dans une taille compatible web.
-- Barre de recherche rapide par identifiant ou label de nœud.
-- Boutons de presets : **Optimiser**, **Clarté dark**, **Lecture**.
-- Nouvel onglet **Help / Doc** avec guide intégré et exemples visuels.
-- Documentation dans l’application : flux CSV → analyse → WASM → WebGL, explication des onglets, raccourcis et préparation des fichiers.
-
-### Lancement
+## Commandes principales
 
 ```bash
+# Build propre + lancement production
 ./run_app.sh fresh
+
+# Lancement production normal
+./run_app.sh prod
+
+# Mode développement
+./run_app.sh dev
+
+# Arrêt des conteneurs
+./run_app.sh down
+
+# Logs Docker
+./run_app.sh logs
+
+# Nettoyage
+./run_app.sh clean
 ```
 
-Puis ouvrir :
+---
 
-```text
-http://localhost:8080
-```
+## Statut
 
-## Mise à jour : sections de paramètres + rendu fluide
-
-La barre latérale gauche est maintenant organisée par catégories afin d'éviter un panneau trop long :
-
-- **Projet** : import CSV/DOT, projet JSON, démo et limite web.
-- **Construction** : similarité, seuils, kNN, communautés, espace de layout.
-- **Simulation** : ForceAtlas, vitesse, répulsion, attraction, K-Means.
-- **Nœuds** : forme, taille, coloration, filtres et labels.
-- **Arêtes** : couleur, épaisseur, courbure, anti-crénelage, halo discret.
-- **Caméra / Zoom** : zoom, qualité pixels raisonnable, profondeur 3D et rotations.
-- **Actions** : undo/redo, zoom, export PNG/SVG/JSON.
-
-Le rendu a été renforcé pour profiter de la limite web à 1 000 nœuds : rendu 2D simple par défaut, zoom initial agrandi, nœuds plus visibles, arêtes simples nettes, mode 3D réelle WebGL optionnel et infobulles au survol des nœuds/arêtes.
-
-## Mise à jour complète : lots 1 à 4
-
-Cette version ajoute les lots fonctionnels demandés en une seule livraison :
-
-- limite web passée à **1 000 nœuds maximum**, réglable simplement depuis le panneau **Projet** ;
-- génération de démo plafonnée à **400 nœuds** ;
-- assistant d’import avec analyse du fichier avant chargement ;
-- échantillonnage intelligent : premiers nœuds, aléatoire ou nœuds les plus connectés ;
-- panneau d’analyse : densité, degré moyen, hub principal, composantes, communautés et interprétation ;
-- sélection avancée : isoler un nœud, afficher ses voisins, filtrer sa communauté, centrer la caméra et copier les infos ;
-- filtres : degré, poids, communauté et focus de sélection ;
-- mini-map dans le canvas ;
-- layouts rapides : force, circulaire, grille, communautés, radial ;
-- sauvegarde JSON enrichie avec historique ;
-- mode présentation ;
-- documentation Help / Doc enrichie avec exemples intégrés.
+Cette branche correspond à la version **web-vision**.  
+Elle remplace l'application desktop par une application web complète, tout en conservant une partie de l'ancien moteur natif dans `legacy/` pour garder une trace de la base technique initiale.
