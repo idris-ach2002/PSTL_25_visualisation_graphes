@@ -1,0 +1,126 @@
+name: Deploy MonGraphe Web to Cloudflare Pages
+
+on:
+  push:
+    branches:
+      - web-vision
+      - main
+    paths:
+      - "graph-application/**"
+      - ".github/workflows/cloudflare-pages.yml"
+  pull_request:
+    paths:
+      - "graph-application/**"
+      - ".github/workflows/cloudflare-pages.yml"
+  workflow_dispatch:
+    inputs:
+      project_name:
+        description: "Cloudflare Pages project name. Leave empty to use repository variable CLOUDFLARE_PAGES_PROJECT or default mongraphe-web."
+        required: false
+        type: string
+      deploy_branch:
+        description: "Cloudflare Pages branch name. Leave empty to use the current Git branch."
+        required: false
+        type: string
+
+permissions:
+  contents: read
+  deployments: write
+
+concurrency:
+  group: cloudflare-pages-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  APP_DIR: graph-application
+  NODE_VERSION: "22"
+  EMSDK_IMAGE: emscripten/emsdk:3.1.64
+  DEFAULT_PROJECT_NAME: mongraphe-web
+  PROJECT_NAME: ${{ inputs.project_name || vars.CLOUDFLARE_PAGES_PROJECT || 'mongraphe-web' }}
+  DEPLOY_BRANCH: ${{ inputs.deploy_branch || github.head_ref || github.ref_name }}
+
+jobs:
+  build-and-deploy:
+    name: Build WebAssembly, frontend and deploy Pages
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Build WebAssembly engine with Emscripten Docker image
+        run: |
+          docker run --rm \
+            -v "$PWD/${APP_DIR}":/app \
+            -w /app \
+            "${EMSDK_IMAGE}" \
+            make -C wasm-engine wasm
+
+      - name: Verify generated WebAssembly assets
+        run: |
+          test -s "${APP_DIR}/frontend/public/wasm/graph-engine.js"
+          test -s "${APP_DIR}/frontend/public/wasm/graph-engine.wasm"
+          ls -lh "${APP_DIR}/frontend/public/wasm"
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: ${{ env.APP_DIR }}/frontend/package-lock.json
+
+      - name: Install frontend dependencies
+        working-directory: ${{ env.APP_DIR }}/frontend
+        run: npm ci --no-audit --no-fund
+
+      - name: Build frontend static bundle
+        working-directory: ${{ env.APP_DIR }}/frontend
+        run: npm run build
+
+      - name: Verify static output
+        run: |
+          test -s "${APP_DIR}/frontend/dist/index.html"
+          test -s "${APP_DIR}/frontend/dist/wasm/graph-engine.js"
+          test -s "${APP_DIR}/frontend/dist/wasm/graph-engine.wasm"
+          find "${APP_DIR}/frontend/dist" -maxdepth 2 -type f | sort
+
+      - name: Upload static artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: mongraphe-web-dist
+          path: ${{ env.APP_DIR }}/frontend/dist
+          if-no-files-found: error
+          retention-days: 7
+
+      - name: Check Cloudflare secrets
+        id: cloudflare-secrets
+        env:
+          CF_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CF_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          if [ -z "${CF_API_TOKEN}" ] || [ -z "${CF_ACCOUNT_ID}" ]; then
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+            echo "::warning::Cloudflare deployment skipped: set CLOUDFLARE_API_TOKEN and CLOUDFLARE_ACCOUNT_ID in GitHub repository secrets."
+          else
+            echo "ready=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Deploy to Cloudflare Pages
+        id: deploy
+        if: steps.cloudflare-secrets.outputs.ready == 'true'
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          gitHubToken: ${{ secrets.GITHUB_TOKEN }}
+          command: pages deploy ${{ env.APP_DIR }}/frontend/dist --project-name=${{ env.PROJECT_NAME }} --branch=${{ env.DEPLOY_BRANCH }}
+
+      - name: Print deployment URL
+        if: steps.cloudflare-secrets.outputs.ready == 'true'
+        env:
+          DEPLOYMENT_URL: ${{ steps.deploy.outputs.deployment-url }}
+          DEPLOYMENT_ALIAS_URL: ${{ steps.deploy.outputs.pages-deployment-alias-url }}
+        run: |
+          echo "Deployment URL: ${DEPLOYMENT_URL}"
+          echo "Deployment alias URL: ${DEPLOYMENT_ALIAS_URL}"

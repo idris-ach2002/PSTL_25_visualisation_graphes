@@ -963,3 +963,60 @@ Le projet ne remplace pas exactement l'application desktop d'origine.
 Il propose une nouvelle orientation : une application web interactive, portable, lisible et adaptée à des graphes de taille maîtrisée.
 
 Cette stratégie permet de valoriser le travail initial tout en ouvrant la voie à une application plus simple à distribuer, à présenter et à maintenir.
+
+---
+
+# 22. Déploiement Cloudflare Pages
+
+La version web de MonGraphe est adaptée à un déploiement statique. Après compilation, l'application ne nécessite pas de serveur applicatif, de base de données ou de processus permanent.
+
+Le dossier produit par Vite est :
+
+```text
+graph-application/frontend/dist
+```
+
+Ce dossier contient l'ensemble des ressources nécessaires :
+
+- `index.html` ;
+- les bundles JavaScript ;
+- les styles CSS ;
+- les fichiers WebAssembly ;
+- les jeux de données publics.
+
+## 22.1 Stratégie retenue
+
+La stratégie retenue est :
+
+```text
+GitHub Actions → build WebAssembly → build Vite → Wrangler → Cloudflare Pages
+```
+
+Ce choix évite de versionner les binaires générés tout en conservant un build reproductible.
+
+## 22.2 Rôle de GitHub Actions
+
+Le workflow `.github/workflows/cloudflare-pages.yml` automatise :
+
+1. la récupération du dépôt ;
+2. la compilation du moteur C avec `emscripten/emsdk:3.1.64` ;
+3. la génération de `graph-engine.js` et `graph-engine.wasm` ;
+4. l'installation des dépendances frontend ;
+5. le build Vite ;
+6. la publication sur Cloudflare Pages.
+
+## 22.3 Rôle de Cloudflare Pages
+
+Cloudflare Pages sert les fichiers statiques depuis son infrastructure. Le projet n'a donc pas besoin d'un conteneur Docker lancé en continu en production.
+
+Cette approche évite les problèmes de mise en sommeil associés à certains hébergements gratuits de services backend.
+
+## 22.4 Rôle de Docker
+
+Docker reste utile pour :
+
+- lancer l'application localement ;
+- reproduire l'environnement de compilation Emscripten ;
+- tester le build production avec Nginx.
+
+Il n'est pas nécessaire comme runtime de production pour Cloudflare Pages.

@@ -55,3 +55,34 @@ ports:
 docker compose down --remove-orphans
 docker system prune
 ```
+
+---
+
+## 8. Différence entre Docker local et Cloudflare Pages
+
+Docker reste la solution recommandée pour lancer l'application localement :
+
+```bash
+./run_app.sh fresh
+```
+
+En revanche, Docker n'est pas utilisé comme runtime de production sur Cloudflare Pages.
+
+La production Cloudflare repose sur un build statique :
+
+```text
+frontend/dist/
+```
+
+Ce dossier contient :
+
+- le HTML ;
+- les fichiers JavaScript et CSS générés par Vite ;
+- le moteur WebAssembly généré ;
+- les fichiers publics nécessaires à l'application.
+
+Le workflow de production est documenté dans :
+
+```text
+docs/DEPLOYMENT_CLOUDFLARE.md
+```

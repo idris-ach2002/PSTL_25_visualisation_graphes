@@ -104,3 +104,19 @@ tools/apache-maven-*/
 # User-specific helper files
 cmd.txt
 
+
+##################################
+# Web application generated outputs
+##################################
+
+graph-application/frontend/node_modules/
+graph-application/frontend/dist/
+graph-application/frontend/public/wasm/graph-engine.js
+graph-application/frontend/public/wasm/graph-engine.wasm
+
+# Keep project C headers tracked despite the global *.h rule above.
+!graph-application/wasm-engine/src/*.h
+!graph-application/legacy/graph-native-original/**/*.h
+
+# TypeScript incremental build metadata
+graph-application/frontend/tsconfig.tsbuildinfo

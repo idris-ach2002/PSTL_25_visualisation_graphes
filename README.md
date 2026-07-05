@@ -22,7 +22,8 @@ Pour comprendre rapidement le projet :
 1. [Rapport technique complet](graph-application/docs/REPORT.md)
 2. [Guide d'installation](graph-application/docs/INSTALLATION.md)
 3. [Guide utilisateur](graph-application/docs/USER_GUIDE.md)
-4. [Architecture](graph-application/docs/ARCHITECTURE.md)
+4. [Déploiement Cloudflare Pages](graph-application/docs/DEPLOYMENT_CLOUDFLARE.md)
+5. [Architecture](graph-application/docs/ARCHITECTURE.md)
 
 ---
 
@@ -46,7 +47,8 @@ Pour comprendre rapidement le projet :
 | [WASM_ENGINE.md](graph-application/docs/WASM_ENGINE.md) | Moteur C / WebAssembly |
 | [RENDERING.md](graph-application/docs/RENDERING.md) | Rendu WebGL, 2D, 3D |
 | [DEVELOPMENT.md](graph-application/docs/DEVELOPMENT.md) | Développement local |
-| [DOCKER.md](graph-application/docs/DOCKER.md) | Docker, Nginx, production |
+| [DOCKER.md](graph-application/docs/DOCKER.md) | Docker, Nginx, lancement local |
+| [DEPLOYMENT_CLOUDFLARE.md](graph-application/docs/DEPLOYMENT_CLOUDFLARE.md) | Déploiement Cloudflare Pages sans backend |
 
 ---
 
@@ -59,6 +61,32 @@ Pour comprendre rapidement le projet :
 | [REPORT.md](graph-application/docs/REPORT.md) | Rapport détaillé complet |
 
 ---
+
+---
+
+## Déploiement recommandé
+
+La cible de production recommandée est **Cloudflare Pages**.
+
+Le projet est compilé en fichiers statiques :
+
+```text
+frontend/dist/
+├── index.html
+├── assets/
+├── wasm/
+└── samples/
+```
+
+Le déploiement propre se fait avec GitHub Actions :
+
+1. compilation du moteur C en WebAssembly avec l'image Docker Emscripten ;
+2. compilation du frontend Vite ;
+3. publication de `graph-application/frontend/dist` sur Cloudflare Pages avec Wrangler.
+
+Docker reste utilisé pour le lancement local, mais pas comme runtime de production.
+
+Documentation : [Déploiement Cloudflare Pages](graph-application/docs/DEPLOYMENT_CLOUDFLARE.md).
 
 ## Objectif de séparation
 

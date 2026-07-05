@@ -54,3 +54,23 @@ git push -u origin web-vision
 - fichiers de build ;
 - dossiers `node_modules` ;
 - fichiers locaux non nécessaires.
+
+---
+
+## 6. Commits de déploiement Cloudflare
+
+Pour les fichiers liés au déploiement Cloudflare, utiliser par exemple :
+
+```bash
+git add .github/workflows/cloudflare-pages.yml \
+        graph-application/scripts/build-cloudflare.sh \
+        graph-application/scripts/deploy-cloudflare.sh \
+        graph-application/frontend/public/_headers \
+        graph-application/docs/DEPLOYMENT_CLOUDFLARE.md \
+        graph-application/docs/README.md \
+        README.md
+
+git commit -m "ci: add Cloudflare Pages deployment workflow"
+```
+
+Ce commit doit rester séparé des commits fonctionnels de rendu ou d'interface, car il concerne uniquement la chaîne de livraison.
