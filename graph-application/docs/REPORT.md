@@ -28,7 +28,7 @@
 
 # 1. Introduction
 
-MonGraphe Web est une application de visualisation interactive de graphes exécutée dans le navigateur.  
+MonGraphe Web est une application de visualisation interactive de graphes exécutée dans le navigateur.
 Elle résulte d'une transformation importante d'un projet initialement conçu comme application desktop JavaFX, utilisant un rendu OpenGL via JOGL et un moteur natif appelé depuis Java par JNI.
 
 La migration web répond à plusieurs objectifs :
@@ -79,7 +79,7 @@ La branche `web-vision` propose une nouvelle orientation : transformer le projet
 
 # 3. Objectifs de la migration web
 
-La migration ne consiste pas seulement à changer l'interface.  
+La migration ne consiste pas seulement à changer l'interface.
 Elle modifie profondément le modèle d'exécution.
 
 ## 3.1 Objectifs fonctionnels
@@ -167,7 +167,7 @@ Elle s'exécute dans le navigateur et délègue :
 
 ## 4.3 Changement de stratégie
 
-La version desktop peut viser des graphes plus grands, selon la machine et l'optimisation native.  
+La version desktop peut viser des graphes plus grands, selon la machine et l'optimisation native.
 La version web assume une limite plus stricte, car l'objectif est une visualisation fluide et lisible dans un navigateur.
 
 Le choix n'est donc pas seulement technique : c'est un choix d'expérience utilisateur.
@@ -507,7 +507,7 @@ La 3D est utile pour :
 - présenter le graphe de manière plus dynamique ;
 - analyser certaines séparations spatiales.
 
-Cependant, la 3D peut aussi compliquer la lecture.  
+Cependant, la 3D peut aussi compliquer la lecture.
 C'est pourquoi la 2D reste le mode par défaut.
 
 ---
@@ -710,10 +710,10 @@ Une bonne recherche doit :
 
 ## 14.2 Objectif des filtres
 
-Les filtres ne servent pas seulement à masquer des données.  
+Les filtres ne servent pas seulement à masquer des données.
 Ils servent à rendre une structure plus lisible.
 
-Un graphe complet peut être difficile à interpréter.  
+Un graphe complet peut être difficile à interpréter.
 Un graphe filtré peut révéler une organisation.
 
 ## 14.3 Focus sélection
@@ -959,7 +959,7 @@ La migration introduit :
 - une documentation détaillée ;
 - une expérience utilisateur plus guidée.
 
-Le projet ne remplace pas exactement l'application desktop d'origine.  
+Le projet ne remplace pas exactement l'application desktop d'origine.
 Il propose une nouvelle orientation : une application web interactive, portable, lisible et adaptée à des graphes de taille maîtrisée.
 
 Cette stratégie permet de valoriser le travail initial tout en ouvrant la voie à une application plus simple à distribuer, à présenter et à maintenir.

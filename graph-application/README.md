@@ -1,164 +1,77 @@
-# MonGraphe Web
+# PSTL_25_visualisation_graphes
 
-**MonGraphe Web** est une application web de visualisation interactive de graphes, issue de la migration d'une application desktop JavaFX / JOGL / JNI vers une architecture web moderne fondée sur **React**, **TypeScript**, **WebGL**, **WebAssembly** et **Docker**.
+Application de visualisation de graphes graphes exécutée dans le navigateur avec interface gérée par React, TypeScript, WebGL, WebAssembly, Web Worker, Docker, Nginx, rendu OpenGL et calculs natifs en C.
 
-Cette version web vise un objectif précis : proposer une application accessible depuis le navigateur, simple à lancer, fluide, visuellement lisible et suffisamment riche pour explorer des graphes dans un cadre pédagogique, expérimental ou démonstratif.
-
----
-
-## Résumé du projet
+## À quoi sert le projet
 
 L'application permet de :
+- charger un graphe depuis un fichier CSV ou DOT ;
+- visualiser le graphe de manière interactive ;
+- appliquer des layouts et des algorithmes de communautés ;
+- exporter des rendus graphiques.
 
-- importer des graphes depuis des fichiers **CSV**, **DOT** ou edge-list ;
-- analyser les fichiers avant import ;
-- contrôler une limite de nœuds paramétrable ;
-- visualiser les graphes en **2D simple** ou en **3D orbitale** ;
-- explorer les nœuds, arêtes, degrés, communautés et composantes ;
-- filtrer les graphes par degré, poids ou communauté ;
-- sélectionner des éléments et afficher leurs informations ;
-- sauvegarder un projet au format JSON ;
-- exporter des rendus PNG / SVG ;
-- consulter une documentation intégrée depuis l'interface ;
-- lancer l'application sans dépendance locale complexe grâce à Docker.
+Le projet est composé de deux parties :
+- `frontend` : interface graphique utilisé côté client?
+- `wasm_engine` : moteur natif en C.
+---
+
+## Guide
+
+Pour comprendre rapidement le projet :
+
+1. [Rapport technique complet](docs/REPORT.md)
+2. [Guide d'installation](docs/INSTALLATION.md)
+3. [Guide utilisateur](docs/USER_GUIDE.md)
+4. [Architecture](docs/ARCHITECTURE.md)
 
 ---
 
-## Philosophie de la version web
+## Documentation utilisateur
 
-La version web ne cherche pas à reproduire exactement les capacités d'un outil desktop lourd sur des graphes massifs.  
-Elle assume une limite contrôlée du nombre de nœuds afin de privilégier :
-
-- la fluidité dans le navigateur ;
-- la qualité de rendu ;
-- la lisibilité ;
-- la facilité d'utilisation ;
-- l'interactivité ;
-- la portabilité ;
-- la simplicité de lancement.
-
-Par défaut :
-
-- l'import externe est limité à **1 000 nœuds** ;
-- la démo générée est limitée à **400 nœuds** ;
-- ces limites sont modifiables depuis l'application.
-
----
-
-## Lancement rapide
-
-Depuis la racine du projet :
-
-```bash
-./run_app.sh fresh
-```
-
-Puis ouvrir :
-
-```text
-http://localhost:8080
-```
-
-Mode développement :
-
-```bash
-./run_app.sh dev
-```
-
-Puis ouvrir :
-
-```text
-http://localhost:5173
-```
-
----
-
-## Structure simplifiée
-
-```text
-graph-application/
-├── frontend/              # Application React + TypeScript + WebGL
-├── wasm-engine/           # Moteur C compilé en WebAssembly
-├── legacy/                # Ancien moteur natif conservé comme référence
-├── docs/                  # Documentation détaillée
-├── scripts/               # Scripts utilitaires
-├── Dockerfile             # Build production
-├── Dockerfile.dev         # Build développement
-├── docker-compose.yml     # Orchestration Docker
-├── nginx.conf             # Serveur Nginx production
-└── run_app.sh             # Script principal de lancement
-```
-
----
-
-## Documentation détaillée
-
-### Rapport complet
-
-- [Rapport technique complet](docs/REPORT.md)
-
-### Utilisation
-
-- [Guide d'installation](docs/INSTALLATION.md)
-- [Guide utilisateur détaillé](docs/USER_GUIDE.md)
-- [Import, formats et limites web](docs/IMPORT_AND_LIMITS.md)
-- [Fonctionnalités détaillées](docs/FEATURES.md)
-- [Guide de dépannage](docs/TROUBLESHOOTING.md)
-
-### Technique
-
-- [Architecture détaillée](docs/ARCHITECTURE.md)
-- [Moteur WebAssembly](docs/WASM_ENGINE.md)
-- [Rendu WebGL, 2D et 3D orbitale](docs/RENDERING.md)
-- [Développement local](docs/DEVELOPMENT.md)
-- [Docker et déploiement](docs/DOCKER.md)
-
-### Projet
-
-- [Workflow Git](docs/GIT_WORKFLOW.md)
-- [Feuille de route](docs/ROADMAP.md)
-- [Index de la documentation](docs/README.md)
-
----
-
-## Technologies
-
-| Domaine | Technologies |
+| Fichier | Rôle |
 |---|---|
-| Interface | React, TypeScript, Vite |
-| Rendu | Canvas WebGL |
-| Calcul | C, WebAssembly, Web Worker |
-| Packaging | Docker, Docker Compose |
-| Production | Nginx |
-| Documentation | Markdown |
+| [INSTALLATION.md](docs/INSTALLATION.md) | Installer et lancer l'application |
+| [USER_GUIDE.md](docs/USER_GUIDE.md) | Utiliser l'interface |
+| [IMPORT_AND_LIMITS.md](docs/IMPORT_AND_LIMITS.md) | Comprendre l'import et les limites |
+| [FEATURES.md](docs/FEATURES.md) | Découvrir les fonctionnalités |
+| [TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md) | Résoudre les problèmes fréquents |
 
 ---
 
-## Commandes principales
+## Documentation technique
 
-```bash
-# Build propre + lancement production
-./run_app.sh fresh
-
-# Lancement production normal
-./run_app.sh prod
-
-# Mode développement
-./run_app.sh dev
-
-# Arrêt des conteneurs
-./run_app.sh down
-
-# Logs Docker
-./run_app.sh logs
-
-# Nettoyage
-./run_app.sh clean
-```
+| Fichier | Rôle |
+|---|---|
+| [ARCHITECTURE.md](docs/ARCHITECTURE.md) | Architecture globale |
+| [WASM_ENGINE.md](docs/WASM_ENGINE.md) | Moteur C / WebAssembly |
+| [RENDERING.md](docs/RENDERING.md) | Rendu WebGL, 2D, 3D |
+| [DEVELOPMENT.md](docs/DEVELOPMENT.md) | Développement local |
+| [DOCKER.md](docs/DOCKER.md) | Docker, Nginx, production |
 
 ---
 
-## Statut
+## Documentation projet
 
-Cette branche correspond à la version **web-vision**.  
-Elle remplace l'application desktop par une application web complète, tout en conservant une partie de l'ancien moteur natif dans `legacy/` pour garder une trace de la base technique initiale.
+| Fichier | Rôle |
+|---|---|
+| [GIT_WORKFLOW.md](docs/GIT_WORKFLOW.md) | Commits et workflow |
+| [ROADMAP.md](docs/ROADMAP.md) | Évolutions possibles |
+| [REPORT.md](docs/REPORT.md) | Rapport détaillé complet |
+
+---
+
+## Objectif de séparation
+
+La documentation est volontairement séparée afin de limiter les fichiers trop génériques.
+
+Chaque fichier correspond à une responsabilité :
+
+- comprendre le projet ;
+- installer ;
+- utiliser ;
+- importer ;
+- développer ;
+- maintenir ;
+- déployer ;
+- dépanner ;
+- expliquer les choix techniques.
