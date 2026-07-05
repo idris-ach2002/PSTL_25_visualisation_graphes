@@ -1,0 +1,21 @@
+services:
+  graph-web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8080:80"
+
+  graph-web-dev:
+    profiles: ["dev"]
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    ports:
+      - "5173:5173"
+    volumes:
+      - .:/app
+      - graph_web_node_modules:/app/frontend/node_modules
+
+volumes:
+  graph_web_node_modules:
