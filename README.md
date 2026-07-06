@@ -22,6 +22,7 @@ Pour comprendre rapidement le projet :
 1. [Rapport technique complet](graph-application/docs/REPORT.md)
 2. [Guide d'installation](graph-application/docs/INSTALLATION.md)
 3. [Guide utilisateur](graph-application/docs/USER_GUIDE.md)
+5. [Interface responsive et ergonomie](graph-application/docs/UX_UI_RESPONSIVE.md)
 4. [Déploiement Cloudflare Pages](graph-application/docs/DEPLOYMENT_CLOUDFLARE.md)
 5. [Architecture](graph-application/docs/ARCHITECTURE.md)
 
@@ -35,6 +36,7 @@ Pour comprendre rapidement le projet :
 | [USER_GUIDE.md](graph-application/docs/USER_GUIDE.md) | Utiliser l'interface |
 | [IMPORT_AND_LIMITS.md](graph-application/docs/IMPORT_AND_LIMITS.md) | Comprendre l'import et les limites |
 | [FEATURES.md](graph-application/docs/FEATURES.md) | Découvrir les fonctionnalités |
+| [UX_UI_RESPONSIVE.md](graph-application/docs/UX_UI_RESPONSIVE.md) | Interface responsive, templates et ergonomie multi-device |
 | [TROUBLESHOOTING.md](graph-application/docs/TROUBLESHOOTING.md) | Résoudre les problèmes fréquents |
 
 ---

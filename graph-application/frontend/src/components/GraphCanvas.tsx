@@ -304,12 +304,37 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle, Props>(function GraphCa
     return { w, h, edges, nodes };
   }, [data, renderOptions.communityFilter, renderOptions.minDegree]);
 
+  const zoomInLocal = () => {
+    rendererRef.current?.zoomBy(1.18);
+    notifyZoom();
+  };
+
+  const zoomOutLocal = () => {
+    rendererRef.current?.zoomBy(0.85);
+    notifyZoom();
+  };
+
+  const fitLocal = () => {
+    rendererRef.current?.fitView(42);
+    rendererRef.current?.zoomBy(1.18);
+    notifyZoom();
+  };
+
   return (
     <div
       className={`canvasShell ${renderOptions.renderMode === 'space3d' ? 'canvas3d' : 'canvas2d'} ${renderOptions.showWorldGrid ? 'withGrid' : ''}`}
       style={{ '--graph-bg': renderOptions.backgroundColor } as CSSProperties}
     >
       <canvas ref={canvasRef} className="graphCanvas" />
+      <div className="canvasModeBadge">
+        <strong>{renderOptions.renderMode === 'space3d' ? '3D orbitale' : '2D simple'}</strong>
+        <span>{renderOptions.renderMode === 'space3d' ? 'Glisser pour orbiter' : 'Glisser pour déplacer'} · Molette / pincement pour zoomer</span>
+      </div>
+      <div className="canvasTouchBar" aria-label="Contrôles tactiles du graphe">
+        <button type="button" onClick={zoomOutLocal}>−</button>
+        <button type="button" onClick={fitLocal}>Fit</button>
+        <button type="button" onClick={zoomInLocal}>+</button>
+      </div>
       {miniMap && (
         <svg className="miniMap" viewBox={`0 0 ${miniMap.w} ${miniMap.h}`} aria-label="Mini-map du graphe">
           <rect width={miniMap.w} height={miniMap.h} rx="10" />

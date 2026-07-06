@@ -952,3 +952,954 @@ td { color: #d6deea; }
   .helpHero { flex-direction: column; }
   .miniMap { width: 132px; height: 86px; }
 }
+
+/* --------------------------------------------------------------------------
+   Visual upgrade v4 — responsive, ergonomic, multi-device interface
+   -------------------------------------------------------------------------- */
+:root {
+  --bg-app: #050816;
+  --bg-panel: rgba(9, 17, 32, 0.82);
+  --bg-panel-strong: rgba(12, 23, 42, 0.96);
+  --bg-elevated: rgba(15, 27, 49, 0.88);
+  --border-soft: rgba(139, 171, 212, 0.18);
+  --border-medium: rgba(139, 171, 212, 0.30);
+  --text-strong: #f8fbff;
+  --text-main: #d9e7f7;
+  --text-soft: #9fb3cc;
+  --accent: #49c7ff;
+  --accent-strong: #0ea5e9;
+  --accent-green: #68f0bf;
+  --danger: #ff7b8d;
+  --warning-soft: #ffd27a;
+  --radius-sm: 8px;
+  --radius-md: 14px;
+  --radius-lg: 20px;
+  --shadow-soft: 0 18px 48px rgba(0, 0, 0, 0.28);
+  --shadow-panel: 0 22px 70px rgba(0, 0, 0, 0.38);
+}
+
+html, body, #root {
+  background:
+    radial-gradient(circle at 18% -8%, rgba(37, 99, 235, 0.20), transparent 32%),
+    radial-gradient(circle at 88% 8%, rgba(14, 165, 233, 0.12), transparent 30%),
+    var(--bg-app);
+}
+
+body {
+  overscroll-behavior: none;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: geometricPrecision;
+}
+
+.desktopApp {
+  min-width: 0;
+  background:
+    linear-gradient(135deg, rgba(7, 12, 24, 0.96), rgba(3, 7, 18, 0.98)),
+    radial-gradient(circle at 50% 0%, rgba(73, 199, 255, 0.10), transparent 45%);
+  color: var(--text-main);
+}
+
+.desktopTitlebar {
+  height: 42px;
+  padding: 0 14px;
+  background: rgba(7, 12, 22, 0.92);
+  color: var(--text-main);
+  border-bottom: 1px solid var(--border-soft);
+  backdrop-filter: blur(18px);
+}
+
+.appMark {
+  width: 28px;
+  height: 28px;
+  border-radius: 10px;
+  background:
+    linear-gradient(135deg, rgba(73, 199, 255, 1), rgba(37, 99, 235, 0.95)),
+    #0ea5e9;
+  box-shadow: 0 10px 30px rgba(14, 165, 233, 0.26);
+  font-size: 12px;
+}
+
+.titlebarText {
+  justify-content: flex-start;
+  gap: 10px;
+  min-width: 0;
+}
+
+.titlebarText strong {
+  color: var(--text-strong);
+  letter-spacing: -0.015em;
+}
+
+.titlebarText span {
+  color: var(--text-soft);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.titlebarPills {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin-left: auto;
+}
+
+.windowDots span {
+  width: 11px;
+  height: 11px;
+  border: 0;
+  background: rgba(148, 163, 184, 0.32);
+}
+
+.desktopMenubar {
+  min-height: 34px;
+  background: rgba(5, 10, 20, 0.86);
+  border-bottom: 1px solid rgba(139, 171, 212, 0.13);
+  backdrop-filter: blur(16px);
+}
+
+.menuItem {
+  display: flex;
+  align-items: center;
+  padding: 0 12px;
+  color: #dbeafe;
+  border-radius: 8px;
+  margin: 4px 1px;
+  transition: background 0.16s ease, color 0.16s ease;
+}
+
+.menuItem:hover,
+.menuItem:focus-within {
+  background: rgba(73, 199, 255, 0.15);
+  color: white;
+}
+
+.submenu {
+  top: calc(100% + 4px);
+  min-width: 260px;
+  border-radius: 14px;
+  padding: 7px;
+  border: 1px solid var(--border-medium);
+  background: rgba(9, 17, 32, 0.98);
+  box-shadow: var(--shadow-panel);
+  backdrop-filter: blur(22px);
+}
+
+.submenu button {
+  border-radius: 10px;
+  padding: 9px 10px;
+}
+
+.submenu button:hover {
+  background: rgba(73, 199, 255, 0.14);
+}
+
+.quickToolbar {
+  min-height: 50px;
+  gap: 8px;
+  padding: 8px 10px;
+  background: rgba(7, 13, 26, 0.92);
+  border-bottom: 1px solid var(--border-soft);
+  backdrop-filter: blur(20px);
+}
+
+.quickToolbar button,
+.mainTabs button,
+.tabsCompact button,
+.pageControls button,
+.panel button,
+.fileButton,
+.headerActions a,
+.mobileCommandBar button,
+.canvasTouchBar button,
+.heroActions button {
+  border-radius: 999px;
+  border: 1px solid rgba(125, 164, 214, 0.28);
+  background: linear-gradient(180deg, rgba(28, 43, 68, 0.96), rgba(15, 25, 44, 0.96));
+  color: var(--text-main);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.045);
+  transition: transform 0.14s ease, border-color 0.14s ease, background 0.14s ease, box-shadow 0.14s ease;
+}
+
+.quickToolbar button:hover,
+.mainTabs button:hover,
+.tabsCompact button:hover,
+.pageControls button:hover,
+.panel button:hover,
+.fileButton:hover,
+.headerActions a:hover,
+.mobileCommandBar button:hover,
+.canvasTouchBar button:hover,
+.heroActions button:hover {
+  transform: translateY(-1px);
+  border-color: rgba(73, 199, 255, 0.58);
+  background: linear-gradient(180deg, rgba(39, 62, 95, 0.98), rgba(16, 35, 60, 0.98));
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.24);
+}
+
+.quickToolbar button.active,
+.mainTabs button.active,
+.tabsCompact button.active,
+.mobileCommandBar button.active,
+.panel button.primary {
+  background: linear-gradient(135deg, #0ea5e9, #2563eb);
+  border-color: rgba(125, 211, 252, 0.78);
+  color: white;
+}
+
+.workspaceMeta {
+  color: #b8c9df;
+  background: rgba(125, 164, 214, 0.08);
+  border: 1px solid rgba(125, 164, 214, 0.16);
+  border-radius: 999px;
+  padding: 6px 10px;
+}
+
+.desktopBody {
+  gap: 10px;
+  padding: 10px;
+  grid-template-columns: minmax(290px, 350px) minmax(0, 1fr) minmax(258px, 300px);
+  background: transparent;
+}
+
+.toolbar,
+.statsPanel,
+.centralWorkspace,
+.dataPanel,
+.helpPanel {
+  border: 1px solid var(--border-soft);
+  background: var(--bg-panel);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-soft);
+  backdrop-filter: blur(20px);
+}
+
+.toolbar {
+  padding: 0;
+  scrollbar-color: rgba(73, 199, 255, 0.62) rgba(255,255,255,0.04);
+}
+
+.sectionSwitcher {
+  padding: 10px;
+  gap: 7px;
+  border-bottom: 1px solid var(--border-soft);
+  background:
+    radial-gradient(circle at 20% -20%, rgba(73, 199, 255, 0.18), transparent 48%),
+    rgba(7, 13, 26, 0.92);
+}
+
+.sectionSwitcher button {
+  grid-template-columns: minmax(82px, 96px) minmax(0, 1fr);
+  min-height: 54px;
+  border-radius: 14px;
+  border-color: rgba(125, 164, 214, 0.22);
+  background: rgba(15, 27, 49, 0.76);
+}
+
+.sectionSwitcher span { letter-spacing: -0.01em; }
+.sectionSwitcher small { color: #9fb3cc; }
+
+.activePanel {
+  padding: 14px 14px 18px;
+}
+
+.panel {
+  border-bottom: 0;
+}
+
+.panel h2,
+.statsPanel h2,
+.dataHeader h2,
+.docCard h2 {
+  color: var(--text-strong);
+  letter-spacing: -0.02em;
+}
+
+.panel h2 {
+  font-size: 16px;
+  margin-bottom: 8px;
+  padding-bottom: 9px;
+}
+
+.panel h3 {
+  color: #79d7ff;
+  margin-top: 16px;
+}
+
+.panel p,
+.mutedText,
+.dataHeader p,
+.sourceInfo p,
+.emptySelection,
+.docCard p,
+.docCard li {
+  color: var(--text-soft);
+  line-height: 1.45;
+}
+
+.fieldControl,
+.sliderControl {
+  grid-template-columns: minmax(110px, 42%) minmax(0, 1fr);
+  gap: 10px;
+  margin: 10px 0;
+}
+
+.fieldControl span,
+.sliderControl span,
+.checkControl span {
+  color: #dbe8f7;
+}
+
+select,
+input[type="number"],
+input[type="color"],
+.quickSearch input,
+.pageControls input {
+  border-radius: 11px;
+  border-color: rgba(125, 164, 214, 0.26);
+  background: rgba(5, 10, 20, 0.66);
+  color: var(--text-strong);
+}
+
+input[type="range"] {
+  accent-color: var(--accent);
+}
+
+.buttonRow,
+.buttonGrid,
+.templateGrid,
+.edgeColorPresets {
+  gap: 8px;
+}
+
+.templateGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  margin: 12px 0 8px;
+}
+
+.templateGrid button {
+  min-height: 42px;
+  border-radius: 14px;
+  font-weight: 800;
+  font-size: 12px;
+}
+
+.webLimitNote,
+.warningList,
+.samplingBox,
+.insightBox,
+.neighborList,
+.actionLog,
+.docCard,
+.metricBox,
+.limitCard {
+  border-radius: var(--radius-md);
+  border-color: var(--border-soft);
+  background: rgba(8, 18, 34, 0.66);
+}
+
+.centralWorkspace {
+  overflow: hidden;
+  min-width: 0;
+  grid-template-rows: 44px minmax(0, 1fr);
+  background: rgba(5, 10, 20, 0.56);
+}
+
+.mainTabs {
+  align-items: center;
+  gap: 8px;
+  padding: 7px 8px;
+  background: rgba(7, 13, 26, 0.68);
+  border-bottom: 1px solid var(--border-soft);
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.mainTabs::-webkit-scrollbar { display: none; }
+
+.mainTabs button {
+  min-height: 30px;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+
+.viewSurface {
+  background: transparent;
+}
+
+.canvasShell {
+  border-radius: 0 0 var(--radius-lg) var(--radius-lg);
+  background:
+    radial-gradient(circle at 50% 28%, rgba(73, 199, 255, 0.10), transparent 40%),
+    var(--graph-bg, #030814);
+}
+
+.canvasModeBadge {
+  position: absolute;
+  left: 14px;
+  top: 14px;
+  z-index: 5;
+  display: grid;
+  gap: 2px;
+  max-width: min(360px, calc(100% - 28px));
+  padding: 9px 12px;
+  border-radius: 14px;
+  border: 1px solid rgba(157, 220, 255, 0.24);
+  background: rgba(5, 10, 22, 0.68);
+  color: var(--text-main);
+  box-shadow: 0 14px 38px rgba(0,0,0,.25);
+  backdrop-filter: blur(10px);
+  pointer-events: none;
+}
+
+.canvasModeBadge strong {
+  color: white;
+  font-size: 13px;
+}
+
+.canvasModeBadge span {
+  color: #a9bed4;
+  font-size: 11px;
+}
+
+.canvasTouchBar {
+  position: absolute;
+  right: 16px;
+  top: 14px;
+  z-index: 5;
+  display: none;
+  gap: 7px;
+}
+
+.canvasTouchBar button {
+  min-width: 42px;
+  min-height: 36px;
+  padding: 0 12px;
+  font-weight: 900;
+}
+
+.canvasHelp,
+.selectedBadge,
+.graphTooltip,
+.miniMap {
+  border-radius: 14px;
+  border-color: rgba(157, 220, 255, 0.23);
+  background: rgba(5, 10, 22, 0.70);
+  backdrop-filter: blur(12px);
+}
+
+.canvasHelp {
+  max-width: 540px;
+  padding: 8px 11px;
+  color: #bfd5eb;
+}
+
+.selectedBadge {
+  top: 68px;
+  color: #d9f1ff;
+}
+
+.miniMap {
+  right: 16px;
+  bottom: 54px;
+}
+
+.statsPanel {
+  border-left: 1px solid var(--border-soft);
+  padding: 14px;
+}
+
+.statRow {
+  min-height: 26px;
+  padding: 4px 0;
+  border-bottom: 1px solid rgba(255,255,255,0.045);
+}
+
+.statRow span { color: #aebed4; }
+.statRow strong { color: #f7fbff; }
+
+.sideDivider {
+  background: linear-gradient(90deg, transparent, rgba(125, 211, 252, 0.32), transparent);
+  margin: 16px 0;
+}
+
+.dataPanel {
+  padding: 16px;
+}
+
+.tableScroller {
+  border-radius: 16px;
+  border-color: var(--border-soft);
+  background: rgba(5, 10, 20, 0.64);
+}
+
+th {
+  background: rgba(15, 27, 49, 0.98);
+}
+
+th,
+td {
+  border-bottom-color: rgba(125, 164, 214, 0.10);
+}
+
+tbody tr:hover td {
+  background: rgba(73, 199, 255, 0.055);
+}
+
+.statusbar {
+  min-height: 32px;
+  background: rgba(7, 13, 26, 0.92);
+  border-top: 1px solid var(--border-soft);
+  color: #c7d8ec;
+}
+
+.statusRight { color: #8fa8c4; }
+
+.mobileCommandBar {
+  position: fixed;
+  left: max(12px, env(safe-area-inset-left));
+  right: max(12px, env(safe-area-inset-right));
+  bottom: max(10px, env(safe-area-inset-bottom));
+  z-index: 75;
+  display: none;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+  padding: 8px;
+  border: 1px solid rgba(157, 220, 255, 0.22);
+  border-radius: 22px;
+  background: rgba(5, 10, 22, 0.82);
+  box-shadow: 0 20px 70px rgba(0,0,0,.42);
+  backdrop-filter: blur(18px);
+}
+
+.mobileCommandBar button {
+  min-height: 42px;
+  padding: 0 8px;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.helpPanel {
+  padding: 0;
+  background:
+    radial-gradient(circle at 10% -10%, rgba(73, 199, 255, 0.18), transparent 34%),
+    radial-gradient(circle at 92% 6%, rgba(99, 102, 241, 0.16), transparent 34%),
+    rgba(5, 10, 20, 0.58);
+}
+
+.uxHero {
+  border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+}
+
+.helpHero h1 {
+  margin: 4px 0 10px;
+  font-size: clamp(26px, 4vw, 44px);
+  line-height: 1.02;
+  letter-spacing: -0.05em;
+}
+
+.heroActions {
+  display: grid;
+  gap: 10px;
+  min-width: 210px;
+}
+
+.heroActions button {
+  min-height: 44px;
+  padding: 0 16px;
+  font-weight: 900;
+}
+
+.guideLayout {
+  display: grid;
+  grid-template-columns: minmax(220px, 280px) minmax(0, 1fr);
+  gap: 16px;
+  padding: 16px;
+}
+
+.guideSummary {
+  align-self: start;
+  position: sticky;
+  top: 16px;
+  display: grid;
+  gap: 14px;
+  padding: 16px;
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-lg);
+  background: rgba(7, 15, 30, 0.72);
+}
+
+.guideSummary strong { color: white; }
+.guideSummary ol { margin: 0; padding-left: 18px; color: #b9cde4; line-height: 1.62; }
+
+.deviceMatrix {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 6px 10px;
+  padding-top: 12px;
+  border-top: 1px solid rgba(255,255,255,.08);
+}
+
+.deviceMatrix span { color: #7dd3fc; font-weight: 900; }
+.deviceMatrix strong { color: #dbeafe; font-weight: 600; }
+
+.uxDocGrid {
+  padding: 0;
+}
+
+.featuredDocCard {
+  border-color: rgba(73, 199, 255, 0.35);
+  background: linear-gradient(135deg, rgba(14, 165, 233, 0.16), rgba(8, 18, 34, 0.72));
+}
+
+.responsiveCards {
+  display: grid;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.responsiveCards span {
+  display: block;
+  padding: 9px 10px;
+  border-radius: 12px;
+  background: rgba(125, 211, 252, 0.08);
+  color: #c9def2;
+}
+
+@media (min-width: 1600px) {
+  .desktopBody {
+    grid-template-columns: 370px minmax(0, 1fr) 320px;
+  }
+  .quickToolbar,
+  .desktopTitlebar,
+  .desktopMenubar,
+  .statusbar {
+    padding-left: 18px;
+    padding-right: 18px;
+  }
+}
+
+@media (max-width: 1180px) {
+  .desktopApp {
+    grid-template-rows: 42px 34px auto minmax(0, 1fr) 32px;
+  }
+  .desktopBody {
+    grid-template-columns: minmax(260px, 320px) minmax(0, 1fr);
+  }
+  .statsPanel {
+    display: none;
+  }
+  .desktopApp.rightCollapsed .desktopBody,
+  .desktopApp.leftCollapsed .desktopBody {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .quickToolbar {
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+  .quickToolbar::-webkit-scrollbar { display: none; }
+  .quickToolbar > * {
+    flex: 0 0 auto;
+  }
+  .workspaceMeta { display: none; }
+}
+
+@media (max-width: 900px) {
+  .desktopApp {
+    height: 100dvh;
+    grid-template-rows: auto auto minmax(0, 1fr) auto;
+  }
+  .desktopTitlebar {
+    height: auto;
+    min-height: 50px;
+    padding: 8px 12px;
+  }
+  .titlebarText {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 1px;
+  }
+  .titlebarText span {
+    max-width: 44vw;
+    font-size: 12px;
+  }
+  .titlebarPills {
+    gap: 5px;
+  }
+  .titlebarPills .statusPill {
+    padding: 4px 8px;
+    font-size: 11px;
+  }
+  .windowDots { display: none; }
+  .desktopMenubar {
+    display: none;
+  }
+  .quickToolbar {
+    min-height: 46px;
+    padding: 8px 10px;
+    border-bottom-color: var(--border-soft);
+  }
+  .toolLabel,
+  .toolbarDivider,
+  .quickSearch span,
+  .quickToolbar button:nth-of-type(1),
+  .quickToolbar button:nth-of-type(2),
+  .quickToolbar button:nth-of-type(3) {
+    display: none;
+  }
+  .quickSearch input {
+    width: 120px;
+  }
+  .desktopBody {
+    display: grid;
+    grid-template-columns: 1fr;
+    grid-template-rows: auto minmax(0, 1fr) auto;
+    gap: 8px;
+    min-height: 0;
+    padding: 8px 8px 76px;
+    overflow: auto;
+  }
+  .toolbar {
+    max-height: none;
+    min-height: 0;
+    border-right: 1px solid var(--border-soft);
+  }
+  .sectionSwitcher {
+    display: flex;
+    overflow-x: auto;
+    gap: 8px;
+    padding: 9px;
+    scroll-snap-type: x proximity;
+  }
+  .sectionSwitcher button {
+    flex: 0 0 168px;
+    grid-template-columns: 1fr;
+    min-height: 66px;
+    scroll-snap-align: start;
+  }
+  .sectionSwitcher small {
+    white-space: normal;
+  }
+  .centralWorkspace {
+    min-height: min(68dvh, 680px);
+    grid-template-rows: 42px minmax(0, 1fr);
+  }
+  .mainTabs {
+    padding: 6px;
+  }
+  .viewSurface {
+    min-height: 0;
+  }
+  .canvasModeBadge {
+    left: 10px;
+    top: 10px;
+    right: 10px;
+    max-width: none;
+    padding: 8px 10px;
+  }
+  .canvasModeBadge span {
+    display: none;
+  }
+  .canvasTouchBar {
+    display: flex;
+    top: auto;
+    right: 10px;
+    bottom: 12px;
+  }
+  .canvasHelp {
+    display: none;
+  }
+  .miniMap {
+    width: 118px;
+    height: 76px;
+    right: 10px;
+    bottom: 62px;
+    opacity: 0.88;
+  }
+  .selectedBadge {
+    top: 54px;
+    left: 10px;
+  }
+  .statsPanel {
+    display: block;
+    max-height: 52dvh;
+    overflow-y: auto;
+  }
+  .desktopApp.rightCollapsed .statsPanel,
+  .desktopApp.leftCollapsed .toolbar {
+    display: none;
+  }
+  .mobileCommandBar {
+    display: grid;
+  }
+  .statusbar {
+    display: none;
+  }
+}
+
+@media (max-width: 640px) {
+  html, body, #root {
+    overflow: hidden;
+  }
+  .desktopApp {
+    min-height: 100dvh;
+  }
+  .appMark {
+    width: 26px;
+    height: 26px;
+    border-radius: 9px;
+  }
+  .titlebarPills .statusPill:first-child {
+    display: none;
+  }
+  .quickToolbar {
+    gap: 6px;
+  }
+  .quickToolbar button {
+    min-height: 34px;
+    padding: 5px 10px;
+    font-size: 12px;
+  }
+  .quickSearch {
+    margin-left: 0;
+  }
+  .quickSearch input {
+    width: 104px;
+  }
+  .desktopBody {
+    padding: 7px 7px 76px;
+  }
+  .centralWorkspace {
+    border-radius: 18px;
+    min-height: 62dvh;
+  }
+  .toolbar,
+  .statsPanel,
+  .helpPanel,
+  .dataPanel {
+    border-radius: 18px;
+  }
+  .activePanel {
+    padding: 12px;
+  }
+  .fieldControl,
+  .sliderControl {
+    grid-template-columns: 1fr;
+  }
+  .templateGrid,
+  .buttonRow.three,
+  .edgeColorPresets,
+  .importGrid {
+    grid-template-columns: 1fr;
+  }
+  .buttonRow,
+  .buttonRow.two,
+  .buttonRow.three,
+  .buttonGrid {
+    grid-template-columns: 1fr;
+  }
+  .canvasShell {
+    border-radius: 0 0 18px 18px;
+  }
+  .graphTooltip {
+    max-width: min(280px, calc(100vw - 24px));
+    left: 12px !important;
+    top: auto !important;
+    bottom: 72px !important;
+  }
+  .dataPanel {
+    padding: 10px;
+  }
+  .dataHeader {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .tabsCompact {
+    overflow-x: auto;
+  }
+  .pageControls {
+    flex-wrap: wrap;
+  }
+  table {
+    font-size: 12px;
+  }
+  th, td {
+    padding: 7px 8px;
+  }
+  .helpHero {
+    padding: 16px;
+  }
+  .helpHero h1 {
+    font-size: 30px;
+  }
+  .heroActions,
+  .guideLayout {
+    grid-template-columns: 1fr;
+  }
+  .guideLayout {
+    padding: 10px;
+  }
+  .guideSummary {
+    position: static;
+  }
+  .docGrid {
+    grid-template-columns: 1fr;
+    padding: 0;
+  }
+  .modalBackdrop {
+    align-items: end;
+    padding: 12px;
+  }
+  .limitModal,
+  .largeModal {
+    width: 100%;
+    max-height: calc(100dvh - 24px);
+    overflow-y: auto;
+    grid-template-columns: 1fr;
+    border-radius: 22px;
+  }
+  .modalIcon {
+    display: none;
+  }
+  .modalHeader {
+    flex-direction: column;
+  }
+  .modalActions {
+    justify-content: stretch;
+  }
+  .modalActions button {
+    flex: 1;
+  }
+}
+
+@media (max-width: 420px) {
+  .titlebarText strong {
+    font-size: 13px;
+  }
+  .titlebarText span {
+    max-width: 38vw;
+  }
+  .quickToolbar button:nth-of-type(8),
+  .quickToolbar button:nth-of-type(9) {
+    display: none;
+  }
+  .mobileCommandBar {
+    gap: 6px;
+    padding: 7px;
+    border-radius: 18px;
+  }
+  .mobileCommandBar button {
+    font-size: 11px;
+    min-height: 40px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+  }
+}

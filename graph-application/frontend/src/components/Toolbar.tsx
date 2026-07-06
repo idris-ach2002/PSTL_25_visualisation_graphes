@@ -239,9 +239,26 @@ export function Toolbar({
           <NumberSlider label="Limite import web" min={100} max={maxWebNodeHardLimit} step={50} value={buildOptions.maxWebNodes} onChange={(maxWebNodes) => onBuildOptionsChange({ ...buildOptions, maxWebNodes, maxExactNodes: Math.min(maxWebNodes, buildOptions.maxExactNodes || maxWebNodes) })} />
           <NumberSlider label="Nœuds démo" min={40} max={400} step={10} value={demoNodeCount} onChange={setDemoNodeCount} />
           <button type="button" onClick={() => onDemo(demoNodeCount)}>Générer une démo</button>
+          <div className="templateGrid" aria-label="Templates rapides">
+            <button type="button" onClick={applySimple2DPreset}>Analyse 2D</button>
+            <button type="button" onClick={applyReal3DPreset}>Présentation 3D</button>
+            <button type="button" onClick={() => {
+              onRenderOptionsChange({
+                ...renderOptions,
+                renderMode: 'flat',
+                showLabels: false,
+                nodeBaseSize: Math.max(renderOptions.nodeBaseSize, 12),
+                degreeFactor: Math.max(renderOptions.degreeFactor, 1),
+                edgeLineWidth: 1.5,
+                edgeOpacity: 0.62,
+                qualityScale: 1.25
+              });
+              onFitView();
+            }}>Mobile lisible</button>
+          </div>
           <div className="buttonRow two topGap">
-            <button type="button" onClick={applySimple2DPreset}>Preset 2D simple</button>
             <button type="button" onClick={onFitView}>Centrer</button>
+            <button type="button" onClick={onPresentationMode}>Présentation</button>
           </div>
           <div className="webLimitNote">
             <strong>Mode web contrôlé</strong>

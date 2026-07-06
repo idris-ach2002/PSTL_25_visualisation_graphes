@@ -55,3 +55,9 @@ Cette documentation est organisée par responsabilité. Elle accompagne la branc
 - `REPORT.md` sert de rapport technique complet.
 - Les fichiers spécialisés évitent de mélanger installation, usage, architecture, déploiement et maintenance.
 - La documentation Cloudflare est séparée car le déploiement n'utilise pas le même flux que le lancement Docker local.
+
+## Interface et ergonomie
+
+| Fichier | Rôle |
+|---|---|
+| [UX_UI_RESPONSIVE.md](UX_UI_RESPONSIVE.md) | Refonte visuelle, responsive design, templates et ergonomie multi-device |

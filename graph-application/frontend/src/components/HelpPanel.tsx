@@ -7,82 +7,94 @@ type Props = {
 export function HelpPanel({ nodeLimit, onDemo, onOpenFile }: Props) {
   return (
     <section className="helpPanel">
-      <header className="helpHero">
+      <header className="helpHero uxHero">
         <div>
           <p className="eyebrow">Guide intégré</p>
-          <h1>MonGraphe Web : visualiser, analyser, présenter</h1>
+          <h1>Explorer un graphe sans se perdre</h1>
           <p>
-            Cette version web privilégie la lisibilité et l’interaction. La limite active est de {nodeLimit.toLocaleString('fr-FR')} nœuds maximum,
-            paramétrable jusqu’à 1 000. La génération de démo est volontairement plafonnée à 400 nœuds.
+            MonGraphe Web a été optimisé pour une utilisation sur téléphone, tablette et ordinateur. Le mode 2D sert à analyser,
+            le mode 3D orbitale sert à présenter et comprendre la structure sous plusieurs angles.
           </p>
         </div>
-        <div className="buttonRow two">
+        <div className="heroActions">
           <button type="button" onClick={() => onDemo(360)}>Charger une démo</button>
           <button type="button" onClick={onOpenFile}>Importer un fichier</button>
         </div>
       </header>
 
-      <div className="docGrid">
-        <article className="docCard">
-          <h2>1. Import intelligent</h2>
-          <p>L’assistant d’import analyse le fichier avant le chargement : type détecté, nombre de nœuds, arêtes et compatibilité avec la limite web.</p>
-          <ul>
-            <li>CSV numérique : une ligne devient un nœud.</li>
-            <li>CSV edge-list : colonnes source/target/weight.</li>
-            <li>DOT : syntaxe Graphviz <code>a -- b</code> ou <code>a -&gt; b</code>.</li>
-          </ul>
-          <div className="docExample">Fichier trop grand → premiers nœuds, échantillon aléatoire ou nœuds les plus connectés.</div>
-        </article>
-
-        <article className="docCard">
-          <h2>2. Lire le graphe</h2>
-          <p>Survole un nœud ou une arête pour afficher ses informations. Clique sur un nœud pour activer le panneau de sélection avancée.</p>
-          <ul>
-            <li><strong>Voisins</strong> : garde la sélection et ses connexions directes.</li>
-            <li><strong>Isoler</strong> : ne garde que le nœud sélectionné.</li>
-            <li><strong>Communauté</strong> : masque les autres groupes.</li>
-          </ul>
-        </article>
-
-        <article className="docCard">
-          <h2>3. Vues et caméra</h2>
-          <p>Le mode par défaut est la 2D simple. Le mode 3D orbitale permet de faire tourner le graphe dans l’espace.</p>
-          <ul>
-            <li>Molette : zoom.</li>
-            <li>Glisser en 2D : déplacer la vue.</li>
-            <li>Glisser en 3D : orbiter autour du graphe.</li>
-            <li>Maj + glisser : déplacer la caméra.</li>
-          </ul>
-        </article>
-
-        <article className="docCard">
-          <h2>4. Layouts rapides</h2>
-          <p>Les layouts rapides aident à comprendre la structure sans relancer tout le moteur.</p>
-          <ul>
-            <li>Force : remet le moteur de spatialisation.</li>
-            <li>Circulaire : utile pour vérifier la connectivité.</li>
-            <li>Communautés : sépare visuellement les groupes.</li>
-            <li>Radial : met un nœud sélectionné au centre.</li>
-          </ul>
-        </article>
-
-        <article className="docCard">
-          <h2>5. Analyse automatique</h2>
-          <p>Le panneau de droite calcule densité, degré moyen, hub principal, composantes connexes et interprétation rapide du graphe.</p>
-          <div className="docPipeline">
-            <span>Fichier</span><b>→</b><span>Analyse</span><b>→</b><span>WASM</span><b>→</b><span>WebGL</span><b>→</b><span>Export</span>
+      <div className="guideLayout">
+        <aside className="guideSummary">
+          <strong>Parcours conseillé</strong>
+          <ol>
+            <li>Importer ou générer une démo.</li>
+            <li>Contrôler la limite de nœuds.</li>
+            <li>Choisir un template visuel.</li>
+            <li>Filtrer le graphe.</li>
+            <li>Sélectionner un nœud.</li>
+            <li>Exporter ou présenter.</li>
+          </ol>
+          <div className="deviceMatrix">
+            <span>Phone</span><strong>barre mobile</strong>
+            <span>Tablet</span><strong>panneaux adaptatifs</strong>
+            <span>PC</span><strong>interface complète</strong>
           </div>
-        </article>
+        </aside>
 
-        <article className="docCard">
-          <h2>6. Exports et projets</h2>
-          <p>Tu peux exporter une image PNG, un SVG vectoriel, ou sauvegarder un projet JSON complet.</p>
-          <ul>
-            <li>PNG : rendu visuel actuel.</li>
-            <li>SVG : image vectorielle pour rapport.</li>
-            <li>JSON : graphe, paramètres, rendu et historique.</li>
-          </ul>
-        </article>
+        <div className="docGrid uxDocGrid">
+          <article className="docCard featuredDocCard">
+            <h2>1. Utilisation rapide</h2>
+            <p>Commence par une démo ou un fichier CSV/DOT. L’assistant vérifie le format, estime la taille du graphe et évite un import trop lourd.</p>
+            <div className="docExample">Limite active : {nodeLimit.toLocaleString('fr-FR')} nœuds · démo plafonnée à 400 nœuds.</div>
+          </article>
+
+          <article className="docCard">
+            <h2>2. Templates visuels</h2>
+            <p>Dans le panneau Projet, utilise les templates rapides :</p>
+            <ul>
+              <li><strong>Analyse 2D</strong> : simple, lisible, stable.</li>
+              <li><strong>Présentation 3D</strong> : caméra orbitale et profondeur.</li>
+              <li><strong>Mobile lisible</strong> : nœuds plus grands, rendu allégé.</li>
+            </ul>
+          </article>
+
+          <article className="docCard">
+            <h2>3. Contrôles tactiles</h2>
+            <p>Sur mobile et tablette, la barre rapide en bas donne accès au graphe, aux paramètres, à l’analyse et au guide.</p>
+            <ul>
+              <li>Pincer ou utiliser + / − pour zoomer.</li>
+              <li>Glisser le fond pour déplacer en 2D.</li>
+              <li>En 3D, glisser pour orbiter.</li>
+            </ul>
+          </article>
+
+          <article className="docCard">
+            <h2>4. Lecture du graphe</h2>
+            <p>Survole un nœud ou une arête pour voir ses informations. Clique sur un nœud pour ouvrir la sélection avancée.</p>
+            <ul>
+              <li><strong>Voisins</strong> : garde les connexions directes.</li>
+              <li><strong>Communauté</strong> : isole un groupe.</li>
+              <li><strong>Centrer</strong> : replace la caméra sur le nœud.</li>
+            </ul>
+          </article>
+
+          <article className="docCard">
+            <h2>5. Interface par device</h2>
+            <p>L’interface s’adapte selon la largeur disponible.</p>
+            <div className="responsiveCards">
+              <span>≤ 760 px : panneaux empilés, barre mobile, canvas prioritaire.</span>
+              <span>761–1180 px : analyse masquée par défaut, paramètres compacts.</span>
+              <span>≥ 1180 px : interface complète avec paramètres et statistiques.</span>
+            </div>
+          </article>
+
+          <article className="docCard">
+            <h2>6. Exports et présentation</h2>
+            <p>Le mode présentation masque les panneaux pour mettre le graphe au centre. Les exports PNG/SVG reprennent la vue courante.</p>
+            <div className="docPipeline">
+              <span>Import</span><b>→</b><span>Analyse</span><b>→</b><span>Template</span><b>→</b><span>Export</span>
+            </div>
+          </article>
+        </div>
       </div>
     </section>
   );

@@ -704,6 +704,10 @@ export default function App() {
           <strong>MonGraphe Web</strong>
           <span>{graph?.name ?? 'Espace de travail'}</span>
         </div>
+        <div className="titlebarPills" aria-label="État de l'application">
+          <span className="statusPill ok">Cloudflare</span>
+          <span className="statusPill">{renderOptions.renderMode === 'space3d' ? '3D orbitale' : '2D simple'}</span>
+        </div>
         <div className="windowDots" aria-hidden="true"><span /> <span /> <span /></div>
       </div>
 
@@ -915,6 +919,13 @@ export default function App() {
           onImportAnother={() => { setLimitDialog(null); graphFileInputRef.current?.click(); }}
         />
       )}
+
+      <nav className="mobileCommandBar" aria-label="Navigation rapide mobile">
+        <button type="button" onClick={() => setLeftCollapsed((value) => !value)}>{leftCollapsed ? 'Paramètres' : 'Masquer'}</button>
+        <button type="button" className={activeTab === 'overview' ? 'active' : ''} onClick={() => setActiveTab('overview')}>Graphe</button>
+        <button type="button" onClick={() => { setShowStats(true); setRightCollapsed((value) => !value); }}>{rightCollapsed || !showStats ? 'Analyse' : 'Masquer'}</button>
+        <button type="button" className={activeTab === 'help' ? 'active' : ''} onClick={() => setActiveTab('help')}>Guide</button>
+      </nav>
 
       <footer className="statusbar">
         <strong>Statut:</strong>
